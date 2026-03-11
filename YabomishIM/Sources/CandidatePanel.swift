@@ -8,6 +8,7 @@ final class CandidatePanel: NSPanel {
     private let stackView = NSStackView()
     private let scrollView = NSScrollView()
     private var labels: [NSTextField] = []
+    private var pageIndicator: NSTextField!
     private var candidates: [String] = []
     private var selKeys: [Character] = []
     private var highlightIndex = 0
@@ -43,6 +44,25 @@ final class CandidatePanel: NSPanel {
             stackView.trailingAnchor.constraint(equalTo: visual.trailingAnchor),
             stackView.bottomAnchor.constraint(equalTo: visual.bottomAnchor),
         ])
+
+        // Pre-create label pool
+        for _ in 0..<pageSize {
+            let label = NSTextField(labelWithString: "")
+            label.font = NSFont.systemFont(ofSize: 16)
+            label.isBordered = false
+            label.isEditable = false
+            label.wantsLayer = true
+            label.layer?.cornerRadius = 3
+            stackView.addArrangedSubview(label)
+            labels.append(label)
+        }
+
+        pageIndicator = NSTextField(labelWithString: "")
+        pageIndicator.font = NSFont.systemFont(ofSize: 11)
+        pageIndicator.isBordered = false
+        pageIndicator.isEditable = false
+        pageIndicator.isHidden = true
+        stackView.addArrangedSubview(pageIndicator)
     }
 
     func show(candidates: [String], selKeys: [Character], at origin: NSPoint) {
@@ -90,43 +110,39 @@ final class CandidatePanel: NSPanel {
     }
 
     private func rebuildLabels() {
-        stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        labels.removeAll()
-
         let start = pageStart
         let end = min(start + pageSize, candidates.count)
 
-        for i in start..<end {
-            let keyIdx = i - start
-            let keyLabel = keyIdx < selKeys.count ? "\(selKeys[keyIdx]). " : "  "
-            let text = "\(keyLabel)\(candidates[i])"
+        for i in 0..<pageSize {
+            let label = labels[i]
+            if start + i < end {
+                let candIdx = start + i
+                let keyIdx = i
+                let keyLabel = keyIdx < selKeys.count ? "\(selKeys[keyIdx]). " : "  "
+                label.stringValue = "\(keyLabel)\(candidates[candIdx])"
+                label.isHidden = false
 
-            let label = NSTextField(labelWithString: text)
-            label.font = NSFont.systemFont(ofSize: 16)
-            label.textColor = .labelColor
-            label.backgroundColor = .clear
-            label.isBordered = false
-            label.isEditable = false
-
-            if i == highlightIndex {
-                label.backgroundColor = NSColor.controlAccentColor
-                label.textColor = .white
-                label.wantsLayer = true
-                label.layer?.cornerRadius = 3
+                if candIdx == highlightIndex {
+                    label.backgroundColor = NSColor.controlAccentColor
+                    label.textColor = .white
+                } else {
+                    label.backgroundColor = .clear
+                    label.textColor = .labelColor
+                }
+            } else {
+                label.isHidden = true
             }
-
-            stackView.addArrangedSubview(label)
-            labels.append(label)
         }
 
         // Page indicator
         let totalPages = (candidates.count + pageSize - 1) / pageSize
-        let currentPage = pageStart / pageSize + 1
         if totalPages > 1 {
-            let indicator = NSTextField(labelWithString: "  \(currentPage)/\(totalPages)")
-            indicator.font = NSFont.systemFont(ofSize: 11)
-            indicator.textColor = .secondaryLabelColor
-            stackView.addArrangedSubview(indicator)
+            let currentPage = pageStart / pageSize + 1
+            pageIndicator.stringValue = "  \(currentPage)/\(totalPages)"
+            pageIndicator.textColor = .secondaryLabelColor
+            pageIndicator.isHidden = false
+        } else {
+            pageIndicator.isHidden = true
         }
 
         layoutIfNeeded()
