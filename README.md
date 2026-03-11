@@ -57,6 +57,11 @@ App 依序尋找：
 
 更換字表只需替換 `~/Library/YabomishIM/liu.cin`，無需重新編譯。
 
+## 支持作者
+
+覺得好用？來吃一球 gelato 🍨
+[Golden Rooster](https://shop.goldenrooster.tw)
+
 ## 授權
 
 MIT
