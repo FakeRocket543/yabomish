@@ -3,7 +3,18 @@ import Foundation
 /// v2: Binary cache for instant load, wildcard support, selkey from .cin header
 final class CINTable {
     private var table: [String: [String]] = [:]
-    private var reverseTable: [String: [String]] = [:]
+    private var _reverseTable: [String: [String]]?
+    private var reverseTable: [String: [String]] {
+        if let cached = _reverseTable { return cached }
+        var newReverse: [String: [String]] = [:]
+        for (code, chars) in table {
+            for char in chars {
+                newReverse[char, default: []].append(code)
+            }
+        }
+        _reverseTable = newReverse
+        return newReverse
+    }
     private var prefixes: Set<String> = []
     private(set) var selKeys: [Character] = Array("1234567890")
     private(set) var cinName: String = ""
@@ -65,14 +76,7 @@ final class CINTable {
         }
         self.table = newTable
         self.prefixes = newPrefixes
-        
-        var newReverse: [String: [String]] = [:]
-        for (code, chars) in newTable {
-            for char in chars {
-                newReverse[char, default: []].append(code)
-            }
-        }
-        self.reverseTable = newReverse
+        self._reverseTable = nil
     }
 
     // MARK: - Binary Cache
@@ -123,14 +127,7 @@ final class CINTable {
         }
         self.table = newTable
         self.prefixes = newPrefixes
-        
-        var newReverse: [String: [String]] = [:]
-        for (code, chars) in newTable {
-            for char in chars {
-                newReverse[char, default: []].append(code)
-            }
-        }
-        self.reverseTable = newReverse
+        self._reverseTable = nil
         return !newTable.isEmpty
     }
 
