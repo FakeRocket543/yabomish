@@ -298,6 +298,9 @@ class YabomishInputController: IMKInputController {
 
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
+        if let client = sender as? IMKTextInput {
+            client.overrideKeyboard(withKeyboardNamed: "com.apple.keylayout.ABC")
+        }
         if Self.activeSession !== self {
             Self.activeSession = self
             composing = ""
