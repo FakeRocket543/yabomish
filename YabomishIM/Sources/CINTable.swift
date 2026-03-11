@@ -147,8 +147,10 @@ final class CINTable {
             .replacingOccurrences(of: "\\*", with: ".+") + "$"
         guard let re = try? NSRegularExpression(pattern: regex) else { return [] }
 
+        let fixedPrefix = String(pat.prefix(while: { $0 != "*" }))
         var results: [String] = []
         for (code, chars) in table {
+            guard fixedPrefix.isEmpty || code.hasPrefix(fixedPrefix) else { continue }
             let range = NSRange(code.startIndex..., in: code)
             if re.firstMatch(in: code, range: range) != nil {
                 results.append(contentsOf: chars)

@@ -108,3 +108,13 @@ App 載入順序：先找 `~/Library/YabomishIM/` 下的檔案，找不到才用
 ## 授權
 
 MIT
+
+## 更新紀錄
+
+### v0.1.14
+- 修正：非數字 selKey（如 `asdfghjkl;`）不再造成 crash
+- 修正：移除矛盾的 sandbox entitlements
+- 修正：cursor mode 多螢幕邊界檢查改用正確螢幕
+- 新增：中英模式切換時顯示 HUD 提示（「中」/「A」）
+- 改善：字頻每 500 次自動 decay，防止 freq.json 無限膨脹
+- 改善：萬用碼查詢用 prefix 預過濾，減少全表掃描

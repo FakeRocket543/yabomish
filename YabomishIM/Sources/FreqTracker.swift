@@ -5,6 +5,7 @@ final class FreqTracker {
     private var bigram: [String: [String: Int]] = [:]
     private let path: String
     private var dirty = false
+    private var recordCount = 0
 
     private struct Storage: Codable {
         let freq: [String: [String: Int]]
@@ -21,6 +22,11 @@ final class FreqTracker {
     func record(code: String, char: String) {
         freq[code, default: [:]][char, default: 0] += 1
         dirty = true
+        recordCount += 1
+        if recordCount >= 500 {
+            recordCount = 0
+            decay()
+        }
     }
 
     func recordBigram(prev: String, char: String) {

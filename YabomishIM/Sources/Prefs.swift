@@ -15,4 +15,27 @@ struct YabomishPrefs {
         get { defaults.string(forKey: "panelPosition") ?? "cursor" }
         set { defaults.set(newValue, forKey: "panelPosition") }
     }
+
+    // MARK: - Fixed-mode panel settings
+
+    /// Horizontal alignment: "center", "left", "right"
+    static var fixedAlignment: String {
+        get { defaults.string(forKey: "fixedAlignment") ?? "center" }
+        set { defaults.set(newValue, forKey: "fixedAlignment") }
+    }
+
+    /// Panel opacity 0.3–1.0
+    static var fixedAlpha: CGFloat {
+        get {
+            let v = defaults.object(forKey: "fixedAlpha") as? Double ?? 0.85
+            return CGFloat(v)
+        }
+        set { defaults.set(Double(newValue), forKey: "fixedAlpha") }
+    }
+
+    /// Y offset above Dock (points)
+    static var fixedYOffset: CGFloat {
+        get { CGFloat(defaults.object(forKey: "fixedYOffset") as? Double ?? 8.0) }
+        set { defaults.set(Double(newValue), forKey: "fixedYOffset") }
+    }
 }

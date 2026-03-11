@@ -168,6 +168,7 @@ class YabomishInputController: IMKInputController {
             if event.timestamp - lastShiftDown < 0.3 && !shiftWasUsedWithOtherKey {
                 isEnglishMode.toggle()
                 NSLog("YabomishIM: %@ mode", isEnglishMode ? "English" : "Chinese")
+                showModeToast(isEnglishMode ? "A" : "中")
                 if let client = self.client() { resetComposing(client: client) }
             }
             lastShiftDown = 0
@@ -277,6 +278,39 @@ class YabomishInputController: IMKInputController {
         isSameSoundMode && !sameSoundBase.isEmpty
     }
 
+    // MARK: - Mode Toast
+
+    private static var modeWindow: NSPanel?
+
+    private func showModeToast(_ text: String) {
+        Self.modeWindow?.orderOut(nil)
+        guard let screen = NSScreen.main else { return }
+        let label = NSTextField(labelWithString: text)
+        label.font = .systemFont(ofSize: 36, weight: .medium)
+        label.textColor = .white
+        label.alignment = .center
+        label.sizeToFit()
+        let w = max(label.frame.width + 32, 56)
+        let h = label.frame.height + 20
+        let rect = NSRect(x: screen.frame.midX - w/2, y: screen.frame.midY - h/2, width: w, height: h)
+        let win = NSPanel(contentRect: rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        win.level = .popUpMenu
+        win.isOpaque = false
+        win.backgroundColor = .clear
+        let bg = NSVisualEffectView(frame: NSRect(origin: .zero, size: rect.size))
+        bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = 12
+        win.contentView = bg
+        label.frame = NSRect(x: 0, y: 10, width: rect.width, height: label.frame.height)
+        bg.addSubview(label)
+        win.orderFront(nil)
+        Self.modeWindow = win
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            NSAnimationContext.runAnimationGroup({ ctx in ctx.duration = 0.3; win.animator().alphaValue = 0 }) {
+                win.orderOut(nil); if Self.modeWindow === win { Self.modeWindow = nil }
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func canExtendCode(_ code: String) -> Bool {
@@ -348,31 +382,33 @@ class YabomishInputController: IMKInputController {
     private func showCandidatePanel(client: IMKTextInput) {
         guard !currentCandidates.isEmpty else { panel.hide(); return }
 
+        // Try to determine which screen the client app is on
+        var cursorRect = NSRect.zero
+        let range = client.selectedRange()
+        client.attributes(forCharacterIndex: range.location, lineHeightRectangle: &cursorRect)
+
+        if cursorRect.minX > 0 || cursorRect.minY > 0 {
+            let pt = NSPoint(x: cursorRect.midX, y: cursorRect.midY)
+            panel.targetScreen = NSScreen.screens.first(where: { $0.frame.contains(pt) })
+        }
+
         let origin: NSPoint
         if YabomishPrefs.panelPosition == "fixed" {
-            let screen = NSScreen.main?.visibleFrame ?? .zero
-            origin = NSPoint(x: screen.midX - 40, y: screen.minY + 60)
+            origin = .zero
         } else {
-            var cursorRect = NSRect.zero
-            let range = client.selectedRange()
-            client.attributes(forCharacterIndex: range.location, lineHeightRectangle: &cursorRect)
-
             if cursorRect.minX > 0 || cursorRect.minY > 0 {
-                // App reported a valid cursor position
                 let pt = NSPoint(x: cursorRect.minX, y: cursorRect.minY)
                 Self.lastGoodCursorOrigin = pt
                 origin = pt
             } else if let cached = Self.lastGoodCursorOrigin {
-                // Fall back to last known good position
                 origin = cached
             } else {
-                // No cached position yet — use screen bottom-center
                 let screen = NSScreen.main?.visibleFrame ?? .zero
                 origin = NSPoint(x: screen.midX - 40, y: screen.minY + 60)
             }
         }
 
-        panel.show(candidates: currentCandidates, selKeys: selKeys, at: origin)
+        panel.show(candidates: currentCandidates, selKeys: selKeys, at: origin, composing: composing)
     }
 
     override func candidates(_ sender: Any!) -> [Any]! {
