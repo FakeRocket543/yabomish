@@ -7,6 +7,7 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift，無需 Xcode。
 ## 需求
 
 - macOS 14.0+（Apple Silicon）
+- Xcode Command Line Tools（`xcode-select --install`）
 - 嘸蝦米 CIN 字表（`liu.cin`）
 
 ## 安裝
