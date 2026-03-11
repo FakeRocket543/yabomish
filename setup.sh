@@ -5,6 +5,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CIN_SRC="$SCRIPT_DIR/liu.cin"
 CIN_DST="$HOME/Library/YabomishIM"
 
+# Check Xcode Command Line Tools
+if ! xcode-select -p &>/dev/null; then
+    echo "⚠️  需要 Xcode Command Line Tools，正在安裝..."
+    xcode-select --install
+    echo "安裝完成後請重新執行 ./setup.sh"
+    exit 1
+fi
+
 # Check liu.cin
 if [ ! -f "$CIN_SRC" ]; then
     echo "❌ 請先將 liu.cin 放到本資料夾: $SCRIPT_DIR/"
