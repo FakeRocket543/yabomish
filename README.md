@@ -12,14 +12,8 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift，無需 Xcode。
 ## 安裝
 
 ```bash
-# 1. 放入字表
-mkdir -p ~/Library/YabomishIM
-cp /你的路徑/liu.cin ~/Library/YabomishIM/
-
-# 2. 編譯 & 安裝
-cd YabomishIM
-./build.sh
-./install.sh
+# 將 liu.cin 放到專案根目錄，然後：
+./setup.sh
 ```
 
 到 **系統設定 → 鍵盤 → 輸入方式** 加入「Yabomish」。
