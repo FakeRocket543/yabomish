@@ -48,11 +48,12 @@ final class CandidatePanel: NSPanel {
         // Pre-create label pool
         for _ in 0..<pageSize {
             let label = NSTextField(labelWithString: "")
-            label.font = NSFont.systemFont(ofSize: 16)
+            label.font = NSFont.monospacedSystemFont(ofSize: 16, weight: .regular)
             label.isBordered = false
             label.isEditable = false
             label.wantsLayer = true
             label.layer?.cornerRadius = 3
+            label.setContentHuggingPriority(.defaultLow, for: .horizontal)
             stackView.addArrangedSubview(label)
             labels.append(label)
         }
@@ -103,6 +104,19 @@ final class CandidatePanel: NSPanel {
         rebuildLabels()
     }
 
+    func moveUp() {
+        if highlightIndex > 0 { highlightIndex -= 1; rebuildLabels() }
+    }
+
+    func moveDown() {
+        if highlightIndex < candidates.count - 1 { highlightIndex += 1; rebuildLabels() }
+    }
+
+    func selectedCandidate() -> String? {
+        guard highlightIndex < candidates.count else { return nil }
+        return candidates[highlightIndex]
+    }
+
     var isVisible_: Bool { isVisible }
 
     private var pageStart: Int {
@@ -118,14 +132,18 @@ final class CandidatePanel: NSPanel {
             if start + i < end {
                 let candIdx = start + i
                 let keyIdx = i
-                let keyLabel = keyIdx < selKeys.count ? "\(selKeys[keyIdx]). " : "  "
-                label.stringValue = "\(keyLabel)\(candidates[candIdx])"
+                // Use full-width digits for alignment with CJK chars
+                let fullWidthDigits: [Character] = ["０","１","２","３","４","５","６","７","８","９"]
+                let keyChar = keyIdx < selKeys.count ? fullWidthDigits[Int(String(selKeys[keyIdx]))!] : " "
+                label.stringValue = "\(keyChar)\(candidates[candIdx])"
                 label.isHidden = false
 
                 if candIdx == highlightIndex {
-                    label.backgroundColor = NSColor.controlAccentColor
-                    label.textColor = .white
+                    label.drawsBackground = true
+                    label.backgroundColor = NSColor.selectedContentBackgroundColor
+                    label.textColor = .selectedMenuItemTextColor
                 } else {
+                    label.drawsBackground = false
                     label.backgroundColor = .clear
                     label.textColor = .labelColor
                 }

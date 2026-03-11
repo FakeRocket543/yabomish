@@ -46,6 +46,8 @@ class YabomishInputController: IMKInputController {
     private var shiftWasUsedWithOtherKey = false
     private var eatNextSpace = false
     private var lastCommitted = ""
+    private var isSameSoundMode = false
+    private var sameSoundBase = ""  // the char selected in step 1
 
     private var selKeys: [Character] { Self.cinTable.selKeys }
     private var panel: CandidatePanel { CandidatePanel.shared }
@@ -87,6 +89,14 @@ class YabomishInputController: IMKInputController {
 
         if isEnglishMode { return false }
 
+        // ' (single quote, keyCode 39) → enter same-sound mode
+        if keyCode == 39 && composing.isEmpty && !isSameSoundMode {
+            isSameSoundMode = true
+            composing = "'"
+            updateMarkedText(client: client)
+            return true
+        }
+
         // Space
         if keyCode == 49 {
             if eatNextSpace { eatNextSpace = false; return true }
@@ -99,7 +109,19 @@ class YabomishInputController: IMKInputController {
         // Escape
         if keyCode == 53 { return handleEscape(client: client) }
         // Enter
-        if keyCode == 36 { return handleEnter(client: client) }
+        if keyCode == 36 {
+            if sameSoundStep2, let sel = panel.selectedCandidate() {
+                commitText(sel, client: client); return true
+            }
+            return handleEnter(client: client)
+        }
+        // Arrow keys (same-sound step 2)
+        if sameSoundStep2 && panel.isVisible_ {
+            if keyCode == 125 { panel.moveDown(); return true }   // ↓
+            if keyCode == 126 { panel.moveUp(); return true }     // ↑
+            if keyCode == 124 { panel.pageDown(); return true }   // →
+            if keyCode == 123 { panel.pageUp(); return true }     // ←
+        }
         // Tab
         if keyCode == 48 && panel.isVisible_ { panel.pageDown(); return true }
         // PageDown/Up
@@ -110,6 +132,13 @@ class YabomishInputController: IMKInputController {
         // Actually check characters for '*' since it's shift+8 on all layouts
         if let chars = event.characters, chars == "*", !composing.isEmpty {
             return handleWildcardInput(client: client)
+        }
+
+        // 補碼 v → select first candidate (when v can't extend the code)
+        if keyCode == 9, !currentCandidates.isEmpty,
+           !Self.cinTable.hasPrefix(composing + "v") {
+            commitText(currentCandidates[0], client: client)
+            return true
         }
 
         // Selection keys (digits) when candidates showing
@@ -150,8 +179,9 @@ class YabomishInputController: IMKInputController {
 
     private func handleLetterInput(_ char: String, client: IMKTextInput) -> Bool {
         let newComposing = composing + char
+        let maxLen = isSameSoundMode ? kMaxCodeLength + 1 : kMaxCodeLength
 
-        if newComposing.count > kMaxCodeLength {
+        if newComposing.count > maxLen {
             if !currentCandidates.isEmpty {
                 commitText(currentCandidates[0], client: client)
                 composing = char
@@ -190,6 +220,7 @@ class YabomishInputController: IMKInputController {
 
     private func handleSpace(client: IMKTextInput) -> Bool {
         if composing.isEmpty { return false }
+        if sameSoundStep2 && panel.isVisible_ { panel.pageDown(); return true }
         if currentCandidates.isEmpty { NSSound.beep(); return true }
         commitText(currentCandidates[0], client: client)
         return true
@@ -221,6 +252,31 @@ class YabomishInputController: IMKInputController {
         return true
     }
 
+    // MARK: - Same-Sound Lookup
+
+    private func handleSameSound(client: IMKTextInput) -> Bool {
+        let results = ZhuyinLookup.shared.lookup(sameSoundBase)
+        guard !results.isEmpty else { NSSound.beep(); resetComposing(client: client); return true }
+        var candidates: [String] = []
+        var seen = Set<String>()
+        for r in results {
+            for c in r.chars where seen.insert(c).inserted {
+                candidates.append(c)
+            }
+        }
+        currentCandidates = candidates
+        composing = sameSoundBase
+        // Keep marked text as the base char, panel position follows cursor
+        updateMarkedText(client: client)
+        showCandidatePanel(client: client)
+        return true
+    }
+
+    /// In same-sound step 2, space = next page (not commit first candidate)
+    private var sameSoundStep2: Bool {
+        isSameSoundMode && !sameSoundBase.isEmpty
+    }
+
     // MARK: - Helpers
 
     private func canExtendCode(_ code: String) -> Bool {
@@ -231,16 +287,23 @@ class YabomishInputController: IMKInputController {
     }
 
     private func refreshCandidates() {
+        let code = isSameSoundMode ? String(composing.dropFirst()) : composing
         let raw = isWildcard
-            ? Self.cinTable.wildcardLookup(composing)
-            : Self.cinTable.lookup(composing)
-        currentCandidates = Self.freqTracker.sortedWithContext(raw, forCode: composing, prev: lastCommitted)
+            ? Self.cinTable.wildcardLookup(code)
+            : Self.cinTable.lookup(code)
+        currentCandidates = Self.freqTracker.sortedWithContext(raw, forCode: code, prev: lastCommitted)
     }
 
     private func commitText(_ text: String, client: IMKTextInput) {
+        // Same-sound step 1: user picked the known char → show same-sound list
+        if isSameSoundMode && sameSoundBase.isEmpty {
+            sameSoundBase = text
+            _ = handleSameSound(client: client)
+            return
+        }
         let range = client.markedRange()
         client.insertText(text, replacementRange: range)
-        if !composing.isEmpty {
+        if !composing.isEmpty && !isSameSoundMode {
             Self.freqTracker.record(code: composing, char: text)
             Self.freqTracker.recordBigram(prev: lastCommitted, char: text)
             Self.freqTracker.saveIfNeeded()
@@ -249,6 +312,8 @@ class YabomishInputController: IMKInputController {
         composing = ""
         currentCandidates = []
         isWildcard = false
+        isSameSoundMode = false
+        sameSoundBase = ""
         panel.hide()
     }
 
@@ -266,6 +331,8 @@ class YabomishInputController: IMKInputController {
         composing = ""
         currentCandidates = []
         isWildcard = false
+        isSameSoundMode = false
+        sameSoundBase = ""
         eatNextSpace = false
         client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -273,6 +340,10 @@ class YabomishInputController: IMKInputController {
     }
 
     // MARK: - Candidate Panel
+
+    /// Cache last known good cursor position so we can fall back when an app
+    /// returns NSRect.zero (Terminal, some Electron apps, etc.)
+    private static var lastGoodCursorOrigin: NSPoint?
 
     private func showCandidatePanel(client: IMKTextInput) {
         guard !currentCandidates.isEmpty else { panel.hide(); return }
@@ -285,7 +356,20 @@ class YabomishInputController: IMKInputController {
             var cursorRect = NSRect.zero
             let range = client.selectedRange()
             client.attributes(forCharacterIndex: range.location, lineHeightRectangle: &cursorRect)
-            origin = NSPoint(x: cursorRect.minX, y: cursorRect.minY)
+
+            if cursorRect.minX > 0 || cursorRect.minY > 0 {
+                // App reported a valid cursor position
+                let pt = NSPoint(x: cursorRect.minX, y: cursorRect.minY)
+                Self.lastGoodCursorOrigin = pt
+                origin = pt
+            } else if let cached = Self.lastGoodCursorOrigin {
+                // Fall back to last known good position
+                origin = cached
+            } else {
+                // No cached position yet — use screen bottom-center
+                let screen = NSScreen.main?.visibleFrame ?? .zero
+                origin = NSPoint(x: screen.midX - 40, y: screen.minY + 60)
+            }
         }
 
         panel.show(candidates: currentCandidates, selKeys: selKeys, at: origin)
