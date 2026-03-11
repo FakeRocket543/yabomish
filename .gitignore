@@ -1,0 +1,7 @@
+*.cin
+*.cache
+build/
+.DS_Store
+benchmark
+benchmark_run
+freq.json
