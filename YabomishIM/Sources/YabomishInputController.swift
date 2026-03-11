@@ -56,6 +56,7 @@ class YabomishInputController: IMKInputController {
         guard let event = event else { return false }
         guard event.type == .keyDown || event.type == .flagsChanged else { return false }
         guard let client = sender as? (NSObjectProtocol & IMKTextInput) else { return false }
+        if IsSecureEventInputEnabled() { return false }
 
         if event.type == .flagsChanged { return handleFlagsChanged(event) }
 
