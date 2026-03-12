@@ -6,6 +6,7 @@ final class FreqTracker {
     private let path: String
     private var dirty = false
     private var recordCount = 0
+    private var saveTimer: Timer?
 
     private struct Storage: Codable {
         let freq: [String: [String: Int]]
@@ -17,6 +18,9 @@ final class FreqTracker {
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         self.path = dir + "/freq.json"
         load()
+        saveTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.saveIfNeeded()
+        }
     }
 
     func record(code: String, char: String) {

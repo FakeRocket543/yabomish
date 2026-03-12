@@ -90,7 +90,7 @@ final class PrefsWindow: NSPanel {
         stack.addArrangedSubview(hintBtn)
 
         // — 注音反查 —
-        let zyBtn = NSButton(checkboxWithTitle: "注音反查（,,z 切換）", target: self, action: #selector(zhuyinLookupChanged(_:)))
+        let zyBtn = NSButton(checkboxWithTitle: "注音反查（/zh 切換）", target: self, action: #selector(zhuyinLookupChanged(_:)))
         zyBtn.state = YabomishPrefs.zhuyinReverseLookup ? .on : .off
         stack.addArrangedSubview(zyBtn)
     }

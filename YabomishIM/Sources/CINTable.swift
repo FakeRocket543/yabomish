@@ -149,11 +149,12 @@ final class CINTable {
 
         let fixedPrefix = String(pat.prefix(while: { $0 != "*" }))
         var results: [String] = []
+        var seen = Set<String>()
         for (code, chars) in table {
             guard fixedPrefix.isEmpty || code.hasPrefix(fixedPrefix) else { continue }
             let range = NSRange(code.startIndex..., in: code)
             if re.firstMatch(in: code, range: range) != nil {
-                results.append(contentsOf: chars)
+                for c in chars where seen.insert(c).inserted { results.append(c) }
             }
         }
         return results

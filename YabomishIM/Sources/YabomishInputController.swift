@@ -773,6 +773,10 @@ class YabomishInputController: IMKInputController {
             currentCandidates = []
             isWildcard = false
             eatNextSpace = false
+            isSameSoundMode = false
+            sameSoundBase = ""
+            commandBuffer = ""
+            clearZhuyinSlots()
         }
     }
 
@@ -782,12 +786,18 @@ class YabomishInputController: IMKInputController {
             return
         }
         if let client = sender as? (NSObjectProtocol & IMKTextInput) {
-            if !composing.isEmpty && !currentCandidates.isEmpty {
+            if isZhuyinMode {
+                clearZhuyinSlots()
+                currentCandidates = []
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            } else if !composing.isEmpty && !currentCandidates.isEmpty {
                 commitText(currentCandidates[0], client: client)
             } else if !composing.isEmpty {
                 resetComposing(client: client)
             }
         }
+        commandBuffer = ""
         panel.hide()
         Self.activeSession = nil
         super.deactivateServer(sender)

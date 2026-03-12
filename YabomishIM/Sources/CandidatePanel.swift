@@ -341,7 +341,9 @@ final class CandidatePanel: NSPanel {
 
         let size = fixedLabel.intrinsicContentSize
         let h = size.height + 8
-        setContentSize(NSSize(width: size.width + 24, height: h))
+        let screen = effectiveScreen
+        let maxW = screen.frame.width * 0.85
+        setContentSize(NSSize(width: min(size.width + 24, maxW), height: h))
     }
 
     private func repositionFixed() {
