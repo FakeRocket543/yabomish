@@ -10,6 +10,7 @@ private let keyCodeToChar: [UInt16: Character] = [
     16: "y", 17: "t", 32: "u", 34: "i", 31: "o", 35: "p",
     38: "j", 40: "k", 37: "l", 45: "n", 46: "m",
     43: ",", 47: ".", 41: ";", 44: "/",
+    33: "[", 30: "]",
 ]
 
 /// Selection key keyCodes (number row: 1-9, 0)
@@ -55,7 +56,6 @@ class YabomishInputController: IMKInputController {
 
     private static let freqTracker = FreqTracker()
     private static let punctMap: [String: String] = [
-        "[": "「", "]": "」",
         "{": "『", "}": "』",
     ]
     private static weak var activeSession: YabomishInputController?
