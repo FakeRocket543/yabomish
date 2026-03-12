@@ -295,25 +295,37 @@ final class CandidatePanel: NSPanel {
     private func rebuildFixedLabel() {
         let start = pageStart
         let end = min(start + pageSize, candidates.count)
-        var parts: [String] = []
-        
+        let sep = "  "
+        let font = fixedLabel.font ?? .systemFont(ofSize: YabomishPrefs.fixedFontSize)
+        let normalAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
+        let highlightAttrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.selectedMenuItemTextColor,
+            .backgroundColor: NSColor.selectedContentBackgroundColor,
+        ]
+
+        let result = NSMutableAttributedString()
+
         if !composingText.isEmpty {
-            parts.append("[\(composingText)]")
+            result.append(NSAttributedString(string: "[\(composingText)]" + sep, attributes: normalAttrs))
         }
-        
+
         for i in start..<end {
+            if i > start { result.append(NSAttributedString(string: sep, attributes: normalAttrs)) }
             let keyIdx = i - start
             let keyChar = keyIdx < selKeys.count ? keyLabel(selKeys[keyIdx]) : " "
-            parts.append("\(keyChar)\(candidates[i])")
+            let text = "\(keyChar)\(candidates[i])"
+            let attrs = (i == highlightIndex) ? highlightAttrs : normalAttrs
+            result.append(NSAttributedString(string: text, attributes: attrs))
         }
-        
+
         let totalPages = (candidates.count + pageSize - 1) / pageSize
         if totalPages > 1 {
             let currentPage = pageStart / pageSize + 1
-            parts.append("◀ \(currentPage)/\(totalPages) ▶")
+            result.append(NSAttributedString(string: sep + "◀ \(currentPage)/\(totalPages) ▶", attributes: normalAttrs))
         }
-        
-        fixedLabel.stringValue = parts.joined(separator: "  ")
+
+        fixedLabel.attributedStringValue = result
 
         let size = fixedLabel.intrinsicContentSize
         let h = size.height + 8
