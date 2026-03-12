@@ -2,6 +2,13 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.1.16] — 2026-03-12
+
+### 變更
+- 注音查碼觸發改為 `/zh`（原 `,,z`），逗號還給 CIN 正常編碼
+  - 1737 筆逗號開頭編碼恢復（方向鍵 `,z`、希臘字母、注音符號等）
+  - `/` 開頭進入 command buffer，顯示 marked text，Backspace 可刪、Enter 取消
+
 ## [0.1.15] — 2026-03-12
 
 ### 新增

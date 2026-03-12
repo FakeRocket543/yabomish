@@ -73,9 +73,8 @@ class YabomishInputController: IMKInputController {
     private var isSameSoundMode = false
     private var sameSoundBase = ""  // the char selected in step 1
 
-    // ,, command prefix
-    private var pendingComma = false
-    private var pendingCommand = false
+    // /command buffer (e.g. /zh to toggle zhuyin)
+    private var commandBuffer = ""
 
     // Zhuyin reverse lookup mode
     private var isZhuyinMode = false
@@ -129,41 +128,46 @@ class YabomishInputController: IMKInputController {
 
         if isEnglishMode { return false }
 
-        // — ,, command prefix detection —
-        if pendingCommand {
-            pendingCommand = false
+        // — /command buffer detection —
+        if !commandBuffer.isEmpty {
+            if keyCode == 36 { // Enter → cancel
+                commandBuffer = ""
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                return true
+            }
+            if keyCode == 51 { // Backspace
+                commandBuffer.removeLast()
+                if commandBuffer.isEmpty {
+                    client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                         replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                } else {
+                    let display = commandBuffer as NSString
+                    client.setMarkedText(display, selectionRange: NSRange(location: display.length, length: 0),
+                                         replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                }
+                return true
+            }
             if let ch = keyCodeToChar[keyCode] {
-                return handleCommand(String(ch), client: client)
+                commandBuffer.append(ch)
+                if handleSlashCommand(client: client) { return true }
+                let display = commandBuffer as NSString
+                client.setMarkedText(display, selectionRange: NSRange(location: display.length, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                return true
             }
             NSSound.beep(); return true
         }
 
         let isIdle = isZhuyinMode ? zhuyinBuffer.isEmpty && currentCandidates.isEmpty
                                    : composing.isEmpty
-        if keyCode == 43 && isIdle {  // comma key
-            if pendingComma {
-                pendingComma = false; pendingCommand = true
-                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
-                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-                return true
-            }
-            pendingComma = true
-            client.setMarkedText(",", selectionRange: NSRange(location: 0, length: 1),
+        // / key starts command buffer when idle
+        if keyCode == 44 && isIdle {
+            commandBuffer = "/"
+            let display = commandBuffer as NSString
+            client.setMarkedText(display, selectionRange: NSRange(location: display.length, length: 0),
                                  replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             return true
-        }
-        if pendingComma {
-            pendingComma = false
-            // Flush the buffered comma as normal input
-            if isZhuyinMode {
-                receiveZhuyin("ㄟ")  // comma = ㄟ in zhuyin
-                updateMarkedText(zhuyinBuffer, client: client)
-                // fall through to process current key
-            } else {
-                // Single comma in Chinese mode → output full-width comma
-                commitText("，", client: client)
-                // fall through to process current key
-            }
         }
 
         // — Zhuyin reverse lookup mode —
@@ -352,11 +356,15 @@ class YabomishInputController: IMKInputController {
         return true
     }
 
-    // MARK: - ,, Commands
+    // MARK: - /Commands
 
-    private func handleCommand(_ char: String, client: IMKTextInput) -> Bool {
-        switch char {
-        case "z":
+    /// Returns true if commandBuffer matched a known command (and was consumed).
+    private func handleSlashCommand(client: IMKTextInput) -> Bool {
+        switch commandBuffer {
+        case "/zh":
+            commandBuffer = ""
+            client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                 replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             isZhuyinMode.toggle()
             if isZhuyinMode {
                 resetComposing(client: client)
@@ -371,7 +379,7 @@ class YabomishInputController: IMKInputController {
             }
             return true
         default:
-            NSSound.beep(); return true
+            return false  // not a known command yet, keep buffering
         }
     }
 
@@ -686,8 +694,7 @@ class YabomishInputController: IMKInputController {
         isSameSoundMode = false
         sameSoundBase = ""
         eatNextSpace = false
-        pendingComma = false
-        pendingCommand = false
+        commandBuffer = ""
         clearZhuyinSlots()
         client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
