@@ -109,7 +109,12 @@ class YabomishInputController: IMKInputController {
         }
 
         // Hold Shift → temporary English input (lowercase)
+        // Exception: Shift+8 = '*' wildcard when composing
         if flags.contains(.shift) && !flags.contains(.command) && !flags.contains(.control) && !flags.contains(.option) {
+            if let chars = event.characters, chars == "*", !composing.isEmpty {
+                shiftWasUsedWithOtherKey = true
+                return handleWildcardInput(client: client)
+            }
             shiftWasUsedWithOtherKey = true
             if !composing.isEmpty {
                 if !currentCandidates.isEmpty {
@@ -210,8 +215,8 @@ class YabomishInputController: IMKInputController {
             }
             return handleEnter(client: client)
         }
-        // Arrow keys (same-sound step 2)
-        if sameSoundStep2 && panel.isVisible_ {
+        // Arrow keys — navigate/page when candidate panel is visible
+        if panel.isVisible_ && (keyCode == 123 || keyCode == 124 || keyCode == 125 || keyCode == 126) {
             if panel.isFixedMode {
                 // Fixed (horizontal): ←→ navigate, ↑↓ page
                 if keyCode == 123 { panel.movePrev(); return true }   // ←
