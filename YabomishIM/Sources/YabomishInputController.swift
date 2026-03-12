@@ -202,10 +202,19 @@ class YabomishInputController: IMKInputController {
         }
         // Arrow keys (same-sound step 2)
         if sameSoundStep2 && panel.isVisible_ {
-            if keyCode == 125 { panel.moveDown(); return true }   // ↓
-            if keyCode == 126 { panel.moveUp(); return true }     // ↑
-            if keyCode == 124 { panel.pageDown(); return true }   // →
-            if keyCode == 123 { panel.pageUp(); return true }     // ←
+            if panel.isFixedMode {
+                // Fixed (horizontal): ←→ navigate, ↑↓ page
+                if keyCode == 123 { panel.movePrev(); return true }   // ←
+                if keyCode == 124 { panel.moveNext(); return true }   // →
+                if keyCode == 126 { panel.pageUp(); return true }     // ↑
+                if keyCode == 125 { panel.pageDown(); return true }   // ↓
+            } else {
+                // Cursor-follow (vertical): ↑↓ navigate, ←→ page
+                if keyCode == 126 { panel.moveUp(); return true }     // ↑
+                if keyCode == 125 { panel.moveDown(); return true }   // ↓
+                if keyCode == 123 { panel.pageUp(); return true }     // ←
+                if keyCode == 124 { panel.pageDown(); return true }   // →
+            }
         }
         // Tab
         if keyCode == 48 && panel.isVisible_ { panel.pageDown(); return true }
@@ -450,10 +459,17 @@ class YabomishInputController: IMKInputController {
                 return true
             }
             if keyCode == 49 { panel.pageDown(); return true }  // space = next page
-            if keyCode == 125 { panel.moveDown(); return true }
-            if keyCode == 126 { panel.moveUp(); return true }
-            if keyCode == 124 { panel.pageDown(); return true }
-            if keyCode == 123 { panel.pageUp(); return true }
+            if panel.isFixedMode {
+                if keyCode == 123 { panel.movePrev(); return true }
+                if keyCode == 124 { panel.moveNext(); return true }
+                if keyCode == 126 { panel.pageUp(); return true }
+                if keyCode == 125 { panel.pageDown(); return true }
+            } else {
+                if keyCode == 126 { panel.moveUp(); return true }
+                if keyCode == 125 { panel.moveDown(); return true }
+                if keyCode == 123 { panel.pageUp(); return true }
+                if keyCode == 124 { panel.pageDown(); return true }
+            }
             if keyCode == 48 { panel.pageDown(); return true }  // Tab
             // Enter → select highlighted
             if keyCode == 36, let sel = panel.selectedCandidate() {

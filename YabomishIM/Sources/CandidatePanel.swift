@@ -177,6 +177,12 @@ final class CandidatePanel: NSPanel {
         if highlightIndex < candidates.count - 1 { highlightIndex += 1; rebuildCurrentMode() }
     }
 
+    /// Navigate prev/next — caller uses this for arrow keys matching layout direction
+    func movePrev() { moveUp() }
+    func moveNext() { moveDown() }
+
+    var isFixedMode: Bool { isFixed }
+
     func selectedCandidate() -> String? {
         guard highlightIndex < candidates.count else { return nil }
         return candidates[highlightIndex]
