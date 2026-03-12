@@ -223,11 +223,13 @@ final class CandidatePanel: NSPanel {
     }
 
     private func rebuildLabels() {
+        let fontSize = YabomishPrefs.fontSize
         let start = pageStart
         let end = min(start + pageSize, candidates.count)
 
         for i in 0..<pageSize {
             let label = labels[i]
+            label.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
             if start + i < end {
                 let candIdx = start + i
                 let keyChar = i < selKeys.count ? keyLabel(selKeys[i]) : " "
@@ -305,7 +307,8 @@ final class CandidatePanel: NSPanel {
         let start = pageStart
         let end = min(start + pageSize, candidates.count)
         let sep = "  "
-        let font = fixedLabel.font ?? .systemFont(ofSize: YabomishPrefs.fixedFontSize)
+        let font = NSFont.systemFont(ofSize: YabomishPrefs.fixedFontSize)
+        fixedLabel.font = font
         let normalAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
         let highlightAttrs: [NSAttributedString.Key: Any] = [
             .font: font,
