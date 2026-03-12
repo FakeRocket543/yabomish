@@ -142,9 +142,15 @@ class YabomishInputController: IMKInputController {
                                    : composing.isEmpty
         if keyCode == 43 && isIdle {  // comma key
             if pendingComma {
-                pendingComma = false; pendingCommand = true; return true
+                pendingComma = false; pendingCommand = true
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                return true
             }
-            pendingComma = true; return true
+            pendingComma = true
+            client.setMarkedText(",", selectionRange: NSRange(location: 0, length: 1),
+                                 replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            return true
         }
         if pendingComma {
             pendingComma = false

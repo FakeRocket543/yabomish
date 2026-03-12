@@ -64,7 +64,7 @@ struct YabomishPrefs {
 
     /// Zhuyin reverse lookup mode (type zhuyin → see Boshiamy code)
     static var zhuyinReverseLookup: Bool {
-        get { defaults.object(forKey: "zhuyinReverseLookup") as? Bool ?? false }
+        get { defaults.object(forKey: "zhuyinReverseLookup") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "zhuyinReverseLookup") }
     }
 

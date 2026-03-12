@@ -74,6 +74,8 @@ final class CandidatePanel: NSPanel {
             label.wantsLayer = true
             label.layer?.cornerRadius = 3
             label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            label.lineBreakMode = .byTruncatingTail
+            label.maximumNumberOfLines = 1
             stackView.addArrangedSubview(label)
             labels.append(label)
         }
@@ -257,7 +259,8 @@ final class CandidatePanel: NSPanel {
 
         layoutIfNeeded()
         let size = stackView.fittingSize
-        setContentSize(NSSize(width: max(size.width + 12, 80), height: size.height))
+        let maxW: CGFloat = 360
+        setContentSize(NSSize(width: min(max(size.width + 12, 80), maxW), height: size.height))
     }
 
     private func positionWindow(at origin: NSPoint) {
