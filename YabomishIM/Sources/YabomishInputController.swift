@@ -54,6 +54,11 @@ class YabomishInputController: IMKInputController {
 
     // MARK: - Key Handling
 
+    override func recognizedEvents(_ sender: Any!) -> Int {
+        let flags: NSEvent.EventTypeMask = [.keyDown, .flagsChanged]
+        return Int(flags.rawValue)
+    }
+
     override func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
         guard let event = event else { return false }
         guard event.type == .keyDown || event.type == .flagsChanged else { return false }
