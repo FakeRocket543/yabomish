@@ -4,7 +4,7 @@ final class PrefsWindow: NSPanel {
     static let shared = PrefsWindow()
 
     private init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 340),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 400),
                    styleMask: [.titled, .closable, .nonactivatingPanel],
                    backing: .buffered, defer: true)
         self.title = "Yabomish 偏好設定"
@@ -83,6 +83,16 @@ final class PrefsWindow: NSPanel {
         let autoBtn = NSButton(checkboxWithTitle: "滿碼自動送字", target: self, action: #selector(autoCommitChanged(_:)))
         autoBtn.state = YabomishPrefs.autoCommit ? .on : .off
         stack.addArrangedSubview(autoBtn)
+
+        // — 拆碼提示 —
+        let hintBtn = NSButton(checkboxWithTitle: "拆碼提示（送字後顯示嘸蝦米碼）", target: self, action: #selector(codeHintChanged(_:)))
+        hintBtn.state = YabomishPrefs.showCodeHint ? .on : .off
+        stack.addArrangedSubview(hintBtn)
+
+        // — 注音反查 —
+        let zyBtn = NSButton(checkboxWithTitle: "注音反查（,,z 切換）", target: self, action: #selector(zhuyinLookupChanged(_:)))
+        zyBtn.state = YabomishPrefs.zhuyinReverseLookup ? .on : .off
+        stack.addArrangedSubview(zyBtn)
     }
 
     override var canBecomeKey: Bool { true }
@@ -125,6 +135,14 @@ final class PrefsWindow: NSPanel {
 
     @objc private func autoCommitChanged(_ sender: NSButton) {
         YabomishPrefs.autoCommit = sender.state == .on
+    }
+
+    @objc private func codeHintChanged(_ sender: NSButton) {
+        YabomishPrefs.showCodeHint = sender.state == .on
+    }
+
+    @objc private func zhuyinLookupChanged(_ sender: NSButton) {
+        YabomishPrefs.zhuyinReverseLookup = sender.state == .on
     }
 
     // MARK: - Layout helpers

@@ -18,6 +18,26 @@ private let keyCodeToDigit: [UInt16: Character] = [
     22: "6", 26: "7", 28: "8", 25: "9", 29: "0",
 ]
 
+/// Standard Zhuyin keyboard: keyCode → Zhuyin symbol
+private let keyCodeToZhuyin: [UInt16: String] = [
+    // Number row: 1→ㄅ, 2→ㄉ, 5→ㄓ, 8→ㄚ, 9→ㄞ, 0→ㄢ, -→ㄦ
+    18: "ㄅ", 19: "ㄉ", 23: "ㄓ", 28: "ㄚ", 25: "ㄞ", 29: "ㄢ", 27: "ㄦ",
+    // Q row
+    12: "ㄆ", 13: "ㄊ", 14: "ㄍ", 15: "ㄐ", 17: "ㄔ", 16: "ㄗ",
+    32: "ㄧ", 34: "ㄨ", 31: "ㄩ", 35: "ㄥ",
+    // A row
+    0: "ㄇ", 1: "ㄋ", 2: "ㄎ", 3: "ㄑ", 5: "ㄕ", 4: "ㄘ",
+    38: "ㄛ", 40: "ㄜ", 37: "ㄠ", 41: "ㄤ",
+    // Z row
+    6: "ㄈ", 7: "ㄌ", 8: "ㄏ", 9: "ㄒ", 11: "ㄖ", 45: "ㄙ",
+    46: "ㄝ", 43: "ㄟ", 47: "ㄡ", 44: "ㄣ",
+]
+
+/// Tone keyCodes: 3→ˇ, 4→ˋ, 6→ˊ, 7→˙  (space = tone 1)
+private let keyCodeToTone: [UInt16: String] = [
+    22: "ˊ", 20: "ˇ", 21: "ˋ", 26: "˙",
+]
+
 @objc(YabomishInputController)
 class YabomishInputController: IMKInputController {
 
@@ -34,6 +54,10 @@ class YabomishInputController: IMKInputController {
     }()
 
     private static let freqTracker = FreqTracker()
+    private static let punctMap: [String: String] = [
+        "[": "「", "]": "」",
+        "{": "『", "}": "』",
+    ]
     private static weak var activeSession: YabomishInputController?
 
     // MARK: - State
@@ -48,6 +72,17 @@ class YabomishInputController: IMKInputController {
     private var lastCommitted = ""
     private var isSameSoundMode = false
     private var sameSoundBase = ""  // the char selected in step 1
+
+    // ,, command prefix
+    private var pendingComma = false
+    private var pendingCommand = false
+
+    // Zhuyin reverse lookup mode
+    private var isZhuyinMode = false
+    private var zhuyinBuffer = ""  // composed display string (auto-ordered)
+    private var zyInitial = ""     // 聲母 slot
+    private var zyMedial  = ""     // 介音 slot (ㄧㄨㄩ)
+    private var zyFinal   = ""     // 韻母 slot
 
     private var selKeys: [Character] { Self.cinTable.selKeys }
     private var panel: CandidatePanel { CandidatePanel.shared }
@@ -93,6 +128,51 @@ class YabomishInputController: IMKInputController {
         }
 
         if isEnglishMode { return false }
+
+        // — ,, command prefix detection —
+        if pendingCommand {
+            pendingCommand = false
+            if let ch = keyCodeToChar[keyCode] {
+                return handleCommand(String(ch), client: client)
+            }
+            NSSound.beep(); return true
+        }
+
+        let isIdle = isZhuyinMode ? zhuyinBuffer.isEmpty && currentCandidates.isEmpty
+                                   : composing.isEmpty
+        if keyCode == 43 && isIdle {  // comma key
+            if pendingComma {
+                pendingComma = false; pendingCommand = true; return true
+            }
+            pendingComma = true; return true
+        }
+        if pendingComma {
+            pendingComma = false
+            // Flush the buffered comma as normal input
+            if isZhuyinMode {
+                receiveZhuyin("ㄟ")  // comma = ㄟ in zhuyin
+                updateMarkedText(zhuyinBuffer, client: client)
+                // fall through to process current key
+            } else {
+                // Single comma in Chinese mode → output full-width comma
+                commitText("，", client: client)
+                // fall through to process current key
+            }
+        }
+
+        // — Zhuyin reverse lookup mode —
+        if isZhuyinMode {
+            return handleZhuyinKey(keyCode, client: client)
+        }
+
+        // Punctuation → Chinese equivalents (when idle)
+        if composing.isEmpty, let chars = event.characters {
+            if let mapped = Self.punctMap[chars] {
+                commitText(mapped, client: client)
+                eatNextSpace = true
+                return true
+            }
+        }
 
         // ' (single quote, keyCode 39) → enter same-sound mode
         if keyCode == 39 && composing.isEmpty && !isSameSoundMode {
@@ -257,6 +337,182 @@ class YabomishInputController: IMKInputController {
         return true
     }
 
+    // MARK: - ,, Commands
+
+    private func handleCommand(_ char: String, client: IMKTextInput) -> Bool {
+        switch char {
+        case "z":
+            isZhuyinMode.toggle()
+            if isZhuyinMode {
+                resetComposing(client: client)
+                showModeToast("注")
+            } else {
+                clearZhuyinSlots()
+                currentCandidates = []
+                panel.hide()
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                showModeToast("中")
+            }
+            return true
+        default:
+            NSSound.beep(); return true
+        }
+    }
+
+    // MARK: - Zhuyin Reverse Lookup
+
+    // 聲母 (21), 介音 (3), 韻母 (16)
+    private static let zyInitials: Set<String> = [
+        "ㄅ","ㄆ","ㄇ","ㄈ","ㄉ","ㄊ","ㄋ","ㄌ",
+        "ㄍ","ㄎ","ㄏ","ㄐ","ㄑ","ㄒ",
+        "ㄓ","ㄔ","ㄕ","ㄖ","ㄗ","ㄘ","ㄙ",
+    ]
+    private static let zyMedials: Set<String> = ["ㄧ","ㄨ","ㄩ"]
+    private static let zyFinals: Set<String> = [
+        "ㄚ","ㄛ","ㄜ","ㄝ","ㄞ","ㄟ","ㄠ","ㄡ",
+        "ㄢ","ㄣ","ㄤ","ㄥ","ㄦ",
+    ]
+
+    /// Compose the three slots into canonical order: initial + medial + final
+    private func composeZhuyin() -> String {
+        zyInitial + zyMedial + zyFinal
+    }
+
+    /// Clear all zhuyin slots
+    private func clearZhuyinSlots() {
+        zyInitial = ""; zyMedial = ""; zyFinal = ""
+        zhuyinBuffer = ""
+    }
+
+    /// Receive a zhuyin symbol and place it in the correct slot (replacing if occupied)
+    private func receiveZhuyin(_ zy: String) {
+        if Self.zyInitials.contains(zy) { zyInitial = zy }
+        else if Self.zyMedials.contains(zy) { zyMedial = zy }
+        else if Self.zyFinals.contains(zy) { zyFinal = zy }
+        zhuyinBuffer = composeZhuyin()
+    }
+
+    /// Remove the last-entered component (right to left: final → medial → initial)
+    private func backspaceZhuyin() {
+        if !zyFinal.isEmpty { zyFinal = "" }
+        else if !zyMedial.isEmpty { zyMedial = "" }
+        else { zyInitial = "" }
+        zhuyinBuffer = composeZhuyin()
+    }
+
+    private func handleZhuyinKey(_ keyCode: UInt16, client: IMKTextInput) -> Bool {
+        // Escape → exit zhuyin mode
+        if keyCode == 53 {
+            if !zhuyinBuffer.isEmpty || !currentCandidates.isEmpty {
+                clearZhuyinSlots()
+                currentCandidates = []
+                panel.hide()
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            } else {
+                isZhuyinMode = false
+                showModeToast("中")
+            }
+            return true
+        }
+
+        // Backspace
+        if keyCode == 51 {
+            if currentCandidates.isEmpty && !zhuyinBuffer.isEmpty {
+                backspaceZhuyin()
+                if zhuyinBuffer.isEmpty {
+                    client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                         replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                } else {
+                    updateMarkedText(zhuyinBuffer, client: client)
+                }
+            } else if !currentCandidates.isEmpty {
+                currentCandidates = []
+                panel.hide()
+                updateMarkedText(zhuyinBuffer, client: client)
+            }
+            return true
+        }
+
+        // When candidates are showing: selection keys, navigation, space
+        if !currentCandidates.isEmpty {
+            if let digit = keyCodeToDigit[keyCode],
+               let selected = panel.selectByKey(digit) {
+                let char = String(selected.prefix(1))
+                let codes = Self.cinTable.reverseLookup(char)
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
+                clearZhuyinSlots()
+                currentCandidates = []
+                panel.hide()
+                return true
+            }
+            if keyCode == 49 { panel.pageDown(); return true }  // space = next page
+            if keyCode == 125 { panel.moveDown(); return true }
+            if keyCode == 126 { panel.moveUp(); return true }
+            if keyCode == 124 { panel.pageDown(); return true }
+            if keyCode == 123 { panel.pageUp(); return true }
+            if keyCode == 48 { panel.pageDown(); return true }  // Tab
+            // Enter → select highlighted
+            if keyCode == 36, let sel = panel.selectedCandidate() {
+                let char = String(sel.prefix(1))
+                let codes = Self.cinTable.reverseLookup(char)
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
+                clearZhuyinSlots()
+                currentCandidates = []
+                panel.hide()
+                return true
+            }
+            return true
+        }
+
+        // Tone key → finalize syllable and look up
+        if let tone = keyCodeToTone[keyCode], !zhuyinBuffer.isEmpty {
+            let zhuyin = tone == "˙" ? "˙" + zhuyinBuffer : zhuyinBuffer + tone
+            return zhuyinLookup(zhuyin, client: client)
+        }
+        // Space → tone 1 (no mark)
+        if keyCode == 49 && !zhuyinBuffer.isEmpty {
+            return zhuyinLookup(zhuyinBuffer, client: client)
+        }
+
+        // Zhuyin symbol key
+        if let zy = keyCodeToZhuyin[keyCode] {
+            receiveZhuyin(zy)
+            updateMarkedText(zhuyinBuffer, client: client)
+            return true
+        }
+
+        return true  // eat all other keys in zhuyin mode
+    }
+
+    private func zhuyinLookup(_ zhuyin: String, client: IMKTextInput) -> Bool {
+        let chars = ZhuyinLookup.shared.charsForZhuyin(zhuyin)
+        guard !chars.isEmpty else { NSSound.beep(); return true }
+        // Format: "字 碼" for each candidate
+        currentCandidates = chars.map { char in
+            let codes = Self.cinTable.reverseLookup(char)
+            return codes.isEmpty ? char : "\(char) \(codes.joined(separator: "/"))"
+        }
+        updateMarkedText(zhuyin, client: client)
+        showCandidatePanel(client: client)
+        return true
+    }
+
+    private func updateMarkedText(_ text: String, client: IMKTextInput) {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .underlineStyle: NSUnderlineStyle.single.rawValue,
+            .foregroundColor: NSColor.textColor
+        ]
+        let marked = NSAttributedString(string: text, attributes: attrs)
+        client.setMarkedText(marked, selectionRange: NSRange(location: text.count, length: 0),
+                             replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+    }
+
     // MARK: - Same-Sound Lookup
 
     private func handleSameSound(client: IMKTextInput) -> Bool {
@@ -315,6 +571,38 @@ class YabomishInputController: IMKInputController {
         }
     }
 
+    // MARK: - Code Hint Toast
+
+    private static var codeHintWindow: NSPanel?
+
+    private func showCodeHintToast(_ text: String, duration: Double = 1.2) {
+        Self.codeHintWindow?.orderOut(nil)
+        guard let screen = NSScreen.main else { return }
+        let label = NSTextField(labelWithString: text)
+        label.font = .systemFont(ofSize: 14, weight: .regular)
+        label.textColor = .white
+        label.alignment = .center
+        label.sizeToFit()
+        let w = label.frame.width + 24
+        let h = label.frame.height + 12
+        let rect = NSRect(x: screen.frame.midX - w/2, y: screen.frame.midY + 60, width: w, height: h)
+        let win = NSPanel(contentRect: rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        win.level = .popUpMenu
+        win.isOpaque = false; win.backgroundColor = .clear
+        let bg = NSVisualEffectView(frame: NSRect(origin: .zero, size: rect.size))
+        bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = 8
+        win.contentView = bg
+        label.frame = NSRect(x: 0, y: 4, width: rect.width, height: label.frame.height)
+        bg.addSubview(label)
+        win.orderFront(nil)
+        Self.codeHintWindow = win
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+            NSAnimationContext.runAnimationGroup({ ctx in ctx.duration = 0.3; win.animator().alphaValue = 0 }) {
+                win.orderOut(nil); if Self.codeHintWindow === win { Self.codeHintWindow = nil }
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func canExtendCode(_ code: String) -> Bool {
@@ -350,19 +638,23 @@ class YabomishInputController: IMKInputController {
         composing = ""
         currentCandidates = []
         isWildcard = false
+        let wasSameSound = isSameSoundMode
         isSameSoundMode = false
         sameSoundBase = ""
         panel.hide()
+
+        // 拆碼提示（同音字選字時一定顯示，且延長）
+        if text.count == 1 {
+            let codes = Self.cinTable.reverseLookup(text)
+            if !codes.isEmpty && (wasSameSound || YabomishPrefs.showCodeHint) {
+                showCodeHintToast("\(text) → \(codes.joined(separator: " / "))",
+                                  duration: wasSameSound ? 3.0 : 1.2)
+            }
+        }
     }
 
     private func updateMarkedText(client: IMKTextInput) {
-        let attrs: [NSAttributedString.Key: Any] = [
-            .underlineStyle: NSUnderlineStyle.single.rawValue,
-            .foregroundColor: NSColor.textColor
-        ]
-        let marked = NSAttributedString(string: composing, attributes: attrs)
-        client.setMarkedText(marked, selectionRange: NSRange(location: composing.count, length: 0),
-                             replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+        updateMarkedText(composing, client: client)
     }
 
     private func resetComposing(client: IMKTextInput) {
@@ -372,6 +664,9 @@ class YabomishInputController: IMKInputController {
         isSameSoundMode = false
         sameSoundBase = ""
         eatNextSpace = false
+        pendingComma = false
+        pendingCommand = false
+        clearZhuyinSlots()
         client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
         panel.hide()

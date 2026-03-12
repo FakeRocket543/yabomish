@@ -54,6 +54,20 @@ struct YabomishPrefs {
         set { defaults.set(Double(newValue), forKey: "fixedFontSize") }
     }
 
+    // MARK: - Learning aids
+
+    /// Show Boshiamy code after committing a character
+    static var showCodeHint: Bool {
+        get { defaults.object(forKey: "showCodeHint") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "showCodeHint") }
+    }
+
+    /// Zhuyin reverse lookup mode (type zhuyin → see Boshiamy code)
+    static var zhuyinReverseLookup: Bool {
+        get { defaults.object(forKey: "zhuyinReverseLookup") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "zhuyinReverseLookup") }
+    }
+
     // MARK: - Mode toast
 
     /// Toast font size

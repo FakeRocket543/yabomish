@@ -35,4 +35,9 @@ final class ZhuyinLookup {
             return filtered.isEmpty ? nil : (zy, filtered)
         }
     }
+
+    /// 注音反查：輸入注音，回傳對應的字
+    func charsForZhuyin(_ zhuyin: String) -> [String] {
+        zhuyinToChars[zhuyin] ?? []
+    }
 }
