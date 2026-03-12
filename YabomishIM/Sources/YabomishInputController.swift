@@ -134,10 +134,9 @@ class YabomishInputController: IMKInputController {
             return handleWildcardInput(client: client)
         }
 
-        // 補碼 v → select first candidate (when v can't extend the code)
-        if keyCode == 9, !currentCandidates.isEmpty,
-           !Self.cinTable.hasPrefix(composing + "v") {
-            commitText(currentCandidates[0], client: client)
+        // 補碼 v → select second candidate when multiple candidates showing
+        if keyCode == 9, currentCandidates.count > 1, !Self.cinTable.hasPrefix(composing + "v") {
+            commitText(currentCandidates[1], client: client)
             return true
         }
 
@@ -286,7 +285,7 @@ class YabomishInputController: IMKInputController {
         Self.modeWindow?.orderOut(nil)
         guard let screen = NSScreen.main else { return }
         let label = NSTextField(labelWithString: text)
-        label.font = .systemFont(ofSize: 36, weight: .medium)
+        label.font = .systemFont(ofSize: YabomishPrefs.toastFontSize, weight: .medium)
         label.textColor = .white
         label.alignment = .center
         label.sizeToFit()
@@ -416,6 +415,18 @@ class YabomishInputController: IMKInputController {
     }
 
     // MARK: - Session
+
+    override func menu() -> NSMenu! {
+        let menu = NSMenu()
+        let prefsItem = NSMenuItem(title: "偏好設定⋯", action: #selector(openPrefs), keyEquivalent: "")
+        prefsItem.target = self
+        menu.addItem(prefsItem)
+        return menu
+    }
+
+    @objc private func openPrefs() {
+        PrefsWindow.shared.showWindow()
+    }
 
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)

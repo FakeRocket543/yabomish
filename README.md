@@ -1,18 +1,27 @@
 # Yabomish
 
-macOS 嘸蝦米輸入法的開源實作，純 Swift。
+macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 
 > 本專案不包含嘸蝦米字表，需使用者自行取得 `liu.cin`。
 
 ## 特色
 
-- 純 Swift，無第三方依賴
-- 硬體 keyCode 對應，不受鍵盤佈局影響（Dvorak、Colemak 等皆可）
-- 自訂選字窗（NSVisualEffectView 毛玻璃風格）
-- 字頻學習：依使用頻率 + 前後文 bigram 自動調整候選字排序
-- 同音字查詢：選字後按 `'` 查同音字
-- 萬用碼 `*` 模糊查詢
+- 純 Swift，無第三方依賴，shell script 編譯（不需 Xcode 專案）
+- 硬體 keyCode 對應，不受鍵盤佈局影響（Dvorak、Colemak、AZERTY 等皆可）
+- CIN 字表二進位快取，首次解析後秒開
+- 自訂選字窗，兩種模式：
+  - **游標跟隨** — 毛玻璃垂直列表，跟著輸入位置走
+  - **固定位置** — 螢幕底部水平列，可拖曳、右鍵調整對齊/透明度
+- 字頻學習：unigram + bigram 前後文排序，每 500 次自動 decay 防膨脹
+- 同音字查詢：送字後按 `'` 列出所有同音字
+- 萬用碼 `*` 模糊查詢（prefix 預過濾加速）
+- 補碼 `v` 快速選第二候選字
 - 滿碼自動送字（可選）
+- Shift 快按切換中英、按住暫時英文
+- 中英模式切換 HUD 提示（「中」/「A」）
+- 多螢幕支援
+- 安全輸入偵測（密碼欄位自動停用）
+- GUI 偏好設定視窗（從輸入法選單開啟）
 
 ## 需求
 
@@ -26,13 +35,13 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift。
 
 ```bash
 # 1. 下載專案
-git clone https://github.com/FakeRocket543/yabomish.git
+git clone https://github.com/AlohaYos/yabomish.git
 cd yabomish
 
 # 2. 將你的 liu.cin 複製到這個資料夾
 cp /你的liu.cin路徑/liu.cin .
 
-# 3. 一鍵安裝（會自動安裝編譯工具、編譯、安裝）
+# 3. 一鍵安裝（自動檢查編譯工具、編譯、安裝）
 ./setup.sh
 ```
 
@@ -43,40 +52,65 @@ cp /你的liu.cin路徑/liu.cin .
 | 操作 | 按鍵 |
 |------|------|
 | 送字 | 空白鍵 |
-| 選字 | 1-9, 0 |
+| 選字 | 1–9, 0（或字表自訂 selKey） |
 | 萬用碼 | `*` |
-| 補碼選第一字 | `v` |
+| 補碼選第二字 | `v`（當 v 無法延伸編碼時） |
 | 刪碼 | Backspace |
 | 清除 | Esc |
 | 直送英文 | Enter |
 | 中英切換 | 快按 Shift |
 | 暫時英文 | 按住 Shift |
 | 翻頁 | Tab / PageDown / PageUp |
-| 同音字查詢 | `'`（先打字送出，再按 `'`） |
-| 同音字翻頁 | ← → |
-| 同音字選字 | ↑ ↓ 移動，Enter 確認 |
 
 ### 同音字查詢
 
 1. 正常輸入送出一個字（例如送出「是」）
 2. 按 `'` 進入同音字模式
-3. 輸入嘸蝦米碼，選字窗會列出該字的所有同音字
-4. 用 ↑↓ 移動、←→ 翻頁、Enter 確認
+3. 輸入嘸蝦米碼查詢，選字窗列出該字的所有同音字
+4. ↑↓ 移動、←→ 翻頁、Enter 確認
+
+### 選字窗模式
+
+**游標跟隨**（預設）— 選字窗出現在輸入游標旁。部分 App（Terminal、某些 Electron App）無法正確回報游標位置，會自動 fallback 到上次有效位置或螢幕底部。
+
+**固定位置** — 選字窗固定在螢幕底部，顯示為水平列。可以：
+- 上下拖曳調整位置
+- 右鍵選單切換對齊方式（靠左/置中/靠右）
+- 右鍵選單調整透明度
 
 ## 設定
 
+點選選單列的輸入法圖示，選擇「偏好設定⋯」開啟設定視窗，可調整：
+
+- 選字窗模式（游標跟隨 / 固定位置）
+- 對齊方式（固定模式）
+- 透明度
+- 字體大小（游標模式 / 固定模式 / 模式提示）
+- 滿碼自動送字
+
+也可用 `defaults write` 指令：
+
 ```bash
-# 選字窗固定在螢幕底部中央（不受 App 影響）
-defaults write com.example.inputmethod.YabomishIM panelPosition fixed
+# 選字窗固定在螢幕底部
+defaults write com.yabomishim.inputmethod.YabomishIM panelPosition fixed
 
 # 選字窗跟隨游標（預設）
-defaults write com.example.inputmethod.YabomishIM panelPosition cursor
+defaults write com.yabomishim.inputmethod.YabomishIM panelPosition cursor
 
-# 輸入滿碼唯一候選字時自動送出（不用按空白鍵）
-defaults write com.example.inputmethod.YabomishIM autoCommit -bool true
+# 滿碼自動送字
+defaults write com.yabomishim.inputmethod.YabomishIM autoCommit -bool true
+
+# 固定模式對齊：center / left / right
+defaults write com.yabomishim.inputmethod.YabomishIM fixedAlignment center
+
+# 固定模式透明度（0.3–1.0）
+defaults write com.yabomishim.inputmethod.YabomishIM fixedAlpha -float 0.85
+
+# 字體大小
+defaults write com.yabomishim.inputmethod.YabomishIM fontSize -float 16
+defaults write com.yabomishim.inputmethod.YabomishIM fixedFontSize -float 18
+defaults write com.yabomishim.inputmethod.YabomishIM toastFontSize -float 36
 ```
-
-> 部分 App（Terminal、某些 Electron App）無法正確回報游標位置，選字窗會自動 fallback 到上次有效位置或螢幕底部。遇到此情況也可切換為 `fixed` 模式。
 
 ## 更新
 
@@ -93,12 +127,33 @@ git pull
 | 檔案 | 說明 |
 |------|------|
 | `liu.cin` | 嘸蝦米字表（使用者提供） |
-| `zhuyin_data.json` | 注音對照表，供同音字查詢（內建於 App bundle，也可自行覆蓋） |
+| `liu.cin.cache` | 二進位快取（自動產生，字表更新時自動重建） |
 | `freq.json` | 字頻學習資料（自動產生） |
+| `zhuyin_data.json` | 注音對照表（內建於 App bundle，可自行覆蓋） |
 
-App 載入順序：先找 `~/Library/YabomishIM/` 下的檔案，找不到才用 App bundle 內建版本。
+App 載入順序：先找 `~/Library/YabomishIM/` 下的檔案，找不到才用 App bundle 內建版本。更換字表只需替換 `~/Library/YabomishIM/liu.cin`，無需重新編譯。
 
-更換字表只需替換 `~/Library/YabomishIM/liu.cin`，無需重新編譯。
+## 架構
+
+```
+YabomishIM/
+├── Sources/
+│   ├── AppDelegate.swift          # IMKServer 啟動
+│   ├── YabomishInputController.swift  # 輸入控制器（按鍵處理、狀態機）
+│   ├── CINTable.swift             # CIN 字表解析、快取、萬用碼查詢
+│   ├── CandidatePanel.swift       # 選字窗（游標/固定雙模式）
+│   ├── FreqTracker.swift          # 字頻學習（unigram + bigram + decay）
+│   ├── ZhuyinLookup.swift         # 同音字查詢
+│   ├── Prefs.swift                # UserDefaults 偏好設定
+│   └── PrefsWindow.swift          # GUI 偏好設定視窗
+├── Resources/
+│   ├── Info.plist
+│   ├── zhuyin_data.json
+│   ├── icon.icns / icon.tiff
+│   └── YabomishIM.entitlements
+├── build.sh                       # 編譯腳本
+└── install.sh                     # 安裝腳本
+```
 
 ## 支持作者
 
@@ -108,13 +163,3 @@ App 載入順序：先找 `~/Library/YabomishIM/` 下的檔案，找不到才用
 ## 授權
 
 MIT
-
-## 更新紀錄
-
-### v0.1.14
-- 修正：非數字 selKey（如 `asdfghjkl;`）不再造成 crash
-- 修正：移除矛盾的 sandbox entitlements
-- 修正：cursor mode 多螢幕邊界檢查改用正確螢幕
-- 新增：中英模式切換時顯示 HUD 提示（「中」/「A」）
-- 改善：字頻每 500 次自動 decay，防止 freq.json 無限膨脹
-- 改善：萬用碼查詢用 prefix 預過濾，減少全表掃描

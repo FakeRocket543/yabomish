@@ -68,7 +68,7 @@ final class CandidatePanel: NSPanel {
 
         for _ in 0..<pageSize {
             let label = NSTextField(labelWithString: "")
-            label.font = NSFont.monospacedSystemFont(ofSize: 16, weight: .regular)
+            label.font = NSFont.monospacedSystemFont(ofSize: YabomishPrefs.fontSize, weight: .regular)
             label.isBordered = false
             label.isEditable = false
             label.wantsLayer = true
@@ -86,7 +86,7 @@ final class CandidatePanel: NSPanel {
         stackView.addArrangedSubview(pageIndicator)
 
         // --- Fixed-mode setup ---
-        fixedLabel.font = .systemFont(ofSize: 18)
+        fixedLabel.font = .systemFont(ofSize: YabomishPrefs.fixedFontSize)
         fixedLabel.textColor = .labelColor
         fixedLabel.alignment = .center
         fixedLabel.isBordered = false
