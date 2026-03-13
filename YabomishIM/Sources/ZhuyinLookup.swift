@@ -6,6 +6,7 @@ final class ZhuyinLookup {
 
     private var charToZhuyins: [String: [String]] = [:]
     private var zhuyinToChars: [String: [String]] = [:]
+    private var charFreq: [String: Int] = [:]
 
     private init() {
         let userPath = NSHomeDirectory() + "/Library/YabomishIM/zhuyin_data.json"
@@ -22,7 +23,19 @@ final class ZhuyinLookup {
         }
         zhuyinToChars = z2c
         charToZhuyins = c2z
-        NSLog("YabomishIM: zhuyin loaded — %d readings, %d chars", z2c.count, c2z.count)
+
+        // 載入萌典字頻
+        if let fp = Bundle.main.path(forResource: "char_freq", ofType: "json"),
+           let fd = try? Data(contentsOf: URL(fileURLWithPath: fp)),
+           let freq = try? JSONSerialization.jsonObject(with: fd) as? [String: Int] {
+            charFreq = freq
+        }
+        NSLog("YabomishIM: zhuyin loaded — %d readings, %d chars, %d freq", z2c.count, c2z.count, charFreq.count)
+    }
+
+    /// 依萌典字頻排序（高頻在前，無頻率的排最後）
+    func sortByFreq(_ chars: [String]) -> [String] {
+        chars.sorted { (charFreq[$0] ?? 0) > (charFreq[$1] ?? 0) }
     }
 
     /// 查同音字：輸入一個字，回傳 [(注音, [同音字])]

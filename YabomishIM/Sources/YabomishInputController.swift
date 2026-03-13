@@ -25,13 +25,13 @@ private let keyCodeToZhuyin: [UInt16: String] = [
     18: "ㄅ", 19: "ㄉ", 23: "ㄓ", 28: "ㄚ", 25: "ㄞ", 29: "ㄢ", 27: "ㄦ",
     // Q row
     12: "ㄆ", 13: "ㄊ", 14: "ㄍ", 15: "ㄐ", 17: "ㄔ", 16: "ㄗ",
-    32: "ㄧ", 34: "ㄨ", 31: "ㄩ", 35: "ㄥ",
+    32: "ㄧ", 34: "ㄨ", 31: "ㄩ", 35: "ㄣ",
     // A row
     0: "ㄇ", 1: "ㄋ", 2: "ㄎ", 3: "ㄑ", 5: "ㄕ", 4: "ㄘ",
     38: "ㄛ", 40: "ㄜ", 37: "ㄠ", 41: "ㄤ",
     // Z row
     6: "ㄈ", 7: "ㄌ", 8: "ㄏ", 9: "ㄒ", 11: "ㄖ", 45: "ㄙ",
-    46: "ㄝ", 43: "ㄟ", 47: "ㄡ", 44: "ㄣ",
+    46: "ㄝ", 43: "ㄟ", 47: "ㄡ", 44: "ㄥ",
 ]
 
 /// Tone keyCodes: 3→ˇ, 4→ˋ, 6→ˊ, 7→˙  (space = tone 1)
@@ -144,19 +144,30 @@ class YabomishInputController: IMKInputController {
         }
 
         // ' (single quote, keyCode 39) → same-sound mode
-        if keyCode == 39 && composing.isEmpty && !isSameSoundMode {
-            // Post-commit: just committed a char → show same-sound list directly
-            if justCommitted && !lastCommitted.isEmpty {
+        if keyCode == 39 && !isSameSoundMode {
+            // Mid-compose: commit first candidate then show same-sound list
+            if !composing.isEmpty && !currentCandidates.isEmpty {
+                let first = currentCandidates[0]
+                commitText(first, client: client)
                 isSameSoundMode = true
-                sameSoundBase = lastCommitted
+                sameSoundBase = first
                 _ = handleSameSound(client: client)
                 return true
             }
-            // Pre-commit: enter same-sound mode, type code to pick base char
-            isSameSoundMode = true
-            composing = "'"
-            updateMarkedText(client: client)
-            return true
+            if composing.isEmpty {
+                // Post-commit: just committed a char → show same-sound list directly
+                if justCommitted && !lastCommitted.isEmpty {
+                    isSameSoundMode = true
+                    sameSoundBase = lastCommitted
+                    _ = handleSameSound(client: client)
+                    return true
+                }
+                // Pre-commit: enter same-sound mode, type code to pick base char
+                isSameSoundMode = true
+                composing = "'"
+                updateMarkedText(client: client)
+                return true
+            }
         }
 
         justCommitted = false
@@ -226,6 +237,9 @@ class YabomishInputController: IMKInputController {
                 return true
             }
         }
+
+        // '/' passthrough when idle (useful for editor slash commands)
+        if keyCode == 44 && composing.isEmpty { return false }
 
         // Letter/punctuation keys — use keyCode for layout independence
         if let ch = keyCodeToChar[keyCode] {
@@ -528,7 +542,10 @@ class YabomishInputController: IMKInputController {
                 candidates.append(c)
             }
         }
-        currentCandidates = candidates
+        NSLog("YabomishIM: sameSound base=%@ readings=%d candidates=%d first10=%@",
+              sameSoundBase, results.count, candidates.count,
+              candidates.prefix(10).joined(separator: ","))
+        currentCandidates = ZhuyinLookup.shared.sortByFreq(candidates)
         composing = sameSoundBase
         // Keep marked text as the base char, panel position follows cursor
         updateMarkedText(client: client)
