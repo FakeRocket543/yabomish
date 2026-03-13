@@ -75,4 +75,10 @@ struct YabomishPrefs {
         get { CGFloat(defaults.object(forKey: "toastFontSize") as? Double ?? 36.0) }
         set { defaults.set(Double(newValue), forKey: "toastFontSize") }
     }
+
+    /// Custom slash command for zhuyin mode (e.g. "/zh", "/zz")
+    static var zhuyinCommand: String {
+        get { defaults.string(forKey: "zhuyinCommand") ?? "/zh" }
+        set { defaults.set(newValue, forKey: "zhuyinCommand") }
+    }
 }

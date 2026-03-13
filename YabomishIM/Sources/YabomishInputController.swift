@@ -154,6 +154,15 @@ class YabomishInputController: IMKInputController {
             if let ch = keyCodeToChar[keyCode] {
                 commandBuffer.append(ch)
                 if handleSlashCommand(client: client) { return true }
+                // bail if buffer is already longer than any known command
+                let zhCmd = YabomishPrefs.zhuyinCommand
+                if !zhCmd.hasPrefix(commandBuffer) {
+                    NSSound.beep()
+                    commandBuffer = ""
+                    client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                         replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                    return true
+                }
                 let display = commandBuffer as NSString
                 client.setMarkedText(display, selectionRange: NSRange(location: display.length, length: 0),
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -388,8 +397,8 @@ class YabomishInputController: IMKInputController {
 
     /// Returns true if commandBuffer matched a known command (and was consumed).
     private func handleSlashCommand(client: IMKTextInput) -> Bool {
-        switch commandBuffer {
-        case "/zh":
+        let zhCmd = YabomishPrefs.zhuyinCommand
+        if commandBuffer == zhCmd {
             commandBuffer = ""
             client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                  replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -406,9 +415,8 @@ class YabomishInputController: IMKInputController {
                 showModeToast("中")
             }
             return true
-        default:
-            return false  // not a known command yet, keep buffering
         }
+        return false  // not a known command yet, keep buffering
     }
 
     // MARK: - Zhuyin Reverse Lookup

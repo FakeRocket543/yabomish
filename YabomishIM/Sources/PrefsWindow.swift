@@ -90,9 +90,16 @@ final class PrefsWindow: NSPanel {
         stack.addArrangedSubview(hintBtn)
 
         // — 注音反查 —
-        let zyBtn = NSButton(checkboxWithTitle: "注音反查（/zh 切換）", target: self, action: #selector(zhuyinLookupChanged(_:)))
+        let zyBtn = NSButton(checkboxWithTitle: "注音反查（'; 或自訂指令切換）", target: self, action: #selector(zhuyinLookupChanged(_:)))
         zyBtn.state = YabomishPrefs.zhuyinReverseLookup ? .on : .off
         stack.addArrangedSubview(zyBtn)
+
+        // — 注音指令 —
+        let cmdField = NSTextField(frame: NSRect(x: 0, y: 0, width: 60, height: 22))
+        cmdField.stringValue = YabomishPrefs.zhuyinCommand
+        cmdField.tag = 200
+        cmdField.target = self; cmdField.action = #selector(zhuyinCommandChanged(_:))
+        stack.addArrangedSubview(row("注音切換指令", cmdField))
     }
 
     override var canBecomeKey: Bool { true }
@@ -143,6 +150,13 @@ final class PrefsWindow: NSPanel {
 
     @objc private func zhuyinLookupChanged(_ sender: NSButton) {
         YabomishPrefs.zhuyinReverseLookup = sender.state == .on
+    }
+
+    @objc private func zhuyinCommandChanged(_ sender: NSTextField) {
+        var cmd = sender.stringValue.lowercased()
+        if !cmd.hasPrefix("/") { cmd = "/" + cmd }
+        YabomishPrefs.zhuyinCommand = cmd
+        sender.stringValue = cmd
     }
 
     // MARK: - Layout helpers
