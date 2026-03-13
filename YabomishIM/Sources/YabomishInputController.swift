@@ -68,6 +68,7 @@ class YabomishInputController: IMKInputController {
     private var shiftWasUsedWithOtherKey = false
     private var eatNextSpace = false
     private var lastCommitted = ""
+    private var justCommitted = false
     private var isSameSoundMode = false
     private var sameSoundBase = ""  // the char selected in step 1
 
@@ -196,13 +197,22 @@ class YabomishInputController: IMKInputController {
             }
         }
 
-        // ' (single quote, keyCode 39) → enter same-sound mode
+        // ' (single quote, keyCode 39) → same-sound mode
         if keyCode == 39 && composing.isEmpty && !isSameSoundMode {
+            // Post-commit: just committed a char → show same-sound list directly
+            if justCommitted && !lastCommitted.isEmpty {
+                isSameSoundMode = true
+                sameSoundBase = lastCommitted
+                _ = handleSameSound(client: client)
+                return true
+            }
+            // Pre-commit: enter same-sound mode, type code to pick base char
             isSameSoundMode = true
             composing = "'"
             updateMarkedText(client: client)
             return true
         }
+        justCommitted = false
 
         // Space
         if keyCode == 49 {
@@ -695,6 +705,7 @@ class YabomishInputController: IMKInputController {
         }
         let range = client.markedRange()
         client.insertText(text, replacementRange: range)
+        justCommitted = true
         if !composing.isEmpty && !isSameSoundMode {
             Self.freqTracker.record(code: composing, char: text)
             Self.freqTracker.recordBigram(prev: lastCommitted, char: text)
@@ -807,6 +818,7 @@ class YabomishInputController: IMKInputController {
             isSameSoundMode = false
             sameSoundBase = ""
             commandBuffer = ""
+            justCommitted = false
             clearZhuyinSlots()
         }
     }
