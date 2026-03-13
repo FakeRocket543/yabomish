@@ -72,9 +72,6 @@ class YabomishInputController: IMKInputController {
     private var isSameSoundMode = false
     private var sameSoundBase = ""  // the char selected in step 1
 
-    // /command buffer (e.g. /zh to toggle zhuyin)
-    private var commandBuffer = ""
-
     // Zhuyin reverse lookup mode
     private var isZhuyinMode = false
     private var zhuyinBuffer = ""  // composed display string (auto-ordered)
@@ -131,57 +128,6 @@ class YabomishInputController: IMKInputController {
         }
 
         if isEnglishMode { return false }
-
-        // — /command buffer detection —
-        if !commandBuffer.isEmpty {
-            if keyCode == 36 { // Enter → cancel
-                commandBuffer = ""
-                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
-                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-                return true
-            }
-            if keyCode == 51 { // Backspace
-                commandBuffer.removeLast()
-                if commandBuffer.isEmpty {
-                    client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
-                                         replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-                } else {
-                    let display = commandBuffer as NSString
-                    client.setMarkedText(display, selectionRange: NSRange(location: display.length, length: 0),
-                                         replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-                }
-                return true
-            }
-            if let ch = keyCodeToChar[keyCode] {
-                commandBuffer.append(ch)
-                if handleSlashCommand(client: client) { return true }
-                // bail if buffer is already longer than any known command
-                let zhCmd = YabomishPrefs.zhuyinCommand
-                if !zhCmd.hasPrefix(commandBuffer) {
-                    NSSound.beep()
-                    commandBuffer = ""
-                    client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
-                                         replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-                    return true
-                }
-                let display = commandBuffer as NSString
-                client.setMarkedText(display, selectionRange: NSRange(location: display.length, length: 0),
-                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-                return true
-            }
-            NSSound.beep(); return true
-        }
-
-        let isIdle = isZhuyinMode ? zhuyinBuffer.isEmpty && currentCandidates.isEmpty
-                                   : composing.isEmpty
-        // / key starts command buffer when idle
-        if keyCode == 44 && isIdle {
-            commandBuffer = "/"
-            let display = commandBuffer as NSString
-            client.setMarkedText(display, selectionRange: NSRange(location: display.length, length: 0),
-                                 replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-            return true
-        }
 
         // — Zhuyin reverse lookup mode —
         if isZhuyinMode {
@@ -401,32 +347,6 @@ class YabomishInputController: IMKInputController {
         if composing.isEmpty { return false }
         resetComposing(client: client)
         return true
-    }
-
-    // MARK: - /Commands
-
-    /// Returns true if commandBuffer matched a known command (and was consumed).
-    private func handleSlashCommand(client: IMKTextInput) -> Bool {
-        let zhCmd = YabomishPrefs.zhuyinCommand
-        if commandBuffer == zhCmd {
-            commandBuffer = ""
-            client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
-                                 replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-            isZhuyinMode.toggle()
-            if isZhuyinMode {
-                resetComposing(client: client)
-                showModeToast("注")
-            } else {
-                clearZhuyinSlots()
-                currentCandidates = []
-                panel.hide()
-                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
-                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-                showModeToast("中")
-            }
-            return true
-        }
-        return false  // not a known command yet, keep buffering
     }
 
     // MARK: - Zhuyin Reverse Lookup
@@ -741,7 +661,6 @@ class YabomishInputController: IMKInputController {
         isSameSoundMode = false
         sameSoundBase = ""
         eatNextSpace = false
-        commandBuffer = ""
         clearZhuyinSlots()
         client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -817,7 +736,6 @@ class YabomishInputController: IMKInputController {
             eatNextSpace = false
             isSameSoundMode = false
             sameSoundBase = ""
-            commandBuffer = ""
             justCommitted = false
             clearZhuyinSlots()
         }
@@ -840,7 +758,6 @@ class YabomishInputController: IMKInputController {
                 resetComposing(client: client)
             }
         }
-        commandBuffer = ""
         panel.hide()
         Self.activeSession = nil
         super.deactivateServer(sender)
