@@ -55,9 +55,7 @@ class YabomishInputController: IMKInputController {
     }()
 
     private static let freqTracker = FreqTracker()
-    private static let punctMap: [String: String] = [
-        "{": "『", "}": "』",
-    ]
+    private static let punctMap: [String: String] = [:]
     private static weak var activeSession: YabomishInputController?
 
     // MARK: - State
