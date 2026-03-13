@@ -705,8 +705,17 @@ class YabomishInputController: IMKInputController {
 
         // Try to determine which screen the client app is on
         var cursorRect = NSRect.zero
-        let range = client.selectedRange()
-        client.attributes(forCharacterIndex: range.location, lineHeightRectangle: &cursorRect)
+        let markedRange = client.markedRange()
+        let queryRange: NSRange
+        if markedRange.location != NSNotFound && markedRange.length > 0 {
+            // 組字中：取 marked text 末端位置
+            queryRange = NSRange(location: NSMaxRange(markedRange), length: 0)
+        } else {
+            queryRange = client.selectedRange()
+        }
+        if queryRange.location != NSNotFound {
+            cursorRect = client.firstRect(forCharacterRange: queryRange, actualRange: nil)
+        }
 
         if cursorRect.minX > 0 || cursorRect.minY > 0 {
             let pt = NSPoint(x: cursorRect.midX, y: cursorRect.midY)
