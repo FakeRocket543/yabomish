@@ -304,6 +304,12 @@ class YabomishInputController: IMKInputController {
 
         refreshCandidates()
 
+        if currentCandidates.isEmpty && composing.count >= kMaxCodeLength && !isWildcard {
+            NSSound.beep()
+            resetComposing(client: client)
+            return true
+        }
+
         if YabomishPrefs.autoCommit &&
            currentCandidates.count == 1 && composing.count >= 2 && !canExtendCode(composing) {
             commitText(currentCandidates[0], client: client)
