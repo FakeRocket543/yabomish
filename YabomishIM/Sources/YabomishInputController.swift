@@ -160,9 +160,9 @@ class YabomishInputController: IMKInputController {
             return true
         }
 
-        // VRSF: after V committed first candidate, R/S/F replace with 2nd/3rd/4th
+        // VRSF: after V committed 2nd candidate, R/S/F replace with 3rd/4th/5th
         if !vrsfCandidates.isEmpty {
-            let vrsfMap: [UInt16: Int] = [15: 1, 1: 2, 3: 3]  // R=15, S=1, F=3
+            let vrsfMap: [UInt16: Int] = [15: 2, 1: 3, 3: 4]  // R=15, S=1, F=3
             if let idx = vrsfMap[keyCode], idx < vrsfCandidates.count {
                 let loc = client.selectedRange().location
                 if loc > 0 {
@@ -224,10 +224,10 @@ class YabomishInputController: IMKInputController {
             return handleWildcardInput(client: client)
         }
 
-        // VRSF: V selects first candidate, then R/S/F can replace with 2nd/3rd/4th
+        // VRSF: V selects 2nd candidate, then R/S/F can replace with 3rd/4th/5th
         if keyCode == 9, currentCandidates.count > 1, !Self.cinTable.hasPrefix(composing + "v") {
             let saved = currentCandidates
-            commitText(currentCandidates[0], client: client)
+            commitText(currentCandidates[1], client: client)
             vrsfCandidates = saved
             return true
         }
