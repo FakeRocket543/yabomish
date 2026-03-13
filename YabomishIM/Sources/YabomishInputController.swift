@@ -71,6 +71,7 @@ class YabomishInputController: IMKInputController {
     private var justCommitted = false
     private var isSameSoundMode = false
     private var sameSoundBase = ""  // the char selected in step 1
+    private var vrsfCandidates: [String] = []  // saved candidates for VRSF replacement
 
     // Zhuyin reverse lookup mode
     private var isZhuyinMode = false
@@ -158,6 +159,23 @@ class YabomishInputController: IMKInputController {
             updateMarkedText(client: client)
             return true
         }
+
+        // VRSF: after V committed first candidate, R/S/F replace with 2nd/3rd/4th
+        if !vrsfCandidates.isEmpty {
+            let vrsfMap: [UInt16: Int] = [15: 1, 1: 2, 3: 3]  // R=15, S=1, F=3
+            if let idx = vrsfMap[keyCode], idx < vrsfCandidates.count {
+                let loc = client.selectedRange().location
+                if loc > 0 {
+                    client.insertText(vrsfCandidates[idx],
+                                      replacementRange: NSRange(location: loc - 1, length: 1))
+                    lastCommitted = vrsfCandidates[idx]
+                }
+                vrsfCandidates = []
+                return true
+            }
+            vrsfCandidates = []
+        }
+
         justCommitted = false
 
         // Space
@@ -206,9 +224,11 @@ class YabomishInputController: IMKInputController {
             return handleWildcardInput(client: client)
         }
 
-        // 補碼 v → select second candidate when multiple candidates showing
+        // VRSF: V selects first candidate, then R/S/F can replace with 2nd/3rd/4th
         if keyCode == 9, currentCandidates.count > 1, !Self.cinTable.hasPrefix(composing + "v") {
-            commitText(currentCandidates[1], client: client)
+            let saved = currentCandidates
+            commitText(currentCandidates[0], client: client)
+            vrsfCandidates = saved
             return true
         }
 
@@ -661,6 +681,7 @@ class YabomishInputController: IMKInputController {
         isSameSoundMode = false
         sameSoundBase = ""
         eatNextSpace = false
+        vrsfCandidates = []
         clearZhuyinSlots()
         client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -737,6 +758,7 @@ class YabomishInputController: IMKInputController {
             isSameSoundMode = false
             sameSoundBase = ""
             justCommitted = false
+            vrsfCandidates = []
             clearZhuyinSlots()
         }
     }
