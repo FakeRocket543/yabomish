@@ -2,6 +2,19 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.1.18] — 2026-03-13
+
+### 修正
+- `[]` 改走 CIN 查表，支援 `[[` `]]` 等多碼括號（原 hardcode 攔截導致無法輸入）
+- 萬用碼結果去重（多碼匹配同一字時不再重複顯示）
+- `deactivateServer` 清理注音模式與 command buffer 殘留狀態
+- `activateServer` 完整重置所有狀態（同音字、command buffer、注音 slots）
+- 偏好設定注音反查說明文字 `,,z` → `/zh`
+
+### 改善
+- 字頻每 30 秒自動存檔（防止 crash 丟失學習資料）
+- 固定模式選字窗加最大寬度限制（85% 螢幕寬）
+
 ## [0.1.17] — 2026-03-12
 
 ### 修正
