@@ -104,6 +104,11 @@ class YabomishInputController: IMKInputController {
             return false
         }
 
+        if isEnglishMode {
+            if flags.contains(.shift) { shiftWasUsedWithOtherKey = true }
+            return false
+        }
+
         // Hold Shift → temporary English input (lowercase)
         // Exception: Shift+8 = '*' wildcard when composing
         if flags.contains(.shift) && !flags.contains(.command) && !flags.contains(.control) && !flags.contains(.option) {
@@ -126,8 +131,6 @@ class YabomishInputController: IMKInputController {
             }
             return false
         }
-
-        if isEnglishMode { return false }
 
         // — Zhuyin reverse lookup mode —
         if isZhuyinMode {
