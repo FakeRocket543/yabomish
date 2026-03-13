@@ -212,6 +212,14 @@ YabomishIM/
 覺得好用？來吃一球 gelato 🍨
 [Golden Rooster](https://shop.goldenrooster.tw)
 
+## 注音資料來源
+
+內建 `zhuyin_data.json` 整合自以下開源資料：
+
+- [教育部《重編國語辭典修訂本》](https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/respub/index.html)（CC BY-ND 3.0 TW），經 [g0v/moedict-data](https://github.com/g0v/moedict-data) 整理
+- [Unicode Han Database (Unihan)](https://www.unicode.org/reports/tr38/)（Unicode License）
+- [libchewing](https://github.com/chewing/libchewing)（LGPL-2.1）
+
 ## 授權
 
 MIT
