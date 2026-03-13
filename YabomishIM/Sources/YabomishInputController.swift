@@ -71,7 +71,6 @@ class YabomishInputController: IMKInputController {
     private var justCommitted = false
     private var isSameSoundMode = false
     private var sameSoundBase = ""  // the char selected in step 1
-    private var vrsfCandidates: [String] = []  // saved candidates for VRSF replacement
 
     // Zhuyin reverse lookup mode
     private var isZhuyinMode = false
@@ -160,22 +159,6 @@ class YabomishInputController: IMKInputController {
             return true
         }
 
-        // VRSF: after V committed 2nd candidate, R/S/F replace with 3rd/4th/5th
-        if !vrsfCandidates.isEmpty {
-            let vrsfMap: [UInt16: Int] = [15: 2, 1: 3, 3: 4]  // R=15, S=1, F=3
-            if let idx = vrsfMap[keyCode], idx < vrsfCandidates.count {
-                let loc = client.selectedRange().location
-                if loc > 0 {
-                    client.insertText(vrsfCandidates[idx],
-                                      replacementRange: NSRange(location: loc - 1, length: 1))
-                    lastCommitted = vrsfCandidates[idx]
-                }
-                vrsfCandidates = []
-                return true
-            }
-            vrsfCandidates = []
-        }
-
         justCommitted = false
 
         // Space
@@ -224,12 +207,16 @@ class YabomishInputController: IMKInputController {
             return handleWildcardInput(client: client)
         }
 
-        // VRSF: V selects 2nd candidate, then R/S/F can replace with 3rd/4th/5th
-        if keyCode == 9, currentCandidates.count > 1, !Self.cinTable.hasPrefix(composing + "v") {
-            let saved = currentCandidates
-            commitText(currentCandidates[1], client: client)
-            vrsfCandidates = saved
-            return true
+        // VRSF: V/R/S/F select 2nd/3rd/4th/5th candidate when appending wouldn't form valid code
+        let vrsfKeys: [(keyCode: UInt16, letter: String, index: Int)] = [
+            (9, "v", 1), (15, "r", 2), (1, "s", 3), (3, "f", 4)
+        ]
+        for vk in vrsfKeys {
+            if keyCode == vk.keyCode, currentCandidates.count > vk.index,
+               !Self.cinTable.hasPrefix(composing + vk.letter) {
+                commitText(currentCandidates[vk.index], client: client)
+                return true
+            }
         }
 
         // Selection keys (digits) when candidates showing
@@ -681,7 +668,6 @@ class YabomishInputController: IMKInputController {
         isSameSoundMode = false
         sameSoundBase = ""
         eatNextSpace = false
-        vrsfCandidates = []
         clearZhuyinSlots()
         client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -758,7 +744,6 @@ class YabomishInputController: IMKInputController {
             isSameSoundMode = false
             sameSoundBase = ""
             justCommitted = false
-            vrsfCandidates = []
             clearZhuyinSlots()
         }
     }
