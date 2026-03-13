@@ -29,7 +29,7 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 
 ### 查詢功能
 - 同音字查詢：按 `'` 進入同音字模式，選字後列出所有同音字 `v0.1.13`
-- 注音反查：`/zh` 切換注音查碼模式，輸入注音查嘸蝦米碼 `03803c9` `2750321`
+- 注音反查：`';` 切換注音查碼模式（蝦米官方快捷鍵），輸入注音查嘸蝦米碼
   - 聲韻母可任意順序輸入，自動排列至正確 slot
 
 ### 智慧排序
@@ -80,6 +80,7 @@ cp /你的liu.cin路徑/liu.cin .
 | 中英切換 | 快按 Shift |
 | 暫時英文 | 按住 Shift |
 | 翻頁 | Tab / PageDown / PageUp |
+| 注音反查 | `';` 切換 |
 
 ### 中文標點
 
@@ -99,11 +100,11 @@ cp /你的liu.cin路徑/liu.cin .
 
 ### 注音反查
 
-1. 輸入 `/zh` 進入注音查碼模式（顯示「注」提示）
+1. 輸入 `';` 進入注音查碼模式（顯示「注」提示）
 2. 按注音鍵盤輸入注音符號（聲母、介音、韻母可任意順序，自動排列）
 3. 按聲調鍵（3=ˇ 4=ˋ 6=ˊ 7=˙）或空白鍵（一聲）送出查詢
 4. 選字窗顯示對應漢字及嘸蝦米碼
-5. 再按 `/zh` 回到一般模式
+5. 再按 `';` 或 Esc（空 buffer 時）回到一般模式
 
 ### 選字窗模式
 
@@ -195,7 +196,7 @@ YabomishIM/
 
 | 版本 | 日期 | 重點 |
 |------|------|------|
-| 0.1.19 | 2026-03-13 | 注音資料擴充至 43985 字、滿碼無候選自動清除 |
+| 0.1.19 | 2026-03-13 | 注音資料回退至純萌典版（9913 字）、滿碼無候選自動清除 |
 | 0.1.18 | 2026-03-13 | `[]` 走 CIN 查表、萬用碼去重、狀態清理修正、字頻定期存檔 |
 | 0.1.17 | 2026-03-12 | 萬用碼 `*` 修正、方向鍵選字通用化、字體大小即時生效 |
 | 0.1.16 | 2026-03-12 | `/zh` 取代 `,,z` 觸發注音查碼；逗號還給 CIN 編碼（1737 筆恢復） |
@@ -215,11 +216,9 @@ YabomishIM/
 
 ## 注音資料來源
 
-內建 `zhuyin_data.json` 整合自以下開源資料：
+內建 `zhuyin_data.json` 取自 [g0v/moedict-data](https://github.com/g0v/moedict-data)（教育部《重編國語辭典修訂本》，CC BY-ND 3.0 TW），涵蓋 9,913 字、1,338 組注音。
 
-- [教育部《重編國語辭典修訂本》](https://language.moe.gov.tw/001/Upload/Files/site_content/M0001/respub/index.html)（CC BY-ND 3.0 TW），經 [g0v/moedict-data](https://github.com/g0v/moedict-data) 整理
-- [Unicode Han Database (Unihan)](https://www.unicode.org/reports/tr38/)（Unicode License）
-- [libchewing](https://github.com/chewing/libchewing)（LGPL-2.1）
+曾嘗試合併 [Unihan](https://www.unicode.org/reports/tr38/) 與 [libchewing](https://github.com/chewing/libchewing) 擴充至 43,985 字，但新增的大量 CJK Extension B+ 罕用字在多數字型中無法顯示，同音候選反而不實用，因此回退至純萌典版本。
 
 ## 授權
 
