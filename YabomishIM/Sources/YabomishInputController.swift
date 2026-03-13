@@ -285,6 +285,25 @@ class YabomishInputController: IMKInputController {
     // MARK: - Input
 
     private func handleLetterInput(_ char: String, client: IMKTextInput) -> Bool {
+        // '; → toggle zhuyin mode (official Boshiamy shortcut)
+        if isSameSoundMode && composing == "'" && char == ";" {
+            isSameSoundMode = false
+            composing = ""
+            client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                 replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            isZhuyinMode.toggle()
+            if isZhuyinMode {
+                resetComposing(client: client)
+                showModeToast("注")
+            } else {
+                clearZhuyinSlots()
+                currentCandidates = []
+                panel.hide()
+                showModeToast("中")
+            }
+            return true
+        }
+
         let newComposing = composing + char
         let maxLen = isSameSoundMode ? kMaxCodeLength + 1 : kMaxCodeLength
 
