@@ -19,6 +19,7 @@ sleep 0.5
 # Install
 echo "安裝到 $INSTALL_DIR/ ..."
 sudo cp -R "$APP_BUNDLE" "$INSTALL_DIR/"
+sudo chmod -R  a+rX "$INSTALL_DIR/$APP_NAME.app"
 
 # Ensure user CIN directory and check for liu.cin
 mkdir -p "$USER_CIN_DIR"
