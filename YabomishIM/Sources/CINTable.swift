@@ -51,6 +51,20 @@ final class CINTable {
 
     var isEmpty: Bool { table.isEmpty }
 
+    func reload() {
+        table = [:]
+        _reverseTable = nil
+        _shortestCodes = nil
+        _longestCodes = nil
+        t2s = [:]
+        s2t = [:]
+        prefixes = []
+        let userPath = NSHomeDirectory() + "/Library/YabomishIM/liu.cin"
+        let bundlePath = Bundle.main.path(forResource: "liu", ofType: "cin")
+        if FileManager.default.fileExists(atPath: userPath) { load(path: userPath) }
+        else if let p = bundlePath { load(path: p) }
+    }
+
     // MARK: - Load
 
     func load(path: String) {

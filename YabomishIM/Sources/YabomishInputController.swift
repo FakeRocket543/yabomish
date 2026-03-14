@@ -57,6 +57,22 @@ class YabomishInputController: IMKInputController {
     private static let freqTracker = FreqTracker()
     private static weak var activeSession: YabomishInputController?
     private static var lastDeactivateTime: Date = .distantPast
+    private static var hasPromptedImport = false
+    private static var yabomishWasActive = false
+
+    private static let inputSourceObserver: Void = {
+        DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.Carbon.TISNotifySelectedKeyboardInputSourceChanged"),
+            object: nil, queue: .main
+        ) { _ in
+            let src = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
+            let id = src.flatMap { TISGetInputSourceProperty($0, kTISPropertyInputSourceID) }
+                .map { Unmanaged<CFString>.fromOpaque($0).takeUnretainedValue() as String }
+            if id?.contains("yabomishim") != true {
+                yabomishWasActive = false
+            }
+        }
+    }()
 
     // MARK: - State
 
@@ -974,10 +990,17 @@ class YabomishInputController: IMKInputController {
 
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
+        _ = Self.inputSourceObserver  // 確保 observer 已註冊
         if let client = sender as? IMKTextInput {
             client.overrideKeyboard(withKeyboardNamed: "com.apple.keylayout.ABC")
         }
-        let fromOtherIM = Date().timeIntervalSince(Self.lastDeactivateTime) > 0.3
+        // 首次啟動偵測空字表
+        if Self.cinTable.isEmpty && !Self.hasPromptedImport {
+            Self.hasPromptedImport = true
+            DispatchQueue.main.async { Self.promptImportCIN() }
+        }
+        let fromOtherIM = !Self.yabomishWasActive
+        Self.yabomishWasActive = true
         Self.activeSession = self
         composing = ""
         currentCandidates = []
@@ -992,8 +1015,55 @@ class YabomishInputController: IMKInputController {
         }
     }
 
+    static func promptImportCIN() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "尚未偵測到字表"
+        alert.informativeText = "Yabomish 需要嘸蝦米字表（liu.cin）才能輸入中文。\n請點「匯入」選擇你的 liu.cin 檔案。"
+        alert.addButton(withTitle: "匯入⋯")
+        alert.addButton(withTitle: "稍後")
+        alert.alertStyle = .warning
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        importCIN()
+    }
+
+    @discardableResult
+    static func importCIN() -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        let panel = NSOpenPanel()
+        panel.title = "選擇嘸蝦米字表"
+        panel.allowedContentTypes = [.init(filenameExtension: "cin")!]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.level = .popUpMenu
+        guard panel.runModal() == .OK, let src = panel.url else { return false }
+        let dir = NSHomeDirectory() + "/Library/YabomishIM"
+        let dst = dir + "/liu.cin"
+        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        try? FileManager.default.removeItem(atPath: dst)
+        do {
+            try FileManager.default.copyItem(at: src, to: URL(fileURLWithPath: dst))
+            // 刪除舊快取，強制重建
+            try? FileManager.default.removeItem(atPath: dst + ".cache")
+            cinTable.reload()
+            hasPromptedImport = false
+            NSLog("YabomishIM: Imported CIN table from %@", src.path)
+            let done = NSAlert()
+            done.messageText = "字表匯入成功"
+            done.informativeText = "已匯入 \(cinTable.isEmpty ? 0 : cinTable.shortestCodesTable.count) 字。"
+            done.runModal()
+            return true
+        } catch {
+            let err = NSAlert()
+            err.messageText = "匯入失敗"
+            err.informativeText = error.localizedDescription
+            err.alertStyle = .critical
+            err.runModal()
+            return false
+        }
+    }
+
     override func deactivateServer(_ sender: Any!) {
-        Self.lastDeactivateTime = Date()
         guard Self.activeSession === self else {
             super.deactivateServer(sender)
             return

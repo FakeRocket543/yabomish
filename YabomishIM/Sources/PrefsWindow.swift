@@ -113,6 +113,10 @@ final class PrefsWindow: NSPanel {
         labelPopup.selectItem(at: labelIdx)
         labelPopup.target = self; labelPopup.action = #selector(menuBarLabelChanged(_:))
         stack.addArrangedSubview(row("狀態列名稱", labelPopup))
+
+        // — 匯入字表 —
+        let importBtn = NSButton(title: "匯入字表⋯", target: self, action: #selector(importCINClicked))
+        stack.addArrangedSubview(importBtn)
     }
 
     override var canBecomeKey: Bool { true }
@@ -185,6 +189,10 @@ final class PrefsWindow: NSPanel {
         let keys = ["icon", "yabo", "yabomish"]
         YabomishPrefs.menuBarLabel = keys[sender.indexOfSelectedItem]
         showReinstallAlert()
+    }
+
+    @objc private func importCINClicked() {
+        YabomishInputController.importCIN()
     }
 
     private func showReinstallAlert() {
