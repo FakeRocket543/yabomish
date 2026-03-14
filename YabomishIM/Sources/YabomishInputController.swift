@@ -166,30 +166,20 @@ class YabomishInputController: IMKInputController {
         }
 
         // ' (single quote, keyCode 39) → same-sound mode
-        if keyCode == 39 && !isSameSoundMode {
-            // Mid-compose: commit first candidate then show same-sound list
-            if !composing.isEmpty && !currentCandidates.isEmpty {
-                let first = currentCandidates[0]
+        if keyCode == 39 && !isSameSoundMode && composing.isEmpty {
+            // Post-commit: just committed a char → show same-sound list directly
+            if justCommitted && !lastCommitted.isEmpty {
                 isSameSoundMode = true
-                // sameSoundBase 留空，commitText 會走 step 1 路徑
-                commitText(first, client: client)
+                sameSoundBase = lastCommitted
+                _ = handleSameSound(client: client)
                 return true
             }
-            if composing.isEmpty {
-                // Post-commit: just committed a char → show same-sound list directly
-                if justCommitted && !lastCommitted.isEmpty {
-                    isSameSoundMode = true
-                    sameSoundBase = lastCommitted
-                    _ = handleSameSound(client: client)
-                    return true
-                }
-                // Idle: enter pending state for '; (zhuyin) detection
-                // If next key is not ';', outputs 、 (頓號) instead
-                isSameSoundMode = true
-                composing = "'"
-                updateMarkedText(client: client)
-                return true
-            }
+            // Idle: enter pending state for '; (zhuyin) detection
+            // If next key is not ';', outputs 、 (頓號) instead
+            isSameSoundMode = true
+            composing = "'"
+            updateMarkedText(client: client)
+            return true
         }
 
         justCommitted = false
@@ -844,12 +834,6 @@ class YabomishInputController: IMKInputController {
     }
 
     private func commitText(_ text: String, client: IMKTextInput) {
-        // Same-sound step 1: user picked the known char → show same-sound list
-        if isSameSoundMode && sameSoundBase.isEmpty {
-            sameSoundBase = text
-            _ = handleSameSound(client: client)
-            return
-        }
         let range = client.markedRange()
         client.insertText(text, replacementRange: range)
         justCommitted = true
