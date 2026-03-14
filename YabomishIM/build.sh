@@ -25,6 +25,12 @@ fi
 if [ -f "$RES_DIR/icon.icns" ]; then
     cp "$RES_DIR/icon.icns" "$APP_BUNDLE/Contents/Resources/"
 fi
+if [ -f "$RES_DIR/icon_right.tiff" ]; then
+    cp "$RES_DIR/icon_right.tiff" "$APP_BUNDLE/Contents/Resources/"
+fi
+if [ -f "$RES_DIR/icon_left.tiff" ]; then
+    cp "$RES_DIR/icon_left.tiff" "$APP_BUNDLE/Contents/Resources/"
+fi
 # Copy zhuyin data
 if [ -f "$RES_DIR/zhuyin_data.json" ]; then
     cp "$RES_DIR/zhuyin_data.json" "$APP_BUNDLE/Contents/Resources/"

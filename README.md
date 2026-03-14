@@ -15,18 +15,39 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 ### 選字窗
 - 兩種模式：游標跟隨（預設）/ 固定位置 `v0.1.10` `v0.1.14`
   - **游標跟隨** — 毛玻璃垂直列表，跟著輸入位置走
-  - **固定位置** — 螢幕底部水平列，可上下拖曳、右鍵調整對齊/透明度
-- 多螢幕支援，自動偵測正確螢幕 `v0.1.14`
+  - **固定位置** — 螢幕底部水平列，可上下拖曳、右鍵調整對齊/透明度/字體大小
+- 多螢幕支援，自動偵測正確螢幕 `v0.1.14` `v0.2.0`
+  - 不相容 App（Terminal 等）自動 fallback 到固定模式顯示
+- 非預設模式時選字框顯示模式小標籤（如 [簡中]、[速]、[日]）`v0.2.0`
 - 顯示/隱藏淡入淡出動畫 `v0.1.14`
+
+### 輸入模式（`,,` 命令系統）`v0.2.0`
+
+輸入 `,,`（兩個逗號）進入命令模式，再輸入命令碼 + 空白鍵切換：
+
+| 命令 | 模式 | 說明 |
+|------|------|------|
+| `,,T` | 繁中 | 預設模式 |
+| `,,S` | 簡中 | 只顯示字表中本身就是簡體的字 |
+| `,,SP` | 速打 | 只接受最短碼（練習用） |
+| `,,SL` | 慢打 | 只接受最長碼（練習用） |
+| `,,TS` | 繁→簡 | 打繁體碼，輸出簡體字 |
+| `,,ST` | 簡→繁 | 打簡體碼，輸出繁體字 |
+| `,,J` | 日文 | 假名輸入（碼+`,`=平假名、碼+`.`=片假名） |
+| `,,RS` | — | 重置字頻統計 |
+| `,,C` | — | 顯示當前模式 |
+| `,,H` | — | 顯示命令說明 |
 
 ### 輸入功能
 - 萬用碼 `*` 模糊查詢（prefix 預過濾加速）`v0.1.10` `v0.1.14`
 - 補碼 `v`/`r`/`s`/`f` 快速選第 2–5 候選字（無法延伸編碼時）`v0.1.14` `v0.1.20`
 - 滿碼自動送字（可選）`v0.1.10`
 - `/` 穿透：空閒時直送 App（編輯器 slash command），打碼中仍走 CIN `v0.1.20`
+- `'` 空閒時輸出頓號「、」（`';` 仍觸發注音反查）`v0.2.0`
 - 中文標點：`[]` `[[` `]]` 走 CIN 查表（「」『』【】《》等）、`,` → ， `v0.1.18`
 - Shift 快按切換中英、按住暫時英文 `v0.1.10`
-- 中英模式切換 HUD 提示（「中」/「A」）`v0.1.14`
+- 中英模式切換 HUD 提示（「繁中」/「A」）`v0.1.14` `v0.2.0`
+- 從其他輸入法切入時顯示當前模式 toast（可在偏好設定關閉）`v0.2.0`
 
 ### 查詢功能
 - 同音字查詢：按 `'` 進入同音字模式，選字後列出所有同音字 `v0.1.13`
@@ -77,6 +98,8 @@ cp /你的liu.cin路徑/liu.cin .
 | 萬用碼 | `*` |
 | 補碼選字 | `v`/`r`/`s`/`f`（第 2–5 候選） |
 | 同音字 | `'`（送字後）或碼尾加 `'` |
+| 頓號 | `'`（空閒時） |
+| 模式切換 | `,,` + 命令碼 + 空白鍵（如 `,,TS`） |
 | 刪碼 | Backspace |
 | 清除 | Esc |
 | 直送英文 | Enter |
@@ -90,6 +113,7 @@ cp /你的liu.cin路徑/liu.cin .
 
 | 按鍵 | 輸出 |
 |------|------|
+| `'`（空閒時） | 、（頓號） |
 | `,`（單按） | ， |
 | `[` | CIN 查表（「、（、﹁、【⋯） |
 | `[[` | CIN 查表（『、﹃、【、《⋯） |
@@ -112,7 +136,7 @@ cp /你的liu.cin路徑/liu.cin .
 
 ### 選字窗模式
 
-**游標跟隨**（預設）— 選字窗出現在輸入游標旁。部分 App（Terminal、某些 Electron App）無法正確回報游標位置，會自動 fallback 到上次有效位置或螢幕底部。
+**游標跟隨**（預設）— 選字窗出現在輸入游標旁。部分 App（Terminal、某些 Electron App）無法正確回報游標位置，會自動 fallback 到固定模式顯示（水平列）。
 
 **固定位置** — 選字窗固定在螢幕底部，顯示為水平列。←→ 選字、↑↓ 翻頁。可以：
 - 上下拖曳調整位置
@@ -128,6 +152,11 @@ cp /你的liu.cin路徑/liu.cin .
 - 透明度
 - 字體大小（游標模式 / 固定模式 / 模式提示）
 - 滿碼自動送字
+- 拆碼提示
+- 注音反查
+- 切入時顯示模式提示
+- 蝦頭方向（← 向左 / → 向右）
+- 狀態列名稱（僅圖示 / Yabo / Yabomish）
 
 也可用 `defaults write` 指令：
 
@@ -151,6 +180,15 @@ defaults write com.yabomishim.inputmethod.YabomishIM fixedAlpha -float 0.85
 defaults write com.yabomishim.inputmethod.YabomishIM fontSize -float 16
 defaults write com.yabomishim.inputmethod.YabomishIM fixedFontSize -float 18
 defaults write com.yabomishim.inputmethod.YabomishIM toastFontSize -float 36
+
+# 切入時顯示模式提示
+defaults write com.yabomishim.inputmethod.YabomishIM showActivateToast -bool true
+
+# 蝦頭方向：left / right
+defaults write com.yabomishim.inputmethod.YabomishIM iconDirection left
+
+# 狀態列名稱：icon / yabo / yabomish
+defaults write com.yabomishim.inputmethod.YabomishIM menuBarLabel yabomish
 ```
 
 ## 更新
@@ -169,8 +207,10 @@ git pull
 |------|------|
 | `liu.cin` | 嘸蝦米字表（使用者提供） |
 | `liu.cin.cache` | 二進位快取（自動產生，字表更新時自動重建） |
-| `freq.json` | 字頻學習資料（自動產生） |
+| `freq.json` | 字頻學習資料（自動產生，`,,RS` 可重置） |
 | `zhuyin_data.json` | 注音對照表（內建於 App bundle，可自行覆蓋） |
+| `t2s.json` | 繁→簡對照表（內建於 App bundle，可自行覆蓋） |
+| `s2t.json` | 簡→繁對照表（內建於 App bundle，可自行覆蓋） |
 
 App 載入順序：先找 `~/Library/YabomishIM/` 下的檔案，找不到才用 App bundle 內建版本。更換字表只需替換 `~/Library/YabomishIM/liu.cin`，無需重新編譯。
 
@@ -190,16 +230,18 @@ YabomishIM/
 ├── Resources/
 │   ├── Info.plist
 │   ├── zhuyin_data.json
-│   ├── icon.icns / icon.tiff
+│   ├── t2s.json / s2t.json
+│   ├── icon.icns / icon.tiff / icon_left.tiff / icon_right.tiff
 │   └── YabomishIM.entitlements
 ├── build.sh                           # 編譯腳本
-└── install.sh                         # 安裝腳本
+└── install.sh                         # 安裝腳本（互動選擇蝦頭方向、狀態列名稱）
 ```
 
 ## 版本歷程
 
 | 版本 | 日期 | 重點 |
 |------|------|------|
+| 0.2.0 | 2026-03-14 | `,,` 命令系統（8 種輸入模式）、頓號 `'`、繁簡轉換、日文假名、多螢幕修正、狀態列名稱選項 |
 | 0.1.20 | 2026-03-13 | `/` 穿透模式、同音字尾綴 `'`、補碼 VRSF、注音 `';` 觸發、ㄣ/ㄥ 修正 |
 | 0.1.19 | 2026-03-13 | 注音資料回退至純萌典版（9913 字）、滿碼無候選自動清除 |
 | 0.1.18 | 2026-03-13 | `[]` 走 CIN 查表、萬用碼去重、狀態清理修正、字頻定期存檔 |
@@ -223,9 +265,17 @@ YabomishIM/
 覺得好用？來吃一球 gelato 🍨
 [Golden Rooster](https://shop.goldenrooster.tw)
 
-## 注音資料來源
+## 資料來源
+
+### 注音對照表
 
 內建 `zhuyin_data.json` 取自 [g0v/moedict-data](https://github.com/g0v/moedict-data)（教育部《重編國語辭典修訂本》，CC BY-ND 3.0 TW），涵蓋 9,913 字、1,338 組注音。
+
+### 繁簡對照表
+
+`s2t.json`、`t2s.json` 衍生自 [OpenCC](https://github.com/BYVoid/OpenCC) 的 `STCharacters.txt` 及 `TSCharacters.txt`，轉換為 JSON 格式並取用部分子集。原始資料以 Apache License 2.0 授權。
+
+> Copyright OpenCC Authors. Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
 曾嘗試合併 [Unihan](https://www.unicode.org/reports/tr38/) 與 [libchewing](https://github.com/chewing/libchewing) 擴充至 43,985 字，但新增的大量 CJK Extension B+ 罕用字在多數字型中無法顯示，同音候選反而不實用，因此回退至純萌典版本。
 

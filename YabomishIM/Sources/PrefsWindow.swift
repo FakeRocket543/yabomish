@@ -4,7 +4,7 @@ final class PrefsWindow: NSPanel {
     static let shared = PrefsWindow()
 
     private init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 400),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 520),
                    styleMask: [.titled, .closable, .nonactivatingPanel],
                    backing: .buffered, defer: true)
         self.title = "Yabomish 偏好設定"
@@ -53,17 +53,17 @@ final class PrefsWindow: NSPanel {
 
         // — 字體大小 —
         let fontStepper = NSStepper(frame: .zero)
-        fontStepper.minValue = 12; fontStepper.maxValue = 28; fontStepper.increment = 1
+        fontStepper.minValue = 12; fontStepper.maxValue = 48; fontStepper.increment = 1
         fontStepper.integerValue = Int(YabomishPrefs.fontSize)
         fontStepper.target = self; fontStepper.action = #selector(fontSizeChanged(_:))
         let fontLabel = NSTextField(labelWithString: "\(Int(YabomishPrefs.fontSize)) pt")
         fontLabel.tag = 100
-        let fontRow = row("字體大小", hStack(fontLabel, fontStepper))
+        let fontRow = row("游標模式字體", hStack(fontLabel, fontStepper))
         stack.addArrangedSubview(fontRow)
 
         // — 固定模式字體大小 —
         let fixedFontStepper = NSStepper(frame: .zero)
-        fixedFontStepper.minValue = 12; fixedFontStepper.maxValue = 32; fixedFontStepper.increment = 1
+        fixedFontStepper.minValue = 12; fixedFontStepper.maxValue = 48; fixedFontStepper.increment = 1
         fixedFontStepper.integerValue = Int(YabomishPrefs.fixedFontSize)
         fixedFontStepper.target = self; fixedFontStepper.action = #selector(fixedFontSizeChanged(_:))
         let fixedFontLabel = NSTextField(labelWithString: "\(Int(YabomishPrefs.fixedFontSize)) pt")
@@ -93,6 +93,26 @@ final class PrefsWindow: NSPanel {
         let zyBtn = NSButton(checkboxWithTitle: "注音反查（'; 切換）", target: self, action: #selector(zhuyinLookupChanged(_:)))
         zyBtn.state = YabomishPrefs.zhuyinReverseLookup ? .on : .off
         stack.addArrangedSubview(zyBtn)
+
+        // — 切入時顯示模式 —
+        let activateBtn = NSButton(checkboxWithTitle: "切入時顯示模式提示", target: self, action: #selector(activateToastChanged(_:)))
+        activateBtn.state = YabomishPrefs.showActivateToast ? .on : .off
+        stack.addArrangedSubview(activateBtn)
+
+        // — 蝦頭方向 —
+        let iconPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        iconPopup.addItems(withTitles: ["← 向左", "→ 向右"])
+        iconPopup.selectItem(at: YabomishPrefs.iconDirection == "right" ? 1 : 0)
+        iconPopup.target = self; iconPopup.action = #selector(iconDirectionChanged(_:))
+        stack.addArrangedSubview(row("蝦頭方向", iconPopup))
+
+        // — 狀態列名稱 —
+        let labelPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        labelPopup.addItems(withTitles: ["僅圖示", "Yabo", "Yabomish"])
+        let labelIdx = ["icon": 0, "yabo": 1, "yabomish": 2][YabomishPrefs.menuBarLabel] ?? 2
+        labelPopup.selectItem(at: labelIdx)
+        labelPopup.target = self; labelPopup.action = #selector(menuBarLabelChanged(_:))
+        stack.addArrangedSubview(row("狀態列名稱", labelPopup))
     }
 
     override var canBecomeKey: Bool { true }
@@ -143,6 +163,36 @@ final class PrefsWindow: NSPanel {
 
     @objc private func zhuyinLookupChanged(_ sender: NSButton) {
         YabomishPrefs.zhuyinReverseLookup = sender.state == .on
+    }
+
+    @objc private func activateToastChanged(_ sender: NSButton) {
+        YabomishPrefs.showActivateToast = sender.state == .on
+    }
+
+    @objc private func iconDirectionChanged(_ sender: NSPopUpButton) {
+        let dir = sender.indexOfSelectedItem == 1 ? "right" : "left"
+        YabomishPrefs.iconDirection = dir
+        guard let resPath = Bundle.main.resourcePath else { return }
+        let src = "\(resPath)/icon_\(dir).tiff"
+        let dst = "\(resPath)/icon.tiff"
+        guard FileManager.default.fileExists(atPath: src) else { return }
+        try? FileManager.default.removeItem(atPath: dst)
+        try? FileManager.default.copyItem(atPath: src, toPath: dst)
+        showReinstallAlert()
+    }
+
+    @objc private func menuBarLabelChanged(_ sender: NSPopUpButton) {
+        let keys = ["icon", "yabo", "yabomish"]
+        YabomishPrefs.menuBarLabel = keys[sender.indexOfSelectedItem]
+        showReinstallAlert()
+    }
+
+    private func showReinstallAlert() {
+        let alert = NSAlert()
+        alert.messageText = "需要重新安裝"
+        alert.informativeText = "請執行 install.sh 並重新登入後生效。"
+        alert.alertStyle = .informational
+        alert.runModal()
     }
 
     // MARK: - Layout helpers

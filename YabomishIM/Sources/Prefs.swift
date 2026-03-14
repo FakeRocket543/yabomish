@@ -75,4 +75,20 @@ struct YabomishPrefs {
         get { CGFloat(defaults.object(forKey: "toastFontSize") as? Double ?? 36.0) }
         set { defaults.set(Double(newValue), forKey: "toastFontSize") }
     }
+
+    /// 切換進 Yabomish 時顯示模式 toast
+    static var showActivateToast: Bool {
+        get { defaults.object(forKey: "showActivateToast") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "showActivateToast") }
+    }
+
+    /// 狀態列顯示名稱: "icon" / "yabo" / "yabomish"
+    static var menuBarLabel: String {
+        get { defaults.string(forKey: "menuBarLabel") ?? "yabomish" }
+        set { defaults.set(newValue, forKey: "menuBarLabel") }
+    }
+    static var iconDirection: String {
+        get { defaults.string(forKey: "iconDirection") ?? "left" }
+        set { defaults.set(newValue, forKey: "iconDirection") }
+    }
 }

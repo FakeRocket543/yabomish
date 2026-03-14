@@ -2,15 +2,44 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [Unreleased]
+## [0.2.0] — 2026-03-14
+
+### 新增
+- `,,` 命令系統：輸入 `,,`（兩個逗號）進入命令模式，支援以下命令：
+  - `,,T` 繁中（預設）、`,,S` 簡中（字表內建簡體字）、`,,SP` 速打（僅最短碼）、`,,SL` 慢打（僅最長碼）
+  - `,,TS` 繁→簡轉換、`,,ST` 簡→繁轉換、`,,J` 日文假名
+  - `,,RS` 重置字頻統計、`,,C` 顯示當前模式、`,,H` 命令說明
+- `'` 空閒時輸出頓號「、」（`';` 仍觸發注音反查）
+- 繁簡轉換表 `t2s.json`（3553 筆）、`s2t.json`（2606 筆），由 OpenCC 生成
+- CINTable 新增 `shortestCodesTable` / `longestCodesTable`（支援等長多碼）
+- 選字框螢幕偵測：不相容 App（Terminal 等）自動 fallback 到固定模式顯示
+- 切入 Yabomish 時顯示當前模式 toast（僅從其他輸入法切入時觸發，以 deactivate 時間差判斷）
+- 固定模式選字框顯示當前模式小標籤（非繁中模式時）
+- 偏好設定新增：切入模式提示開關、蝦頭方向（← / →）、狀態列名稱（僅圖示 / Yabo / Yabomish）
+- 固定模式右鍵選單新增字體大小調整（14–48pt）
+- 游標模式字體大小上限提高至 48pt（支援 4K+ 螢幕）
+- `install.sh` 互動選單：每次安裝可選擇蝦頭方向和狀態列名稱（顯示目前值，Enter 保持）
+- 未知 `,,` 命令顯示 toast 提示（含 `,,H` 說明）
+- 繁簡轉換表載入失敗時切模式顯示警告 toast
 
 ### 修正
+- `,,SP` / `,,SL` 等長碼 bug：同一字有多個等長碼時只保留一個，導致部分候選字消失（如「果」有 qtn/rqt）
+- `,,S` 模式修正：改為只顯示字表中本身就是簡體的字（原誤與 `,,TS` 相同邏輯）
+- 移除 `lastGoodCursorOrigin` 快取，解決多螢幕切換時選字框殘留在錯誤螢幕的問題
+- Shift 切回中文 / 注音退出 toast 顯示當前模式（原寫死「繁中」，在簡中等模式下顯示錯誤）
+- 游標模式 fallback 改用固定模式顯示（原仍用垂直列表導致位置跳動）
+- fallback 固定模式隱藏時加入淡出動畫
+- SP/SL 模式提示同碼不重複觸發
 - 英文模式下 Shift 組合鍵不再誤觸中英切換（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
-- 游標跟隨模式選字窗定位改善：改用 `markedRange()` + `firstRect(forCharacterRange:)`（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
-- `install.sh` 安裝後加 `chmod -R a+rX` 確保多帳號可讀取（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
+- 游標跟隨模式選字窗定位改善（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
+- `install.sh` 安裝後加 `chmod -R a+rX`（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
 
 ### 變更
+- 模式標籤統一：「中」→「繁中」、「簡」→「簡中」（對海外華人更清楚）
 - `.gitignore` 加入 `liu.cin`（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
+- `modeLabels` 抽為共用常數，`activeScreen` 加 0.5 秒快取
+- 偏好設定視窗高度調整，標籤改為「游標模式字體」/「固定模式字體」
+- 移除空的 `punctMap` 死碼
 
 ## [0.1.20] — 2026-03-13
 

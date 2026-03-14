@@ -55,8 +55,8 @@ class YabomishInputController: IMKInputController {
     }()
 
     private static let freqTracker = FreqTracker()
-    private static let punctMap: [String: String] = [:]
     private static weak var activeSession: YabomishInputController?
+    private static var lastDeactivateTime: Date = .distantPast
 
     // MARK: - State
 
@@ -82,10 +82,14 @@ class YabomishInputController: IMKInputController {
     // ,, command buffer
     private var commaCommandBuffer = ""   // collects chars after ",,"
     private var isInCommaCommand = false  // true after seeing ",,"
+    private var lastHintedCode = ""       // SP/SL hint dedup
 
     // Input mode (,,T/,,S/,,SP/,,TS/,,ST/,,J)
     enum InputMode: String { case t, s, sp, sl, ts, st, j }
     private var inputMode: InputMode = .t
+    private static let modeLabels: [InputMode: String] = [
+        .t: "繁中", .s: "簡中", .sp: "速", .sl: "慢", .ts: "繁→簡", .st: "簡→繁", .j: "日"
+    ]
 
     private var selKeys: [Character] { Self.cinTable.selKeys }
     private var panel: CandidatePanel { CandidatePanel.shared }
@@ -143,15 +147,6 @@ class YabomishInputController: IMKInputController {
         // — Zhuyin reverse lookup mode —
         if isZhuyinMode {
             return handleZhuyinKey(keyCode, client: client)
-        }
-
-        // Punctuation → Chinese equivalents (when idle)
-        if composing.isEmpty, let chars = event.characters {
-            if let mapped = Self.punctMap[chars] {
-                commitText(mapped, client: client)
-                eatNextSpace = true
-                return true
-            }
         }
 
         // ' (single quote, keyCode 39) → same-sound mode
@@ -307,7 +302,7 @@ class YabomishInputController: IMKInputController {
             if event.timestamp - lastShiftDown < 0.3 && !shiftWasUsedWithOtherKey {
                 isEnglishMode.toggle()
                 NSLog("YabomishIM: %@ mode", isEnglishMode ? "English" : "Chinese")
-                showModeToast(isEnglishMode ? "A" : "中")
+                showModeToast(isEnglishMode ? "A" : (Self.modeLabels[inputMode] ?? "繁中"))
                 if let client = self.client() { resetComposing(client: client) }
             }
             lastShiftDown = 0
@@ -332,7 +327,7 @@ class YabomishInputController: IMKInputController {
                 clearZhuyinSlots()
                 currentCandidates = []
                 panel.hide()
-                showModeToast("中")
+                showModeToast(Self.modeLabels[inputMode] ?? "繁中")
             }
             return true
         }
@@ -464,15 +459,31 @@ class YabomishInputController: IMKInputController {
             return true
         }
 
-        guard let mode = modeMap[cmd] else {
-            NSSound.beep()
+        // ,,C → show current mode
+        if cmd == "c" {
+            let label = isEnglishMode ? "A" : (Self.modeLabels[inputMode] ?? "繁中")
+            showModeToast(label)
             return true
         }
+
+        // ,,H → show available commands
+        if cmd == "h" {
+            showCodeHintToast(",,T繁中 ,,S簡中 ,,SP速 ,,SL慢\n,,TS繁→簡 ,,ST簡→繁 ,,J日\n,,RS重置字頻 ,,C當前模式 ,,H說明", duration: 4.0)
+            return true
+        }
+
+        guard let mode = modeMap[cmd] else {
+            showCodeHintToast("未知命令「,,\(cmd.uppercased())」\n,,H 查看說明", duration: 2.0)
+            return true
+        }
+        // 檢查繁簡轉換表是否載入
+        if (mode == .ts || mode == .s) && Self.cinTable.t2s.isEmpty {
+            showCodeHintToast("⚠️ t2s.json 未載入", duration: 2.0)
+        } else if mode == .st && Self.cinTable.s2t.isEmpty {
+            showCodeHintToast("⚠️ s2t.json 未載入", duration: 2.0)
+        }
         inputMode = mode
-        let labels: [InputMode: String] = [
-            .t: "繁", .s: "簡", .sp: "速", .sl: "慢", .ts: "繁→簡", .st: "簡→繁", .j: "日"
-        ]
-        showModeToast(labels[mode] ?? "中")
+        showModeToast(Self.modeLabels[mode] ?? "繁中")
         NSLog("YabomishIM: mode → %@", mode.rawValue)
         return true
     }
@@ -529,7 +540,7 @@ class YabomishInputController: IMKInputController {
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             } else {
                 isZhuyinMode = false
-                showModeToast("中")
+                showModeToast(Self.modeLabels[inputMode] ?? "繁中")
             }
             return true
         }
@@ -761,7 +772,8 @@ class YabomishInputController: IMKInputController {
             // Only keep candidates whose shortest code(s) include current input
             let table = Self.cinTable.shortestCodesTable
             let spFiltered = candidates.filter { table[$0]?.contains(code) == true }
-            if spFiltered.isEmpty && !candidates.isEmpty {
+            if spFiltered.isEmpty && !candidates.isEmpty && lastHintedCode != code {
+                lastHintedCode = code
                 let hints = candidates.compactMap { ch -> String? in
                     guard let scs = table[ch], !scs.contains(code) else { return nil }
                     return "\(ch)→\(scs.sorted().first ?? "")"
@@ -775,7 +787,8 @@ class YabomishInputController: IMKInputController {
             // Only keep candidates whose longest code(s) include current input
             let table = Self.cinTable.longestCodesTable
             let slFiltered = candidates.filter { table[$0]?.contains(code) == true }
-            if slFiltered.isEmpty && !candidates.isEmpty {
+            if slFiltered.isEmpty && !candidates.isEmpty && lastHintedCode != code {
+                lastHintedCode = code
                 let hints = candidates.compactMap { ch -> String? in
                     guard let lcs = table[ch], !lcs.contains(code) else { return nil }
                     return "\(ch)→\(lcs.sorted().first ?? "")"
@@ -800,11 +813,12 @@ class YabomishInputController: IMKInputController {
                 return seen.insert(t).inserted ? t : nil
             }
         case .s:
-            // 簡體模式: only keep simplified chars (those in s2t map or already simplified)
-            var seen = Set<String>()
-            candidates = candidates.compactMap { ch in
-                let s = Self.cinTable.convert(ch, map: Self.cinTable.t2s)
-                return seen.insert(s).inserted ? s : nil
+            // 簡中模式: 只保留字表中本身就是簡體的字（存在於 t2s 值域，或繁簡同形）
+            let t2s = Self.cinTable.t2s
+            candidates = candidates.filter { ch in
+                // 如果這個字不在 t2s 裡（繁簡同形），或者它本身就是簡體形式，保留
+                guard let simplified = t2s[ch] else { return true }
+                return simplified == ch
             }
         case .t, .j:
             break
@@ -860,6 +874,7 @@ class YabomishInputController: IMKInputController {
         eatNextSpace = false
         isInCommaCommand = false
         commaCommandBuffer = ""
+        lastHintedCode = ""
         clearZhuyinSlots()
         client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -868,9 +883,33 @@ class YabomishInputController: IMKInputController {
 
     // MARK: - Candidate Panel
 
-    /// Cache last known good cursor position so we can fall back when an app
-    /// returns NSRect.zero (Terminal, some Electron apps, etc.)
-    private static var lastGoodCursorOrigin: NSPoint?
+    private static var cachedActiveScreen: (screen: NSScreen, time: Date)?
+
+    /// 取得 client app 所在螢幕（透過 frontmost app 的 key window）
+    private func activeScreen(for client: IMKTextInput) -> NSScreen {
+        // 快取 0.5 秒，避免每次選字都呼叫 CGWindowList
+        if let cached = Self.cachedActiveScreen, Date().timeIntervalSince(cached.time) < 0.5 {
+            return cached.screen
+        }
+        let result: NSScreen
+        if let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+           let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]],
+           let screen = list.lazy.compactMap({ info -> NSScreen? in
+               guard let ownerPID = info[kCGWindowOwnerPID as String] as? Int32, ownerPID == pid,
+                     let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
+                     let x = bounds["X"], let y = bounds["Y"] else { return nil }
+               return NSScreen.screens.first { s in
+                   let pt = NSPoint(x: x + 10, y: s.frame.maxY - y - 10)
+                   return s.frame.contains(pt)
+               }
+           }).first {
+            result = screen
+        } else {
+            result = NSScreen.main ?? NSScreen.screens[0]
+        }
+        Self.cachedActiveScreen = (result, Date())
+        return result
+    }
 
     private func showCandidatePanel(client: IMKTextInput) {
         guard !currentCandidates.isEmpty else { panel.hide(); return }
@@ -889,27 +928,29 @@ class YabomishInputController: IMKInputController {
             cursorRect = client.firstRect(forCharacterRange: queryRange, actualRange: nil)
         }
 
-        if cursorRect.minX > 0 || cursorRect.minY > 0 {
+        let hasCursor = cursorRect.minX > 0 || cursorRect.minY > 0
+        if hasCursor {
             let pt = NSPoint(x: cursorRect.midX, y: cursorRect.midY)
             panel.targetScreen = NSScreen.screens.first(where: { $0.frame.contains(pt) })
         }
 
         let origin: NSPoint
         if YabomishPrefs.panelPosition == "fixed" {
+            panel.fallbackFixed = false
             origin = .zero
+        } else if hasCursor {
+            panel.fallbackFixed = false
+            let pt = NSPoint(x: cursorRect.minX, y: cursorRect.minY)
+            origin = pt
         } else {
-            if cursorRect.minX > 0 || cursorRect.minY > 0 {
-                let pt = NSPoint(x: cursorRect.minX, y: cursorRect.minY)
-                Self.lastGoodCursorOrigin = pt
-                origin = pt
-            } else if let cached = Self.lastGoodCursorOrigin {
-                origin = cached
-            } else {
-                let screen = NSScreen.main?.visibleFrame ?? .zero
-                origin = NSPoint(x: screen.midX - 40, y: screen.minY + 60)
-            }
+            // 不相容 app（Terminal 等）：fallback 到固定模式
+            panel.fallbackFixed = true
+            let screen = activeScreen(for: client)
+            panel.targetScreen = screen
+            origin = .zero
         }
 
+        panel.modeTag = Self.modeLabels[inputMode] ?? "繁中"
         panel.show(candidates: currentCandidates, selKeys: selKeys, at: origin, composing: composing)
     }
 
@@ -936,20 +977,23 @@ class YabomishInputController: IMKInputController {
         if let client = sender as? IMKTextInput {
             client.overrideKeyboard(withKeyboardNamed: "com.apple.keylayout.ABC")
         }
-        if Self.activeSession !== self {
-            Self.activeSession = self
-            composing = ""
-            currentCandidates = []
-            isWildcard = false
-            eatNextSpace = false
-            isSameSoundMode = false
-            sameSoundBase = ""
-            justCommitted = false
-            clearZhuyinSlots()
+        let fromOtherIM = Date().timeIntervalSince(Self.lastDeactivateTime) > 0.3
+        Self.activeSession = self
+        composing = ""
+        currentCandidates = []
+        isWildcard = false
+        eatNextSpace = false
+        isSameSoundMode = false
+        sameSoundBase = ""
+        justCommitted = false
+        clearZhuyinSlots()
+        if fromOtherIM && YabomishPrefs.showActivateToast {
+            showModeToast(isEnglishMode ? "A" : (Self.modeLabels[inputMode] ?? "繁中"))
         }
     }
 
     override func deactivateServer(_ sender: Any!) {
+        Self.lastDeactivateTime = Date()
         guard Self.activeSession === self else {
             super.deactivateServer(sender)
             return

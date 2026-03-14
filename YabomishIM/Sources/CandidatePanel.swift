@@ -28,6 +28,7 @@ final class CandidatePanel: NSPanel {
     private var dragOffset: NSPoint = .zero
     private var composingText = ""
     var targetScreen: NSScreen?
+    var modeTag: String = ""  // 當前模式標籤（非 "繁中" 時顯示）
 
     private var isFixed: Bool { YabomishPrefs.panelPosition == "fixed" }
     private var effectiveScreen: NSScreen { targetScreen ?? NSScreen.main ?? NSScreen.screens[0] }
@@ -121,6 +122,9 @@ final class CandidatePanel: NSPanel {
 
     // MARK: - Public API
 
+    /// When true, cursor mode falls back to fixed-mode display (incompatible apps)
+    var fallbackFixed = false
+
     func show(candidates: [String], selKeys: [Character], at origin: NSPoint, composing: String = "") {
         guard !candidates.isEmpty else { hide(); return }
         self.candidates = candidates
@@ -128,7 +132,7 @@ final class CandidatePanel: NSPanel {
         self.highlightIndex = 0
         self.composingText = composing
 
-        if isFixed {
+        if isFixed || fallbackFixed {
             showFixed()
         } else {
             showCursor(at: origin)
@@ -136,7 +140,7 @@ final class CandidatePanel: NSPanel {
     }
 
     func hide() {
-        if isFixed && isVisible {
+        if (isFixed || fallbackFixed) && isVisible {
             NSAnimationContext.runAnimationGroup({ ctx in
                 ctx.duration = 0.12
                 animator().alphaValue = 0
@@ -183,7 +187,7 @@ final class CandidatePanel: NSPanel {
     func movePrev() { moveUp() }
     func moveNext() { moveDown() }
 
-    var isFixedMode: Bool { isFixed }
+    var isFixedMode: Bool { isFixed || fallbackFixed }
 
     func selectedCandidate() -> String? {
         guard highlightIndex < candidates.count else { return nil }
@@ -201,7 +205,7 @@ final class CandidatePanel: NSPanel {
     }
 
     private func rebuildCurrentMode() {
-        if isFixed { rebuildFixedLabel() } else { rebuildLabels() }
+        if isFixed || fallbackFixed { rebuildFixedLabel() } else { rebuildLabels() }
     }
 
     // MARK: - Cursor mode (original vertical layout)
@@ -337,6 +341,14 @@ final class CandidatePanel: NSPanel {
             result.append(NSAttributedString(string: sep + "◀ \(currentPage)/\(totalPages) ▶", attributes: normalAttrs))
         }
 
+        if !modeTag.isEmpty && modeTag != "繁中" {
+            let tagFont = NSFont.systemFont(ofSize: YabomishPrefs.fixedFontSize * 0.65)
+            let tagAttrs: [NSAttributedString.Key: Any] = [
+                .font: tagFont, .foregroundColor: NSColor.secondaryLabelColor
+            ]
+            result.append(NSAttributedString(string: sep + "[\(modeTag)]", attributes: tagAttrs))
+        }
+
         fixedLabel.attributedStringValue = result
 
         let size = fixedLabel.intrinsicContentSize
@@ -434,6 +446,21 @@ final class CandidatePanel: NSPanel {
 
         menu.addItem(.separator())
 
+        // Font size submenu
+        let fontMenu = NSMenu()
+        for size in stride(from: 14, through: 48, by: 2) {
+            let item = NSMenuItem(title: "\(size)pt", action: #selector(menuSetFontSize(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = CGFloat(size)
+            if abs(YabomishPrefs.fixedFontSize - CGFloat(size)) < 1 { item.state = .on }
+            fontMenu.addItem(item)
+        }
+        let fontItem = NSMenuItem(title: "字體大小", action: nil, keyEquivalent: "")
+        fontItem.submenu = fontMenu
+        menu.addItem(fontItem)
+
+        menu.addItem(.separator())
+
         // Mode toggle
         let toggleTitle = isFixed ? "切換到游標跟隨" : "切換到固定位置"
         let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(menuToggleMode), keyEquivalent: "")
@@ -452,6 +479,12 @@ final class CandidatePanel: NSPanel {
         let a = sender.representedObject as! CGFloat
         YabomishPrefs.fixedAlpha = a
         alphaValue = a
+    }
+
+    @objc private func menuSetFontSize(_ sender: NSMenuItem) {
+        YabomishPrefs.fixedFontSize = sender.representedObject as! CGFloat
+        rebuildFixedLabel()
+        repositionFixed()
     }
 
     @objc private func menuToggleMode() {
