@@ -4,3 +4,5 @@ llm-poc/
 .kiro/
 doc/
 liu.cin
+*.dmg
+dmg_staging/
