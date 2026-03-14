@@ -79,6 +79,14 @@ class YabomishInputController: IMKInputController {
     private var zyMedial  = ""     // 介音 slot (ㄧㄨㄩ)
     private var zyFinal   = ""     // 韻母 slot
 
+    // ,, command buffer
+    private var commaCommandBuffer = ""   // collects chars after ",,"
+    private var isInCommaCommand = false  // true after seeing ",,"
+
+    // Input mode (,,T/,,S/,,SP/,,TS/,,ST/,,J)
+    enum InputMode: String { case t, s, sp, sl, ts, st, j }
+    private var inputMode: InputMode = .t
+
     private var selKeys: [Character] { Self.cinTable.selKeys }
     private var panel: CandidatePanel { CandidatePanel.shared }
 
@@ -165,7 +173,8 @@ class YabomishInputController: IMKInputController {
                     _ = handleSameSound(client: client)
                     return true
                 }
-                // Pre-commit: enter same-sound mode, type code to pick base char
+                // Idle: enter pending state for '; (zhuyin) detection
+                // If next key is not ';', outputs 、 (頓號) instead
                 isSameSoundMode = true
                 composing = "'"
                 updateMarkedText(client: client)
@@ -175,9 +184,44 @@ class YabomishInputController: IMKInputController {
 
         justCommitted = false
 
+        // ,, command buffer: Space/Enter dispatches, Backspace/Escape cancels
+        if isInCommaCommand {
+            if keyCode == 49 || keyCode == 36 { // Space or Enter
+                return dispatchCommaCommand(client: client)
+            }
+            if keyCode == 51 { // Backspace
+                if commaCommandBuffer.isEmpty {
+                    isInCommaCommand = false
+                    composing = ","
+                    updateMarkedText(client: client)
+                } else {
+                    commaCommandBuffer = String(commaCommandBuffer.dropLast())
+                    composing = ",," + commaCommandBuffer
+                    updateMarkedText(client: client)
+                }
+                return true
+            }
+            if keyCode == 53 { // Escape
+                isInCommaCommand = false
+                commaCommandBuffer = ""
+                resetComposing(client: client)
+                return true
+            }
+            // Other keys handled in handleLetterInput (collecting chars)
+        }
+
         // Space
         if keyCode == 49 {
             if eatNextSpace { eatNextSpace = false; return true }
+            // Idle ' + space → output 、 (頓號)
+            if isSameSoundMode && composing == "'" && sameSoundBase.isEmpty {
+                isSameSoundMode = false
+                composing = ""
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                commitText("、", client: client)
+                return true
+            }
             return handleSpace(client: client)
         }
         eatNextSpace = false
@@ -293,6 +337,33 @@ class YabomishInputController: IMKInputController {
             return true
         }
 
+        // Idle ' followed by non-; → output 、 (頓號) then process char normally
+        if isSameSoundMode && composing == "'" && sameSoundBase.isEmpty {
+            isSameSoundMode = false
+            composing = ""
+            client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                 replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            commitText("、", client: client)
+            // Fall through to process the char as normal input
+        }
+
+        // ,, command buffer: second comma triggers command mode
+        if composing == "," && char == "," && !isSameSoundMode {
+            isInCommaCommand = true
+            commaCommandBuffer = ""
+            composing = ",,"
+            updateMarkedText(client: client)
+            return true
+        }
+
+        // ,, command buffer: collecting command chars
+        if isInCommaCommand {
+            commaCommandBuffer += char
+            composing = ",," + commaCommandBuffer
+            updateMarkedText(client: client)
+            return true
+        }
+
         let newComposing = composing + char
         let maxLen = isSameSoundMode ? kMaxCodeLength + 1 : kMaxCodeLength
 
@@ -370,6 +441,39 @@ class YabomishInputController: IMKInputController {
     private func handleEscape(client: IMKTextInput) -> Bool {
         if composing.isEmpty { return false }
         resetComposing(client: client)
+        return true
+    }
+
+    // MARK: - ,, Command Dispatch
+
+    private func dispatchCommaCommand(client: IMKTextInput) -> Bool {
+        let cmd = commaCommandBuffer.lowercased()
+        isInCommaCommand = false
+        commaCommandBuffer = ""
+        resetComposing(client: client)
+
+        let modeMap: [String: InputMode] = [
+            "t": .t, "s": .s, "sp": .sp, "sl": .sl, "ts": .ts, "st": .st, "j": .j
+        ]
+
+        // ,,RS → reset frequency data (special command, not a mode)
+        if cmd == "rs" {
+            Self.freqTracker.reset()
+            showModeToast("重置")
+            NSLog("YabomishIM: frequency data reset")
+            return true
+        }
+
+        guard let mode = modeMap[cmd] else {
+            NSSound.beep()
+            return true
+        }
+        inputMode = mode
+        let labels: [InputMode: String] = [
+            .t: "繁", .s: "簡", .sp: "速", .sl: "慢", .ts: "繁→簡", .st: "簡→繁", .j: "日"
+        ]
+        showModeToast(labels[mode] ?? "中")
+        NSLog("YabomishIM: mode → %@", mode.rawValue)
         return true
     }
 
@@ -637,10 +741,76 @@ class YabomishInputController: IMKInputController {
 
     private func refreshCandidates() {
         let code = isSameSoundMode ? String(composing.dropFirst()) : composing
+
+        // ,,J mode: auto-append , and . to look up hiragana/katakana
+        if inputMode == .j {
+            let hira = Self.cinTable.lookup(code + ",")
+            let kata = Self.cinTable.lookup(code + ".")
+            currentCandidates = hira + kata
+            return
+        }
+
         let raw = isWildcard
             ? Self.cinTable.wildcardLookup(code)
             : Self.cinTable.lookup(code)
-        currentCandidates = Self.freqTracker.sortedWithContext(raw, forCode: code, prev: lastCommitted)
+
+        var candidates = Self.freqTracker.sortedWithContext(raw, forCode: code, prev: lastCommitted)
+
+        switch inputMode {
+        case .sp:
+            // Only keep candidates whose shortest code(s) include current input
+            let table = Self.cinTable.shortestCodesTable
+            let spFiltered = candidates.filter { table[$0]?.contains(code) == true }
+            if spFiltered.isEmpty && !candidates.isEmpty {
+                let hints = candidates.compactMap { ch -> String? in
+                    guard let scs = table[ch], !scs.contains(code) else { return nil }
+                    return "\(ch)→\(scs.sorted().first ?? "")"
+                }
+                if !hints.isEmpty {
+                    showCodeHintToast(hints.prefix(5).joined(separator: "  "), duration: 2.0)
+                }
+            }
+            candidates = spFiltered
+        case .sl:
+            // Only keep candidates whose longest code(s) include current input
+            let table = Self.cinTable.longestCodesTable
+            let slFiltered = candidates.filter { table[$0]?.contains(code) == true }
+            if slFiltered.isEmpty && !candidates.isEmpty {
+                let hints = candidates.compactMap { ch -> String? in
+                    guard let lcs = table[ch], !lcs.contains(code) else { return nil }
+                    return "\(ch)→\(lcs.sorted().first ?? "")"
+                }
+                if !hints.isEmpty {
+                    showCodeHintToast(hints.prefix(5).joined(separator: "  "), duration: 2.0)
+                }
+            }
+            candidates = slFiltered
+        case .ts:
+            // 打繁出簡: convert trad→simp, dedup
+            var seen = Set<String>()
+            candidates = candidates.compactMap { ch in
+                let s = Self.cinTable.convert(ch, map: Self.cinTable.t2s)
+                return seen.insert(s).inserted ? s : nil
+            }
+        case .st:
+            // 打簡出繁: convert simp→trad, dedup
+            var seen = Set<String>()
+            candidates = candidates.compactMap { ch in
+                let t = Self.cinTable.convert(ch, map: Self.cinTable.s2t)
+                return seen.insert(t).inserted ? t : nil
+            }
+        case .s:
+            // 簡體模式: only keep simplified chars (those in s2t map or already simplified)
+            var seen = Set<String>()
+            candidates = candidates.compactMap { ch in
+                let s = Self.cinTable.convert(ch, map: Self.cinTable.t2s)
+                return seen.insert(s).inserted ? s : nil
+            }
+        case .t, .j:
+            break
+        }
+
+        currentCandidates = candidates
     }
 
     private func commitText(_ text: String, client: IMKTextInput) {
@@ -688,6 +858,8 @@ class YabomishInputController: IMKInputController {
         isSameSoundMode = false
         sameSoundBase = ""
         eatNextSpace = false
+        isInCommaCommand = false
+        commaCommandBuffer = ""
         clearZhuyinSlots()
         client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))

@@ -82,6 +82,14 @@ final class FreqTracker {
         try? data.write(to: URL(fileURLWithPath: path))
     }
 
+    func reset() {
+        freq = [:]
+        bigram = [:]
+        recordCount = 0
+        dirty = true
+        saveIfNeeded()
+    }
+
     private func load() {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return }
         if let storage = try? JSONDecoder().decode(Storage.self, from: data) {

@@ -214,6 +214,10 @@ YabomishIM/
 
 > 後續更新：注音查碼重構（slot 自動排列 + 聲調修復）、中文標點直出、固定模式方向鍵選字修正。詳見 [CHANGELOG.md](CHANGELOG.md)。
 
+## 致謝
+
+- [@trend-jack-c-tang](https://github.com/trend-jack-c-tang) — 英文模式 Shift 修正、游標跟隨定位改善、安裝權限修正
+
 ## 支持作者
 
 覺得好用？來吃一球 gelato 🍨

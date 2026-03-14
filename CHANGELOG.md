@@ -2,6 +2,16 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [Unreleased]
+
+### 修正
+- 英文模式下 Shift 組合鍵不再誤觸中英切換（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
+- 游標跟隨模式選字窗定位改善：改用 `markedRange()` + `firstRect(forCharacterRange:)`（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
+- `install.sh` 安裝後加 `chmod -R a+rX` 確保多帳號可讀取（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
+
+### 變更
+- `.gitignore` 加入 `liu.cin`（by [@trend-jack-c-tang](https://github.com/trend-jack-c-tang)）
+
 ## [0.1.20] — 2026-03-13
 
 ### 新增

@@ -15,6 +15,36 @@ final class CINTable {
         _reverseTable = newReverse
         return newReverse
     }
+
+    // Shortest code(s) per character (for ,,SP mode) — may have multiple equal-length codes
+    private var _shortestCodes: [String: Set<String>]?
+    var shortestCodesTable: [String: Set<String>] {
+        if let cached = _shortestCodes { return cached }
+        var result: [String: Set<String>] = [:]
+        for (char, codes) in reverseTable {
+            let minLen = codes.min(by: { $0.count < $1.count })?.count ?? 0
+            result[char] = Set(codes.filter { $0.count == minLen })
+        }
+        _shortestCodes = result
+        return result
+    }
+
+    // Longest code(s) per character (for ,,SL mode)
+    private var _longestCodes: [String: Set<String>]?
+    var longestCodesTable: [String: Set<String>] {
+        if let cached = _longestCodes { return cached }
+        var result: [String: Set<String>] = [:]
+        for (char, codes) in reverseTable {
+            let maxLen = codes.max(by: { $0.count < $1.count })?.count ?? 0
+            result[char] = Set(codes.filter { $0.count == maxLen })
+        }
+        _longestCodes = result
+        return result
+    }
+
+    // Traditional ↔ Simplified character maps
+    private(set) var t2s: [String: String] = [:]  // 繁→簡
+    private(set) var s2t: [String: String] = [:]  // 簡→繁
     private var prefixes: Set<String> = []
     private(set) var selKeys: [Character] = Array("1234567890")
     private(set) var cinName: String = ""
@@ -27,11 +57,29 @@ final class CINTable {
         let cachePath = path + ".cache"
         if loadCache(cachePath), !isCacheStale(cinPath: path, cachePath: cachePath) {
             NSLog("YabomishIM: Loaded cache (%d codes) in instant", table.count)
-            return
+        } else {
+            parseCIN(path: path)
+            saveCache(cachePath)
+            NSLog("YabomishIM: Parsed %d codes from %@, cache saved", table.count, path)
         }
-        parseCIN(path: path)
-        saveCache(cachePath)
-        NSLog("YabomishIM: Parsed %d codes from %@, cache saved", table.count, path)
+        loadCharMaps()
+    }
+
+    private func loadCharMaps() {
+        let userDir = NSHomeDirectory() + "/Library/YabomishIM/"
+        let bundlePath = Bundle.main.resourcePath ?? ""
+        for (name, target) in [("t2s", \CINTable.t2s), ("s2t", \CINTable.s2t)] {
+            let userFile = userDir + name + ".json"
+            let bundleFile = bundlePath + "/" + name + ".json"
+            let path = FileManager.default.fileExists(atPath: userFile) ? userFile : bundleFile
+            guard let data = FileManager.default.contents(atPath: path),
+                  let map = try? JSONDecoder().decode([String: String].self, from: data) else {
+                NSLog("YabomishIM: Failed to load %@.json", name)
+                continue
+            }
+            self[keyPath: target] = map
+            NSLog("YabomishIM: Loaded %@.json (%d entries)", name, map.count)
+        }
     }
 
     // MARK: - CIN Parser
@@ -167,5 +215,10 @@ final class CINTable {
     
     func reverseLookup(_ char: String) -> [String] {
         reverseTable[char] ?? []
+    }
+
+    /// Convert a character using t2s or s2t map
+    func convert(_ char: String, map: [String: String]) -> String {
+        map[char] ?? char
     }
 }

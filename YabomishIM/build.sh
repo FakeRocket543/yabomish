@@ -29,6 +29,12 @@ fi
 if [ -f "$RES_DIR/zhuyin_data.json" ]; then
     cp "$RES_DIR/zhuyin_data.json" "$APP_BUNDLE/Contents/Resources/"
 fi
+# Copy character maps
+for f in t2s.json s2t.json char_freq.json; do
+    if [ -f "$RES_DIR/$f" ]; then
+        cp "$RES_DIR/$f" "$APP_BUNDLE/Contents/Resources/"
+    fi
+done
 
 # Write PkgInfo
 echo -n "APPL????" > "$APP_BUNDLE/Contents/PkgInfo"
