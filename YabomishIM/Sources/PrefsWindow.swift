@@ -123,6 +123,7 @@ final class PrefsWindow: NSPanel {
 
     func showWindow() {
         NSApp.activate(ignoringOtherApps: true)
+        level = .floating
         center()
         makeKeyAndOrderFront(nil)
     }

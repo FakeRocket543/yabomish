@@ -13,6 +13,7 @@ final class CandidatePanel: NSPanel {
     private var selKeys: [Character] = []
     private var highlightIndex = 0
     private let pageSize = 9
+    private var showGeneration = 0
 
     // MARK: - Cursor-mode views
 
@@ -127,6 +128,7 @@ final class CandidatePanel: NSPanel {
 
     func show(candidates: [String], selKeys: [Character], at origin: NSPoint, composing: String = "") {
         guard !candidates.isEmpty else { hide(); return }
+        showGeneration += 1
         self.candidates = candidates
         self.selKeys = selKeys
         self.highlightIndex = 0
@@ -140,11 +142,14 @@ final class CandidatePanel: NSPanel {
     }
 
     func hide() {
+        let gen = self.showGeneration
         if (isFixed || fallbackFixed) && isVisible {
             NSAnimationContext.runAnimationGroup({ ctx in
                 ctx.duration = 0.12
                 animator().alphaValue = 0
             }, completionHandler: {
+                // 只有在沒被重新 show 的情況下才關閉
+                guard self.showGeneration == gen else { return }
                 self.orderOut(nil)
             })
         } else {
@@ -295,6 +300,11 @@ final class CandidatePanel: NSPanel {
                 self.animator().alphaValue = YabomishPrefs.fixedAlpha
             })
         } else {
+            // 取消進行中的淡出動畫，確保 alpha 正確
+            NSAnimationContext.beginGrouping()
+            NSAnimationContext.current.duration = 0
+            animator().alphaValue = YabomishPrefs.fixedAlpha
+            NSAnimationContext.endGrouping()
             orderFront(nil)
         }
     }

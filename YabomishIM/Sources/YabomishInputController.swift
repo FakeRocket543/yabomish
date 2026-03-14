@@ -170,10 +170,9 @@ class YabomishInputController: IMKInputController {
             // Mid-compose: commit first candidate then show same-sound list
             if !composing.isEmpty && !currentCandidates.isEmpty {
                 let first = currentCandidates[0]
-                commitText(first, client: client)
                 isSameSoundMode = true
-                sameSoundBase = first
-                _ = handleSameSound(client: client)
+                // sameSoundBase 留空，commitText 會走 step 1 路徑
+                commitText(first, client: client)
                 return true
             }
             if composing.isEmpty {
@@ -348,8 +347,17 @@ class YabomishInputController: IMKInputController {
             return true
         }
 
-        // Idle ' followed by non-; → output 、 (頓號) then process char normally
+        // Idle ' followed by non-; letter → enter same-sound code input mode
         if isSameSoundMode && composing == "'" && sameSoundBase.isEmpty {
+            if char >= "a" && char <= "z" || char == "*" {
+                // 同音字模式：收集編碼，送字後列同音字
+                composing = String(char)
+                refreshCandidates()
+                updateMarkedText(client: client)
+                showCandidatePanel(client: client)
+                return true
+            }
+            // Non-letter: output 頓號 then process char normally
             isSameSoundMode = false
             composing = ""
             client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
@@ -668,21 +676,13 @@ class YabomishInputController: IMKInputController {
 
     private func handleSameSound(client: IMKTextInput) -> Bool {
         let results = ZhuyinLookup.shared.lookup(sameSoundBase)
-        guard !results.isEmpty else { NSSound.beep(); resetComposing(client: client); return true }
-        var candidates: [String] = []
-        var seen = Set<String>()
-        for r in results {
-            for c in r.chars where seen.insert(c).inserted {
-                candidates.append(c)
-            }
-        }
-        NSLog("YabomishIM: sameSound base=%@ readings=%d candidates=%d first10=%@",
-              sameSoundBase, results.count, candidates.count,
-              candidates.prefix(10).joined(separator: ","))
-        currentCandidates = ZhuyinLookup.shared.sortByFreq(candidates)
+        guard let first = results.first else { NSSound.beep(); resetComposing(client: client); return true }
+        // 只取第一個讀音的同音字（聲調區分）
+        currentCandidates = ZhuyinLookup.shared.sortByFreq(first.chars)
         composing = sameSoundBase
-        // Keep marked text as the base char, panel position follows cursor
-        updateMarkedText(client: client)
+        NSLog("YabomishIM: sameSound base=%@ zhuyin=%@ candidates=%d",
+              sameSoundBase, first.zhuyin, currentCandidates.count)
+        updateMarkedText("\(sameSoundBase)[\(first.zhuyin)]", client: client)
         showCandidatePanel(client: client)
         return true
     }
@@ -1032,10 +1032,11 @@ class YabomishInputController: IMKInputController {
         NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
         panel.title = "選擇嘸蝦米字表"
-        panel.allowedContentTypes = [.init(filenameExtension: "cin")!]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        if fromIME { panel.level = .popUpMenu }
+        panel.allowsOtherFileTypes = true
+        panel.allowedContentTypes = [.plainText]
+        panel.level = .floating
         guard panel.runModal() == .OK, let src = panel.url else { return false }
         let dir = NSHomeDirectory() + "/Library/YabomishIM"
         let dst = dir + "/liu.cin"
