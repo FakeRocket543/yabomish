@@ -73,6 +73,8 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 
 打開「終端機」（應用程式 → 工具程式 → 終端機），貼上以下指令：
 
+> 💡 首次使用會自動安裝 Xcode Command Line Tools（含 git），按照系統提示完成後再貼一次即可。
+
 ```bash
 git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setup.sh
 ```
