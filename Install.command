@@ -82,9 +82,15 @@ esac
 # 字表檢查
 USER_CIN_DIR="$HOME/Library/YabomishIM"
 mkdir -p "$USER_CIN_DIR"
+
+# 如果同目錄有 liu.cin（DMG 或專案根目錄），自動複製
+if [ -f "$SCRIPT_DIR/liu.cin" ] && [ ! -f "$USER_CIN_DIR/liu.cin" ]; then
+    cp "$SCRIPT_DIR/liu.cin" "$USER_CIN_DIR/"
+    echo "✅ 已從安裝目錄匯入字表到 $USER_CIN_DIR/"
+fi
+
 if [ -f "$USER_CIN_DIR/liu.cin" ]; then
-    echo ""
-    echo "✅ 已偵測到字表: $USER_CIN_DIR/liu.cin"
+    echo "✅ 字表就緒: $USER_CIN_DIR/liu.cin"
 else
     echo ""
     echo "⚠️  尚未偵測到字表"

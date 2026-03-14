@@ -74,16 +74,19 @@ esac
 # Ensure user CIN directory and check for liu.cin
 mkdir -p "$USER_CIN_DIR"
 
-if [ ! -f "$USER_CIN_DIR/liu.cin" ]; then
+# 如果專案根目錄有 liu.cin，自動複製
+PROJECT_CIN="$SCRIPT_DIR/../liu.cin"
+if [ -f "$PROJECT_CIN" ] && [ ! -f "$USER_CIN_DIR/liu.cin" ]; then
+    cp "$PROJECT_CIN" "$USER_CIN_DIR/"
+    echo "✅ 已從專案目錄匯入字表到 $USER_CIN_DIR/"
+fi
+
+if [ -f "$USER_CIN_DIR/liu.cin" ]; then
+    echo "✅ 字表就緒: $USER_CIN_DIR/liu.cin"
+else
     echo ""
     echo "⚠️  尚未偵測到字表！"
-    echo "   請將 liu.cin 複製到: $USER_CIN_DIR/"
-    echo ""
-    echo "   cp /你的/liu.cin路徑 $USER_CIN_DIR/"
-    echo ""
-    echo "   沒有字表將無法輸入中文。"
-else
-    echo "✅ 已偵測到字表: $USER_CIN_DIR/liu.cin"
+    echo "   首次切換到 Yabomish 時會引導你匯入 liu.cin。"
 fi
 
 echo ""

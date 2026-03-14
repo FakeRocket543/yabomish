@@ -77,8 +77,13 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setup.sh
 ```
 
-安裝完成後，到 **系統設定 → 鍵盤 → 輸入方式 → 點左下角「+」** 加入「Yabomish」。
-首次切換到 Yabomish 時，會自動引導你選擇 `liu.cin` 字表檔。
+安裝完成後：
+
+1. **登出再登入**（蘋果選單  → 登出），或直接**重新開機**
+2. 打開 **系統設定** → 左上角搜尋列貼上 `Yabomish` → 點選「輸入方式」→ 加入
+3. 首次切換到 Yabomish 時，會自動引導你選擇 `liu.cin` 字表檔
+
+> 💡 如果你的 `liu.cin` 放在專案根目錄（跟 `setup.sh` 同層），安裝時會自動匯入，不需要再手動選檔。
 
 ## 使用
 

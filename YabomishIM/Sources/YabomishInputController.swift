@@ -1024,18 +1024,18 @@ class YabomishInputController: IMKInputController {
         alert.addButton(withTitle: "稍後")
         alert.alertStyle = .warning
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        importCIN()
+        importCIN(fromIME: true)
     }
 
     @discardableResult
-    static func importCIN() -> Bool {
+    static func importCIN(fromIME: Bool = false) -> Bool {
         NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
         panel.title = "選擇嘸蝦米字表"
         panel.allowedContentTypes = [.init(filenameExtension: "cin")!]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        panel.level = .popUpMenu
+        if fromIME { panel.level = .popUpMenu }
         guard panel.runModal() == .OK, let src = panel.url else { return false }
         let dir = NSHomeDirectory() + "/Library/YabomishIM"
         let dst = dir + "/liu.cin"
