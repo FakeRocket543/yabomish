@@ -104,7 +104,7 @@ class YabomishInputController: IMKInputController {
     enum InputMode: String { case t, s, sp, sl, ts, st, j }
     private var inputMode: InputMode = .t
     private static let modeLabels: [InputMode: String] = [
-        .t: "繁中", .s: "簡中", .sp: "速", .sl: "慢", .ts: "繁→簡", .st: "簡→繁", .j: "日"
+        .t: "繁中", .s: "簡中", .sp: "速", .sl: "慢", .ts: "繁中→簡中", .st: "簡中→繁中", .j: "日"
     ]
 
     private var selKeys: [Character] { Self.cinTable.selKeys }
@@ -484,7 +484,7 @@ class YabomishInputController: IMKInputController {
 
         // ,,H → show available commands
         if cmd == "h" {
-            showCodeHintToast(",,T繁中 ,,S簡中 ,,SP速 ,,SL慢\n,,TS繁→簡 ,,ST簡→繁 ,,J日\n,,RS重置字頻 ,,C當前模式 ,,H說明", duration: 4.0)
+            showCodeHintToast(",,T繁中 ,,S簡中 ,,SP速 ,,SL慢\n,,TS繁中→簡中 ,,ST簡中→繁中 ,,J日\n,,RS重置字頻 ,,C當前模式 ,,H說明", duration: 4.0)
             return true
         }
 

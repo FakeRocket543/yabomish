@@ -43,8 +43,8 @@ final class CINTable {
     }
 
     // Traditional ↔ Simplified character maps
-    private(set) var t2s: [String: String] = [:]  // 繁→簡
-    private(set) var s2t: [String: String] = [:]  // 簡→繁
+    private(set) var t2s: [String: String] = [:]  // 繁中→簡中
+    private(set) var s2t: [String: String] = [:]  // 簡中→繁中
     private var prefixes: Set<String> = []
     private(set) var selKeys: [Character] = Array("1234567890")
     private(set) var cinName: String = ""
