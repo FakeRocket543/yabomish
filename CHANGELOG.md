@@ -4,20 +4,29 @@
 
 ## [0.2.1] — 2026-03-14
 
-### 變更
-- 移除「僅圖示」狀態列選項（會導致切換輸入法浮出框空白），只保留 Yabo / Yabomish
-- 修正選 Yabomish 時未寫回 CFBundleName 的問題
+### 新增
 - 字表匯入引導：首次啟動偵測空字表 → NSOpenPanel 引導匯入 liu.cin
 - 偏好設定新增「匯入字表⋯」按鈕，CINTable 支援熱重載
+- 安裝時自動偵測專案根目錄的 liu.cin 並複製到 `~/Library/YabomishIM/`
+- 新增 `Install.command`（DMG 安裝腳本）、`create_dmg.sh`（codesign + notarize 打包）
+
+### 修正
 - 切入 toast 改用 `TISNotifySelectedKeyboardInputSourceChanged` 監聽，Cmd+Tab 切 app 不再誤觸
-- 新增 `Install.command`（DMG 安裝腳本）、`create_dmg.sh`（簽名打包）
+- 偏好設定「匯入字表⋯」不再因 NSOpenPanel 視窗層級衝突而崩潰
+- 選 Yabomish 狀態列名稱時未寫回 CFBundleName 的問題
+
+### 變更
+- 移除「僅圖示」狀態列選項（會導致切換輸入法浮出框空白），只保留 Yabo / Yabomish
+- 模式標籤：繁→簡 / 簡→繁 改為 繁中→簡中 / 簡中→繁中
+- `setup.sh` 簡化為一行安裝，移除手動 liu.cin 前置檢查
+- README 安裝說明改善：一行指令、Xcode CLT 提示、登出提醒、系統設定搜尋列教學
 
 ## [0.2.0] — 2026-03-14
 
 ### 新增
 - `,,` 命令系統：輸入 `,,`（兩個逗號）進入命令模式，支援以下命令：
   - `,,T` 繁中（預設）、`,,S` 簡中（字表內建簡體字）、`,,SP` 速打（僅最短碼）、`,,SL` 慢打（僅最長碼）
-  - `,,TS` 繁→簡轉換、`,,ST` 簡→繁轉換、`,,J` 日文假名
+  - `,,TS` 繁中→簡中轉換、`,,ST` 簡中→繁中轉換、`,,J` 日文假名
   - `,,RS` 重置字頻統計、`,,C` 顯示當前模式、`,,H` 命令說明
 - `'` 空閒時輸出頓號「、」（`';` 仍觸發注音反查）
 - 繁簡轉換表 `t2s.json`（3553 筆）、`s2t.json`（2606 筆），由 OpenCC 生成
