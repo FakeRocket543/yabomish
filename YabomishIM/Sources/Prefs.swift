@@ -82,7 +82,7 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "showActivateToast") }
     }
 
-    /// 狀態列顯示名稱: "icon" / "yabo" / "yabomish"
+    /// 狀態列顯示名稱: "yabo" / "yabomish"
     static var menuBarLabel: String {
         get { defaults.string(forKey: "menuBarLabel") ?? "yabomish" }
         set { defaults.set(newValue, forKey: "menuBarLabel") }

@@ -108,8 +108,8 @@ final class PrefsWindow: NSPanel {
 
         // — 狀態列名稱 —
         let labelPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        labelPopup.addItems(withTitles: ["僅圖示", "Yabo", "Yabomish"])
-        let labelIdx = ["icon": 0, "yabo": 1, "yabomish": 2][YabomishPrefs.menuBarLabel] ?? 2
+        labelPopup.addItems(withTitles: ["Yabo", "Yabomish"])
+        let labelIdx = ["yabo": 0, "yabomish": 1][YabomishPrefs.menuBarLabel] ?? 1
         labelPopup.selectItem(at: labelIdx)
         labelPopup.target = self; labelPopup.action = #selector(menuBarLabelChanged(_:))
         stack.addArrangedSubview(row("狀態列名稱", labelPopup))
@@ -186,7 +186,7 @@ final class PrefsWindow: NSPanel {
     }
 
     @objc private func menuBarLabelChanged(_ sender: NSPopUpButton) {
-        let keys = ["icon", "yabo", "yabomish"]
+        let keys = ["yabo", "yabomish"]
         YabomishPrefs.menuBarLabel = keys[sender.indexOfSelectedItem]
         showReinstallAlert()
     }

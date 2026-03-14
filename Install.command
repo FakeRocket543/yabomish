@@ -56,31 +56,25 @@ fi
 PLIST="$INSTALL_DIR/$APP_NAME.app/Contents/Info.plist"
 LABEL_PREF=$(defaults read com.yabomishim.inputmethod.YabomishIM menuBarLabel 2>/dev/null || echo "yabomish")
 LABEL_CUR="Yabomish"
-[ "$LABEL_PREF" = "icon" ] && LABEL_CUR="僅圖示"
 [ "$LABEL_PREF" = "yabo" ] && LABEL_CUR="Yabo"
 echo ""
 echo "狀態列顯示名稱（目前: $LABEL_CUR）："
-echo "  1) 僅圖示"
-echo "  2) Yabo"
-echo "  3) Yabomish"
-printf "選擇 [1/2/3，Enter 保持]: "
+echo "  1) Yabo"
+echo "  2) Yabomish"
+printf "選擇 [1/2，Enter 保持]: "
 read -r choice
 case "$choice" in
-    1) LABEL_PREF="icon" ;;
-    2) LABEL_PREF="yabo" ;;
-    3) LABEL_PREF="yabomish" ;;
+    1) LABEL_PREF="yabo" ;;
+    2) LABEL_PREF="yabomish" ;;
 esac
 defaults write com.yabomishim.inputmethod.YabomishIM menuBarLabel "$LABEL_PREF"
 case "$LABEL_PREF" in
-    icon)
-        sudo /usr/libexec/PlistBuddy -c "Set :CFBundleName ''" "$PLIST"
-        echo "📛 狀態列: 僅圖示"
-        ;;
     yabo)
         sudo /usr/libexec/PlistBuddy -c "Set :CFBundleName Yabo" "$PLIST"
         echo "📛 狀態列: Yabo"
         ;;
     *)
+        sudo /usr/libexec/PlistBuddy -c "Set :CFBundleName Yabomish" "$PLIST"
         echo "📛 狀態列: Yabomish"
         ;;
 esac

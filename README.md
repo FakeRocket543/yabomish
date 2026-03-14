@@ -71,21 +71,14 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 
 ## 安裝
 
-打開「終端機」（應用程式 → 工具程式 → 終端機），依序貼上：
+打開「終端機」（應用程式 → 工具程式 → 終端機），貼上以下指令：
 
 ```bash
-# 1. 下載專案
-git clone https://github.com/AlohaYos/yabomish.git
-cd yabomish
-
-# 2. 將你的 liu.cin 複製到這個資料夾
-cp /你的liu.cin路徑/liu.cin .
-
-# 3. 一鍵安裝（自動檢查編譯工具、編譯、安裝）
-./setup.sh
+git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setup.sh
 ```
 
 安裝完成後，到 **系統設定 → 鍵盤 → 輸入方式 → 點左下角「+」** 加入「Yabomish」。
+首次切換到 Yabomish 時，會自動引導你選擇 `liu.cin` 字表檔。
 
 ## 使用
 
@@ -156,7 +149,7 @@ cp /你的liu.cin路徑/liu.cin .
 - 注音反查
 - 切入時顯示模式提示
 - 蝦頭方向（← 向左 / → 向右）
-- 狀態列名稱（僅圖示 / Yabo / Yabomish）
+- 狀態列名稱（Yabo / Yabomish）
 
 也可用 `defaults write` 指令：
 
@@ -187,7 +180,7 @@ defaults write com.yabomishim.inputmethod.YabomishIM showActivateToast -bool tru
 # 蝦頭方向：left / right
 defaults write com.yabomishim.inputmethod.YabomishIM iconDirection left
 
-# 狀態列名稱：icon / yabo / yabomish
+# 狀態列名稱：yabo / yabomish
 defaults write com.yabomishim.inputmethod.YabomishIM menuBarLabel yabomish
 ```
 
@@ -241,6 +234,7 @@ YabomishIM/
 
 | 版本 | 日期 | 重點 |
 |------|------|------|
+| 0.2.1 | 2026-03-14 | 移除僅圖示選項、字表匯入引導、切入 toast 改用系統通知、DMG 打包 |
 | 0.2.0 | 2026-03-14 | `,,` 命令系統（8 種輸入模式）、頓號 `'`、繁簡轉換、日文假名、多螢幕修正、狀態列名稱選項 |
 | 0.1.20 | 2026-03-13 | `/` 穿透模式、同音字尾綴 `'`、補碼 VRSF、注音 `';` 觸發、ㄣ/ㄥ 修正 |
 | 0.1.19 | 2026-03-13 | 注音資料回退至純萌典版（9913 字）、滿碼無候選自動清除 |

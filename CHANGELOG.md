@@ -2,6 +2,16 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.2.1] — 2026-03-14
+
+### 變更
+- 移除「僅圖示」狀態列選項（會導致切換輸入法浮出框空白），只保留 Yabo / Yabomish
+- 修正選 Yabomish 時未寫回 CFBundleName 的問題
+- 字表匯入引導：首次啟動偵測空字表 → NSOpenPanel 引導匯入 liu.cin
+- 偏好設定新增「匯入字表⋯」按鈕，CINTable 支援熱重載
+- 切入 toast 改用 `TISNotifySelectedKeyboardInputSourceChanged` 監聽，Cmd+Tab 切 app 不再誤觸
+- 新增 `Install.command`（DMG 安裝腳本）、`create_dmg.sh`（簽名打包）
+
 ## [0.2.0] — 2026-03-14
 
 ### 新增
@@ -15,7 +25,7 @@
 - 選字框螢幕偵測：不相容 App（Terminal 等）自動 fallback 到固定模式顯示
 - 切入 Yabomish 時顯示當前模式 toast（僅從其他輸入法切入時觸發，以 deactivate 時間差判斷）
 - 固定模式選字框顯示當前模式小標籤（非繁中模式時）
-- 偏好設定新增：切入模式提示開關、蝦頭方向（← / →）、狀態列名稱（僅圖示 / Yabo / Yabomish）
+- 偏好設定新增：切入模式提示開關、蝦頭方向（← / →）、狀態列名稱（Yabo / Yabomish）
 - 固定模式右鍵選單新增字體大小調整（14–48pt）
 - 游標模式字體大小上限提高至 48pt（支援 4K+ 螢幕）
 - `install.sh` 互動選單：每次安裝可選擇蝦頭方向和狀態列名稱（顯示目前值，Enter 保持）

@@ -2,8 +2,6 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CIN_SRC="$SCRIPT_DIR/liu.cin"
-CIN_DST="$HOME/Library/YabomishIM"
 
 # Check Xcode Command Line Tools
 if ! xcode-select -p &>/dev/null; then
@@ -13,31 +11,11 @@ if ! xcode-select -p &>/dev/null; then
     exit 1
 fi
 
-# Check liu.cin
-if [ ! -f "$CIN_SRC" ]; then
-    echo "❌ 請先將 liu.cin 放到本資料夾: $SCRIPT_DIR/"
-    exit 1
-fi
-
-# Copy CIN table
-mkdir -p "$CIN_DST"
-cp "$CIN_SRC" "$CIN_DST/"
-echo "✅ 字表已複製到 $CIN_DST/"
-
-# Build
+# Build + Install (install.sh handles sudo, icon/label menus)
 cd "$SCRIPT_DIR/YabomishIM"
-./build.sh
-
-# Install (needs sudo)
-APP_NAME="YabomishIM"
-APP_BUNDLE="$SCRIPT_DIR/YabomishIM/build/$APP_NAME.app"
-INSTALL_DIR="/Library/Input Methods"
-
-killall "$APP_NAME" 2>/dev/null || true
-sleep 0.5
-
-echo "安裝到 $INSTALL_DIR/ ..."
-sudo cp -R "$APP_BUNDLE" "$INSTALL_DIR/"
+bash build.sh
+bash install.sh
 
 echo ""
 echo "✅ 完成！請到 系統設定 → 鍵盤 → 輸入方式 加入「Yabomish」"
+echo "   首次切換到 Yabomish 時會引導你匯入 liu.cin 字表。"
