@@ -470,7 +470,7 @@ class YabomishInputController: IMKInputController {
         // ,,RS → reset frequency data (special command, not a mode)
         if cmd == "rs" {
             Self.freqTracker.reset()
-            showModeToast("重置")
+            showModeToast("字頻已重置\n候選字恢復預設順序")
             NSLog("YabomishIM: frequency data reset")
             return true
         }
@@ -484,7 +484,7 @@ class YabomishInputController: IMKInputController {
 
         // ,,H → show available commands
         if cmd == "h" {
-            showCodeHintToast(",,T繁中 ,,S簡中 ,,SP速 ,,SL慢\n,,TS繁中→簡中 ,,ST簡中→繁中 ,,J日\n,,RS重置字頻 ,,C當前模式 ,,H說明", duration: 4.0)
+            showCodeHintToast(",,T繁中 ,,S簡中 ,,SP速 ,,SL慢\n,,TS繁中→簡中 ,,ST簡中→繁中 ,,J日\n,,RS重置字頻（候選字順序跑掉時使用）\n,,C當前模式 ,,H說明", duration: 4.0)
             return true
         }
 
