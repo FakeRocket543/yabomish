@@ -146,6 +146,19 @@ class YabomishInputController: IMKInputController {
                 shiftWasUsedWithOtherKey = true
                 return handleWildcardInput(client: client)
             }
+            // Shift+Space → 全型空格
+            if keyCode == 49 {
+                shiftWasUsedWithOtherKey = true
+                if !composing.isEmpty {
+                    if !currentCandidates.isEmpty {
+                        commitText(currentCandidates[0], client: client)
+                    } else {
+                        resetComposing(client: client)
+                    }
+                }
+                commitText("\u{3000}", client: client)
+                return true
+            }
             shiftWasUsedWithOtherKey = true
             if !composing.isEmpty {
                 if !currentCandidates.isEmpty {
@@ -189,6 +202,12 @@ class YabomishInputController: IMKInputController {
         // ,, command buffer: Space/Enter dispatches, Backspace/Escape cancels
         if isInCommaCommand {
             if keyCode == 49 || keyCode == 36 { // Space or Enter
+                if commaCommandBuffer.isEmpty && keyCode == 49 {
+                    isInCommaCommand = false
+                    resetComposing(client: client)
+                    commitText("\u{3000}", client: client)  // 全型空格
+                    return true
+                }
                 return dispatchCommaCommand(client: client)
             }
             if keyCode == 51 { // Backspace
