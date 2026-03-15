@@ -5,12 +5,12 @@ final class PrefsWindow: NSPanel {
 
     private init() {
         super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 520),
-                   styleMask: [.titled, .closable, .nonactivatingPanel],
+                   styleMask: [.titled, .closable],
                    backing: .buffered, defer: true)
         self.title = "Yabomish 偏好設定"
         self.level = .floating
         self.isReleasedWhenClosed = false
-        self.collectionBehavior = [.canJoinAllSpaces]
+        self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         let bg = NSVisualEffectView()
         bg.material = .windowBackground
@@ -117,11 +117,20 @@ final class PrefsWindow: NSPanel {
         // — 匯入字表 —
         let importBtn = NSButton(title: "匯入字表⋯", target: self, action: #selector(importCINClicked))
         stack.addArrangedSubview(importBtn)
+
+        // — Debug —
+        let debugBtn = NSButton(checkboxWithTitle: "Debug 模式（記錄操作日誌）", target: self, action: #selector(debugChanged(_:)))
+        debugBtn.state = YabomishPrefs.debugMode ? .on : .off
+        stack.addArrangedSubview(debugBtn)
+
+        let openLogBtn = NSButton(title: "打開 debug.log⋯", target: self, action: #selector(openDebugLog))
+        stack.addArrangedSubview(openLogBtn)
     }
 
     override var canBecomeKey: Bool { true }
 
     func showWindow() {
+        NSApp.setActivationPolicy(.accessory)
         NSApp.activate(ignoringOtherApps: true)
         level = .floating
         center()
@@ -193,7 +202,26 @@ final class PrefsWindow: NSPanel {
     }
 
     @objc private func importCINClicked() {
-        YabomishInputController.importCIN()
+        YabomishInputController.importCIN(attachedTo: self)
+    }
+
+    @objc private func debugChanged(_ sender: NSButton) {
+        YabomishPrefs.debugMode = sender.state == .on
+        if sender.state == .on {
+            DebugLog.log("Debug mode enabled")
+        }
+    }
+
+    @objc private func openDebugLog() {
+        let path = NSHomeDirectory() + "/Library/YabomishIM/debug.log"
+        if FileManager.default.fileExists(atPath: path) {
+            NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        } else {
+            let a = NSAlert()
+            a.messageText = "尚無日誌"
+            a.informativeText = "請先開啟 Debug 模式並操作一段時間。"
+            a.runModal()
+        }
     }
 
     private func showReinstallAlert() {

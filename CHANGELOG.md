@@ -2,6 +2,21 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.2.4] — 2026-03-15
+
+### 新增
+- 注音模式選字後直接送出字到輸入框（同時顯示嘸蝦米碼提示）
+- Debug 模式：偏好設定可開啟，記錄操作日誌至 `~/Library/YabomishIM/debug.log`，方便回報問題
+- 匯入字表改用系統原生選檔對話框（osascript），避開背景型 app 視窗層級問題
+
+### 修正
+- 匯入字表視窗跑到背景、點擊路徑崩潰：改用外部選檔流程，不再受 InputMethodKit 背景 app 限制
+- 偏好設定視窗無法正常前景化：移除 nonactivatingPanel，改為可活化視窗
+
+### 變更
+- App 類型從 LSBackgroundOnly 改為 LSUIElement（支援顯示 UI 的 agent app）
+- 致謝 GitHub 帳號更正為 [@Marsjelly](https://github.com/Marsjelly)
+
 ## [0.2.3] — 2026-03-14
 
 ### 修正

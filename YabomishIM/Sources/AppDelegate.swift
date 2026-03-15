@@ -14,6 +14,11 @@ class NSManualApplication: NSApplication {
 class AppDelegate: NSObject, NSApplicationDelegate {
     static var server = IMKServer()
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Input methods still need an activatable policy when showing prefs/open panels.
+        NSApp.setActivationPolicy(.accessory)
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         let name = Bundle.main.infoDictionary?["InputMethodConnectionName"] as? String
         Self.server = IMKServer(name: name, bundleIdentifier: Bundle.main.bundleIdentifier)

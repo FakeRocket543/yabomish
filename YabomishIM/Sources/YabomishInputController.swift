@@ -128,6 +128,8 @@ class YabomishInputController: IMKInputController {
         let keyCode = event.keyCode
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
+        DebugLog.log("key=\(keyCode) chars=\(event.characters ?? "") composing=\(composing) candidates=\(currentCandidates.count) zhuyin=\(isZhuyinMode) sameSound=\(isSameSoundMode)")
+
         if flags.contains(.command) || flags.contains(.control) || flags.contains(.option) {
             return false
         }
@@ -583,8 +585,7 @@ class YabomishInputController: IMKInputController {
                let selected = panel.selectByKey(digit) {
                 let char = String(selected.prefix(1))
                 let codes = Self.cinTable.reverseLookup(char)
-                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
-                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                commitText(char, client: client)
                 showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
                 clearZhuyinSlots()
                 currentCandidates = []
@@ -608,8 +609,7 @@ class YabomishInputController: IMKInputController {
             if keyCode == 36, let sel = panel.selectedCandidate() {
                 let char = String(sel.prefix(1))
                 let codes = Self.cinTable.reverseLookup(char)
-                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
-                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                commitText(char, client: client)
                 showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
                 clearZhuyinSlots()
                 currentCandidates = []
@@ -834,6 +834,7 @@ class YabomishInputController: IMKInputController {
     }
 
     private func commitText(_ text: String, client: IMKTextInput) {
+        DebugLog.log("commit: \"\(text)\" composing=\(composing) sameSound=\(isSameSoundMode) base=\(sameSoundBase)")
         let range = client.markedRange()
         client.insertText(text, replacementRange: range)
         justCommitted = true
@@ -1000,51 +1001,113 @@ class YabomishInputController: IMKInputController {
     }
 
     static func promptImportCIN() {
-        NSApp.activate(ignoringOtherApps: true)
+        activateForForegroundUI()
         let alert = NSAlert()
         alert.messageText = "尚未偵測到字表"
         alert.informativeText = "Yabomish 需要嘸蝦米字表（liu.cin）才能輸入中文。\n請點「匯入」選擇你的 liu.cin 檔案。"
         alert.addButton(withTitle: "匯入⋯")
         alert.addButton(withTitle: "稍後")
         alert.alertStyle = .warning
+        alert.window.level = .modalPanel
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        importCIN(fromIME: true)
+        importCIN()
     }
 
-    @discardableResult
-    static func importCIN(fromIME: Bool = false) -> Bool {
+    static func importCIN(attachedTo window: NSWindow? = nil) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let src = chooseCINFileURL() else { return }
+            DispatchQueue.main.async {
+                importSelectedCIN(from: src, attachedTo: window)
+            }
+        }
+    }
+
+    private static func chooseCINFileURL() -> URL? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = [
+            "-e", "tell current application to activate",
+            "-e", "POSIX path of (choose file with prompt \"選擇嘸蝦米字表\")"
+        ]
+
+        let stdout = Pipe()
+        let stderr = Pipe()
+        process.standardOutput = stdout
+        process.standardError = stderr
+
+        do {
+            try process.run()
+        } catch {
+            NSLog("YabomishIM: Failed to launch file chooser: %@", error.localizedDescription)
+            return nil
+        }
+
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            let errData = stderr.fileHandleForReading.readDataToEndOfFile()
+            if let err = String(data: errData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+               !err.isEmpty {
+                NSLog("YabomishIM: File chooser cancelled/failed: %@", err)
+            }
+            return nil
+        }
+
+        let outData = stdout.fileHandleForReading.readDataToEndOfFile()
+        guard let path = String(data: outData, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !path.isEmpty else {
+            return nil
+        }
+        return URL(fileURLWithPath: path)
+    }
+
+    private static func activateForForegroundUI() {
+        NSApp.setActivationPolicy(.accessory)
         NSApp.activate(ignoringOtherApps: true)
-        let panel = NSOpenPanel()
-        panel.title = "選擇嘸蝦米字表"
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.allowsOtherFileTypes = true
-        panel.allowedContentTypes = [.plainText]
-        panel.level = .floating
-        guard panel.runModal() == .OK, let src = panel.url else { return false }
+    }
+
+    private static func importSelectedCIN(from src: URL, attachedTo window: NSWindow?) {
         let dir = NSHomeDirectory() + "/Library/YabomishIM"
         let dst = dir + "/liu.cin"
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         try? FileManager.default.removeItem(atPath: dst)
         do {
             try FileManager.default.copyItem(at: src, to: URL(fileURLWithPath: dst))
-            // 刪除舊快取，強制重建
             try? FileManager.default.removeItem(atPath: dst + ".cache")
             cinTable.reload()
             hasPromptedImport = false
             NSLog("YabomishIM: Imported CIN table from %@", src.path)
-            let done = NSAlert()
-            done.messageText = "字表匯入成功"
-            done.informativeText = "已匯入 \(cinTable.isEmpty ? 0 : cinTable.shortestCodesTable.count) 字。"
-            done.runModal()
-            return true
+            showImportAlert(
+                messageText: "字表匯入成功",
+                informativeText: "已匯入 \(cinTable.isEmpty ? 0 : cinTable.shortestCodesTable.count) 字。",
+                style: .informational,
+                attachedTo: window
+            )
         } catch {
-            let err = NSAlert()
-            err.messageText = "匯入失敗"
-            err.informativeText = error.localizedDescription
-            err.alertStyle = .critical
-            err.runModal()
-            return false
+            showImportAlert(
+                messageText: "匯入失敗",
+                informativeText: error.localizedDescription,
+                style: .critical,
+                attachedTo: window
+            )
+        }
+    }
+
+    private static func showImportAlert(messageText: String,
+                                        informativeText: String,
+                                        style: NSAlert.Style,
+                                        attachedTo window: NSWindow?) {
+        activateForForegroundUI()
+        let alert = NSAlert()
+        alert.messageText = messageText
+        alert.informativeText = informativeText
+        alert.alertStyle = style
+        if let window {
+            window.makeKeyAndOrderFront(nil)
+            alert.beginSheetModal(for: window)
+        } else {
+            alert.runModal()
         }
     }
 

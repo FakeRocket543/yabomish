@@ -91,4 +91,10 @@ struct YabomishPrefs {
         get { defaults.string(forKey: "iconDirection") ?? "left" }
         set { defaults.set(newValue, forKey: "iconDirection") }
     }
+
+    /// Debug mode: write detailed logs to ~/Library/YabomishIM/debug.log
+    static var debugMode: Bool {
+        get { defaults.object(forKey: "debugMode") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "debugMode") }
+    }
 }

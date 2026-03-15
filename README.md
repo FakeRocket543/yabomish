@@ -51,7 +51,7 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 
 ### 查詢功能
 - 同音字查詢：按 `'` 進入同音字模式，選字後列出所有同音字 `v0.1.13`
-  - 打碼中按 `'` 可直接送出第一候選並列同音字（不需先送字）`v0.1.20`
+  - 先按 `'` 再打碼，送字後自動列出同音字 `v0.2.3`
 - 注音反查：`';` 切換注音查碼模式（蝦米官方快捷鍵），輸入注音查嘸蝦米碼
   - 聲韻母可任意順序輸入，自動排列至正確 slot
 
@@ -87,6 +87,14 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setu
 
 > 💡 如果你的 `liu.cin` 放在專案根目錄（跟 `setup.sh` 同層），安裝時會自動匯入，不需要再手動選檔。
 
+### 手動匯入字表
+
+如果安裝時沒有自動匯入，或想更換字表：
+
+1. 切換到 Yabomish 輸入法
+2. 點選選單列的輸入法圖示 → **偏好設定⋯**
+3. 點選 **匯入字表⋯** → 選擇你的 `liu.cin` 檔案
+
 ## 使用
 
 ### 基本操作
@@ -97,7 +105,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setu
 | 選字 | 1–9, 0（或字表自訂 selKey） |
 | 萬用碼 | `*` |
 | 補碼選字 | `v`/`r`/`s`/`f`（第 2–5 候選） |
-| 同音字 | `'`（送字後）或碼尾加 `'` |
+| 同音字 | `'`（送字後）或先按 `'` 再打碼 |
 | 頓號 | `'`（空閒時） |
 | 模式切換 | `,,` + 命令碼 + 空白鍵（如 `,,TS`） |
 | 刪碼 | Backspace |
@@ -122,16 +130,15 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setu
 ### 同音字查詢
 
 1. 方法一：送字後按 `'`，直接列出該字的所有同音字
-2. 方法二：打碼中按 `'`（如 `abc'`），送出第一候選並列同音字
-3. 方法三：先按 `'` 進入同音字模式，輸入碼選字後列出同音字
-4. ↑↓ 移動、←→ 翻頁、Enter 確認（固定模式：←→ 移動、↑↓ 翻頁）
+2. 方法二：先按 `'` 進入同音字模式，輸入碼選字後列出同音字
+3. ↑↓ 移動、←→ 翻頁、Enter 確認（固定模式：←→ 移動、↑↓ 翻頁）
 
 ### 注音反查
 
 1. 輸入 `';` 進入注音查碼模式（顯示「注」提示）
 2. 按注音鍵盤輸入注音符號（聲母、介音、韻母可任意順序，自動排列）
 3. 按聲調鍵（3=ˇ 4=ˋ 6=ˊ 7=˙）或空白鍵（一聲）送出查詢
-4. 選字窗顯示對應漢字及嘸蝦米碼
+4. 選字窗顯示對應漢字及嘸蝦米碼，選字後直接送出到輸入框
 5. 再按 `';` 或 Esc（空 buffer 時）回到一般模式
 
 ### 選字窗模式
@@ -157,6 +164,8 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setu
 - 切入時顯示模式提示
 - 蝦頭方向（← 向左 / → 向右）
 - 狀態列名稱（Yabo / Yabomish）
+- 匯入字表（選擇 `liu.cin` 檔案匯入）
+- Debug 模式（記錄操作日誌至 `~/Library/YabomishIM/debug.log`，方便回報問題）
 
 也可用 `defaults write` 指令：
 
@@ -189,6 +198,9 @@ defaults write com.yabomishim.inputmethod.YabomishIM iconDirection left
 
 # 狀態列名稱：yabo / yabomish
 defaults write com.yabomishim.inputmethod.YabomishIM menuBarLabel yabomish
+
+# Debug 模式（記錄操作日誌）
+defaults write com.yabomishim.inputmethod.YabomishIM debugMode -bool true
 ```
 
 ## 更新
@@ -211,6 +223,7 @@ git pull
 | `zhuyin_data.json` | 注音對照表（內建於 App bundle，可自行覆蓋） |
 | `t2s.json` | 繁→簡對照表（內建於 App bundle，可自行覆蓋） |
 | `s2t.json` | 簡→繁對照表（內建於 App bundle，可自行覆蓋） |
+| `debug.log` | Debug 日誌（開啟 Debug 模式後自動產生） |
 
 App 載入順序：先找 `~/Library/YabomishIM/` 下的檔案，找不到才用 App bundle 內建版本。更換字表只需替換 `~/Library/YabomishIM/liu.cin`，無需重新編譯。
 
@@ -225,6 +238,7 @@ YabomishIM/
 │   ├── CandidatePanel.swift           # 選字窗（游標/固定雙模式）
 │   ├── FreqTracker.swift              # 字頻學習（unigram + bigram + decay）
 │   ├── ZhuyinLookup.swift             # 注音反查 + 同音字查詢
+│   ├── DebugLog.swift                 # Debug 日誌（~/Library/YabomishIM/debug.log）
 │   ├── Prefs.swift                    # UserDefaults 偏好設定
 │   └── PrefsWindow.swift              # GUI 偏好設定視窗
 ├── Resources/
@@ -241,6 +255,7 @@ YabomishIM/
 
 | 版本 | 日期 | 重點 |
 |------|------|------|
+| 0.2.4 | 2026-03-15 | 注音選字送出、debug 模式、匯入修正（osascript）、LSUIElement |
 | 0.2.3 | 2026-03-14 | 同音字修正：聲調區分、panel 閃消失、先按 `'` 模式、移除 mid-compose `'` |
 | 0.2.1 | 2026-03-14 | 字表匯入引導、DMG 打包、切入 toast 修正、移除僅圖示選項、安裝流程改善 |
 | 0.2.0 | 2026-03-14 | `,,` 命令系統（8 種輸入模式）、頓號 `'`、繁簡轉換、日文假名、多螢幕修正、狀態列名稱選項 |
@@ -258,9 +273,13 @@ YabomishIM/
 
 > 後續更新：注音查碼重構（slot 自動排列 + 聲調修復）、中文標點直出、固定模式方向鍵選字修正。詳見 [CHANGELOG.md](CHANGELOG.md)。
 
+## Roadmap
+
+- **0.3.x** — DMG 打包安裝 + Homebrew Cask 支援
+
 ## 致謝
 
-- [@trend-jack-c-tang](https://github.com/trend-jack-c-tang) — 英文模式 Shift 修正、游標跟隨定位改善、安裝權限修正
+- [@Marsjelly](https://github.com/Marsjelly) — 英文模式 Shift 修正、游標跟隨定位改善、安裝權限修正
 
 ## 支持作者
 
