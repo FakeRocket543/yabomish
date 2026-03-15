@@ -141,10 +141,16 @@ final class PrefsWindow: NSPanel {
 
     func showWindow() {
         NSApp.setActivationPolicy(.accessory)
-        NSApp.activate(ignoringOtherApps: true)
-        level = .floating
         center()
+        level = .floating
         makeKeyAndOrderFront(nil)
+        orderFrontRegardless()
+        NSApp.activate(ignoringOtherApps: true)
+        // IMKit 背景 App 有時第一次 activate 會被系統吃掉，延遲再試一次
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.activate(ignoringOtherApps: true)
+            self.makeKeyAndOrderFront(nil)
+        }
     }
 
     // MARK: - Actions
