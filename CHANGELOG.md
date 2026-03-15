@@ -9,12 +9,6 @@
 - 字頻同步：偏好設定可指定同步資料夾（如 iCloud Drive），跨機共享字頻學習資料
   - 預設不開啟，首次開啟時自動複製本機 freq.json 到指定資料夾
 
-### 變更
-- CINTable 內部改用 Trie（字典樹）資料結構，取代原本的 `[String: [String]]` + `Set<String>`
-  - 萬用碼 `*` 搜尋改為 Trie DFS，不再使用 Regex
-  - `hasPrefix` 沿 Trie 走訪，省去獨立的 prefixes Set
-  - 對外 API 完全不變
-
 ## [0.2.4] — 2026-03-15
 
 ### 新增
