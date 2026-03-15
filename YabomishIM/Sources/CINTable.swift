@@ -69,7 +69,10 @@ final class CINTable {
 
     private func insert(code: String, value: String) {
         var node = root
-        for ch in code { node = node.children[ch, default: Node()] }
+        for ch in code {
+            if node.children[ch] == nil { node.children[ch] = Node() }
+            node = node.children[ch]!
+        }
         if node.values == nil { node.values = [value]; entryCount += 1 }
         else { node.values!.append(value) }
     }
