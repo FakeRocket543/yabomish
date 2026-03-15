@@ -7,3 +7,4 @@ liu.cin
 *.dmg
 dmg_staging/
 yabomish
+create_dmg.sh
