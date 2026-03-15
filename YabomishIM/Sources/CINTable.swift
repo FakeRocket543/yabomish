@@ -1,22 +1,29 @@
 import Foundation
 
-/// v2: Binary cache for instant load, wildcard support, selkey from .cin header
+/// v3: Trie-based lookup engine with binary cache, wildcard DFS, selkey from .cin header
 final class CINTable {
-    private var table: [String: [String]] = [:]
+
+    // MARK: - Trie
+
+    private final class Node {
+        var children: [Character: Node] = [:]
+        var values: [String]?           // non-nil = valid code terminus
+    }
+
+    private var root = Node()
+    private var entryCount = 0
+
     private var _reverseTable: [String: [String]]?
     private var reverseTable: [String: [String]] {
         if let cached = _reverseTable { return cached }
-        var newReverse: [String: [String]] = [:]
-        for (code, chars) in table {
-            for char in chars {
-                newReverse[char, default: []].append(code)
-            }
+        var rev: [String: [String]] = [:]
+        enumerateTrie { code, chars in
+            for c in chars { rev[c, default: []].append(code) }
         }
-        _reverseTable = newReverse
-        return newReverse
+        _reverseTable = rev
+        return rev
     }
 
-    // Shortest code(s) per character (for ,,SP mode) — may have multiple equal-length codes
     private var _shortestCodes: [String: Set<String>]?
     var shortestCodesTable: [String: Set<String>] {
         if let cached = _shortestCodes { return cached }
@@ -29,7 +36,6 @@ final class CINTable {
         return result
     }
 
-    // Longest code(s) per character (for ,,SL mode)
     private var _longestCodes: [String: Set<String>]?
     var longestCodesTable: [String: Set<String>] {
         if let cached = _longestCodes { return cached }
@@ -42,27 +48,49 @@ final class CINTable {
         return result
     }
 
-    // Traditional ↔ Simplified character maps
-    private(set) var t2s: [String: String] = [:]  // 繁中→簡中
-    private(set) var s2t: [String: String] = [:]  // 簡中→繁中
-    private var prefixes: Set<String> = []
+    private(set) var t2s: [String: String] = [:]
+    private(set) var s2t: [String: String] = [:]
     private(set) var selKeys: [Character] = Array("1234567890")
     private(set) var cinName: String = ""
 
-    var isEmpty: Bool { table.isEmpty }
+    var isEmpty: Bool { entryCount == 0 }
 
     func reload() {
-        table = [:]
-        _reverseTable = nil
-        _shortestCodes = nil
-        _longestCodes = nil
-        t2s = [:]
-        s2t = [:]
-        prefixes = []
+        root = Node(); entryCount = 0
+        _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
+        t2s = [:]; s2t = [:]
         let userPath = NSHomeDirectory() + "/Library/YabomishIM/liu.cin"
         let bundlePath = Bundle.main.path(forResource: "liu", ofType: "cin")
         if FileManager.default.fileExists(atPath: userPath) { load(path: userPath) }
         else if let p = bundlePath { load(path: p) }
+    }
+
+    // MARK: - Trie helpers
+
+    private func insert(code: String, value: String) {
+        var node = root
+        for ch in code { node = node.children[ch, default: Node()] }
+        if node.values == nil { node.values = [value]; entryCount += 1 }
+        else { node.values!.append(value) }
+    }
+
+    private func find(_ code: String) -> Node? {
+        var node = root
+        for ch in code {
+            guard let next = node.children[ch] else { return nil }
+            node = next
+        }
+        return node
+    }
+
+    /// Walk entire trie, calling visitor for each code that has values.
+    private func enumerateTrie(_ visitor: (String, [String]) -> Void) {
+        var stack: [(Node, String)] = [(root, "")]
+        while !stack.isEmpty {
+            let (node, prefix) = stack.removeLast()
+            if let vals = node.values { visitor(prefix, vals) }
+            for (ch, child) in node.children { stack.append((child, prefix + String(ch))) }
+        }
     }
 
     // MARK: - Load
@@ -70,11 +98,11 @@ final class CINTable {
     func load(path: String) {
         let cachePath = path + ".cache"
         if loadCache(cachePath), !isCacheStale(cinPath: path, cachePath: cachePath) {
-            NSLog("YabomishIM: Loaded cache (%d codes) in instant", table.count)
+            NSLog("YabomishIM: Loaded cache (%d codes) in instant", entryCount)
         } else {
             parseCIN(path: path)
             saveCache(cachePath)
-            NSLog("YabomishIM: Parsed %d codes from %@, cache saved", table.count, path)
+            NSLog("YabomishIM: Parsed %d codes from %@, cache saved", entryCount, path)
         }
         loadCharMaps()
     }
@@ -104,9 +132,7 @@ final class CINTable {
             NSLog("YabomishIM: Failed to read %@", path)
             return
         }
-        var newTable: [String: [String]] = [:]
-        newTable.reserveCapacity(100_000)
-        var newPrefixes: Set<String> = []
+        root = Node(); entryCount = 0
         var inChardef = false
 
         content.enumerateLines { line, _ in
@@ -133,12 +159,9 @@ final class CINTable {
             guard parts.count == 2 else { return }
             let code = parts[0].lowercased()
             let value = parts[1].trimmingCharacters(in: .whitespaces)
-            newTable[code, default: []].append(value)
-            for i in 1...code.count { newPrefixes.insert(String(code.prefix(i))) }
+            self.insert(code: code, value: value)
         }
-        self.table = newTable
-        self.prefixes = newPrefixes
-        self._reverseTable = nil
+        _reverseTable = nil
     }
 
     // MARK: - Binary Cache
@@ -153,15 +176,12 @@ final class CINTable {
 
     private func saveCache(_ path: String) {
         var data = Data()
-        // Header: selKeys + cinName
         let header = "\(String(selKeys))\t\(cinName)\n"
         data.append(header.data(using: .utf8)!)
-        // Entries: code\tchar1\tchar2...\n
-        for (code, chars) in table {
+        enumerateTrie { code, chars in
             let line = code + "\t" + chars.joined(separator: "\t") + "\n"
             data.append(line.data(using: .utf8)!)
         }
-        // Prefixes not cached — rebuilt from table on load
         try? data.write(to: URL(fileURLWithPath: path))
     }
 
@@ -171,62 +191,64 @@ final class CINTable {
         var lines = content.split(separator: "\n", omittingEmptySubsequences: false)
         guard !lines.isEmpty else { return false }
 
-        // Header
         let headerParts = lines.removeFirst().split(separator: "\t", maxSplits: 1).map(String.init)
         if headerParts.count >= 1 { selKeys = Array(headerParts[0]) }
         if headerParts.count >= 2 { cinName = headerParts[1] }
 
-        var newTable: [String: [String]] = [:]
-        newTable.reserveCapacity(lines.count)
-        var newPrefixes: Set<String> = []
-
+        root = Node(); entryCount = 0
         for line in lines where !line.isEmpty {
             let parts = line.split(separator: "\t").map(String.init)
             guard parts.count >= 2 else { continue }
             let code = parts[0]
-            newTable[code] = Array(parts[1...])
-            for i in 1...code.count { newPrefixes.insert(String(code.prefix(i))) }
+            for v in parts[1...] { insert(code: code, value: v) }
         }
-        self.table = newTable
-        self.prefixes = newPrefixes
-        self._reverseTable = nil
-        return !newTable.isEmpty
+        _reverseTable = nil
+        return entryCount > 0
     }
 
     // MARK: - Lookup
 
     /// Exact match
     func lookup(_ code: String) -> [String] {
-        table[code.lowercased()] ?? []
+        find(code.lowercased())?.values ?? []
     }
 
-    /// Wildcard lookup: `*` matches one or more characters
+    /// Wildcard lookup: `*` matches one or more characters via Trie DFS
     func wildcardLookup(_ pattern: String) -> [String] {
-        let pat = pattern.lowercased()
-        guard pat.contains("*") else { return lookup(pat) }
-
-        let regex = "^" + NSRegularExpression.escapedPattern(for: pat)
-            .replacingOccurrences(of: "\\*", with: ".+") + "$"
-        guard let re = try? NSRegularExpression(pattern: regex) else { return [] }
-
-        let fixedPrefix = String(pat.prefix(while: { $0 != "*" }))
+        let pat = Array(pattern.lowercased())
+        guard pat.contains("*") else { return lookup(String(pat)) }
         var results: [String] = []
         var seen = Set<String>()
-        for (code, chars) in table {
-            guard fixedPrefix.isEmpty || code.hasPrefix(fixedPrefix) else { continue }
-            let range = NSRange(code.startIndex..., in: code)
-            if re.firstMatch(in: code, range: range) != nil {
-                for c in chars where seen.insert(c).inserted { results.append(c) }
+
+        func dfs(_ node: Node, _ pi: Int) {
+            if pi == pat.count {
+                if let vals = node.values {
+                    for v in vals where seen.insert(v).inserted { results.append(v) }
+                }
+                return
+            }
+            if pat[pi] == "*" {
+                // * matches 1+ characters: descend into every child, then continue matching rest or keep expanding
+                for (_, child) in node.children {
+                    dfs(child, pi + 1)   // * matched exactly 1 char
+                    dfs(child, pi)       // * matched 1 char, keep matching more
+                }
+            } else {
+                if let child = node.children[pat[pi]] {
+                    dfs(child, pi + 1)
+                }
             }
         }
+
+        dfs(root, 0)
         return results
     }
 
     /// Check if any code starts with this prefix
     func hasPrefix(_ prefix: String) -> Bool {
-        prefixes.contains(prefix.lowercased())
+        find(prefix.lowercased()) != nil
     }
-    
+
     func reverseLookup(_ char: String) -> [String] {
         reverseTable[char] ?? []
     }

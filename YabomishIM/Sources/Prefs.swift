@@ -97,4 +97,10 @@ struct YabomishPrefs {
         get { defaults.object(forKey: "debugMode") as? Bool ?? false }
         set { defaults.set(newValue, forKey: "debugMode") }
     }
+
+    /// 字頻同步資料夾（nil = 不開啟，使用本機 ~/Library/YabomishIM/）
+    static var syncFolder: String? {
+        get { defaults.string(forKey: "syncFolder") }
+        set { defaults.set(newValue, forKey: "syncFolder") }
+    }
 }

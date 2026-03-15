@@ -14,9 +14,20 @@ final class FreqTracker {
     }
 
     init() {
-        let dir = NSHomeDirectory() + "/Library/YabomishIM"
-        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        self.path = dir + "/freq.json"
+        let localDir = NSHomeDirectory() + "/Library/YabomishIM"
+        try? FileManager.default.createDirectory(atPath: localDir, withIntermediateDirectories: true)
+        if let sync = YabomishPrefs.syncFolder,
+           FileManager.default.fileExists(atPath: sync) {
+            self.path = (sync as NSString).appendingPathComponent("freq.json")
+            // 首次開啟同步：本機有資料但遠端沒有 → 複製過去
+            let localPath = localDir + "/freq.json"
+            if !FileManager.default.fileExists(atPath: self.path),
+               FileManager.default.fileExists(atPath: localPath) {
+                try? FileManager.default.copyItem(atPath: localPath, toPath: self.path)
+            }
+        } else {
+            self.path = localDir + "/freq.json"
+        }
         load()
         saveTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.saveIfNeeded()

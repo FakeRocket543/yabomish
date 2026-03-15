@@ -9,6 +9,7 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 ### 核心引擎
 - 純 Swift，無第三方依賴，shell script 編譯（不需 Xcode 專案）`v0.1.10`
 - 硬體 keyCode 對應，不受鍵盤佈局影響（Dvorak、Colemak、AZERTY 等皆可）`v0.1.10` `v0.1.12`
+- CIN 字表 Trie（字典樹）引擎，萬用碼 DFS 搜尋、前綴判定一體化 `v0.2.5`
 - CIN 字表二進位快取，首次解析後秒開 `v0.1.10`
 - 安全輸入偵測（密碼欄位自動停用）`v0.1.13`
 
@@ -39,13 +40,14 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 | `,,H` | — | 顯示命令說明 |
 
 ### 輸入功能
-- 萬用碼 `*` 模糊查詢（prefix 預過濾加速）`v0.1.10` `v0.1.14`
+- 萬用碼 `*` 模糊查詢（Trie DFS 搜尋）`v0.1.10` `v0.1.14` `v0.2.5`
 - 補碼 `v`/`r`/`s`/`f` 快速選第 2–5 候選字（無法延伸編碼時）`v0.1.14` `v0.1.20`
 - 滿碼自動送字（可選）`v0.1.10`
 - `/` 穿透：空閒時直送 App（編輯器 slash command），打碼中仍走 CIN `v0.1.20`
 - `'` 空閒時輸出頓號「、」（`';` 仍觸發注音反查）`v0.2.0`
 - 中文標點：`[]` `[[` `]]` 走 CIN 查表（「」『』【】《》等）、`,` → ， `v0.1.18`
 - Shift 快按切換中英、按住暫時英文 `v0.1.10`
+- 全型空格：`,,` + Space 或 Shift+Space `v0.2.5`
 - 中英模式切換 HUD 提示（「繁中」/「A」）`v0.1.14` `v0.2.0`
 - 從其他輸入法切入時顯示當前模式 toast（可在偏好設定關閉）`v0.2.0`
 
@@ -58,6 +60,7 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 ### 智慧排序
 - 字頻學習：unigram + bigram 前後文排序 `v0.1.10` `v0.1.13`
 - 每 500 次自動 decay（×0.9）防膨脹 `v0.1.14`
+- 字頻同步：可指定 iCloud Drive 等雲端資料夾，跨機共享學習資料 `v0.2.5`
 
 ### 設定介面
 - GUI 偏好設定視窗（從輸入法選單開啟）`v0.1.15`
@@ -108,6 +111,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setu
 | 同音字 | `'`（送字後）或先按 `'` 再打碼 |
 | 頓號 | `'`（空閒時） |
 | 模式切換 | `,,` + 命令碼 + 空白鍵（如 `,,TS`） |
+| 全型空格 | `,,` + Space 或 Shift+Space |
 | 刪碼 | Backspace |
 | 清除 | Esc |
 | 直送英文 | Enter |
@@ -165,6 +169,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setu
 - 蝦頭方向（← 向左 / → 向右）
 - 狀態列名稱（Yabo / Yabomish）
 - 匯入字表（選擇 `liu.cin` 檔案匯入）
+- 字頻同步資料夾（指定 iCloud Drive 等雲端資料夾，跨機共享字頻學習資料）
 - Debug 模式（記錄操作日誌至 `~/Library/YabomishIM/debug.log`，方便回報問題）
 
 也可用 `defaults write` 指令：
@@ -201,6 +206,9 @@ defaults write com.yabomishim.inputmethod.YabomishIM menuBarLabel yabomish
 
 # Debug 模式（記錄操作日誌）
 defaults write com.yabomishim.inputmethod.YabomishIM debugMode -bool true
+
+# 字頻同步資料夾（指定後需重新登入）
+defaults write com.yabomishim.inputmethod.YabomishIM syncFolder "$HOME/Library/Mobile Documents/com~apple~CloudDocs/YabomishIM"
 ```
 
 ## 更新
@@ -234,7 +242,7 @@ YabomishIM/
 ├── Sources/
 │   ├── AppDelegate.swift              # IMKServer 啟動
 │   ├── YabomishInputController.swift  # 輸入控制器（按鍵處理、狀態機）
-│   ├── CINTable.swift                 # CIN 字表解析、快取、萬用碼查詢
+│   ├── CINTable.swift                 # CIN 字表 Trie 引擎、快取、萬用碼 DFS
 │   ├── CandidatePanel.swift           # 選字窗（游標/固定雙模式）
 │   ├── FreqTracker.swift              # 字頻學習（unigram + bigram + decay）
 │   ├── ZhuyinLookup.swift             # 注音反查 + 同音字查詢
@@ -255,6 +263,7 @@ YabomishIM/
 
 | 版本 | 日期 | 重點 |
 |------|------|------|
+| 0.2.5 | 2026-03-15 | 全型空格、字頻 iCloud 同步、CINTable Trie 重構 |
 | 0.2.4 | 2026-03-15 | 注音選字送出、debug 模式、匯入修正（osascript）、LSUIElement |
 | 0.2.3 | 2026-03-14 | 同音字修正：聲調區分、panel 閃消失、先按 `'` 模式、移除 mid-compose `'` |
 | 0.2.1 | 2026-03-14 | 字表匯入引導、DMG 打包、切入 toast 修正、移除僅圖示選項、安裝流程改善 |

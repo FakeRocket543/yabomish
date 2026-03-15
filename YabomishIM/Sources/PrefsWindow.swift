@@ -4,7 +4,7 @@ final class PrefsWindow: NSPanel {
     static let shared = PrefsWindow()
 
     private init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 520),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 560),
                    styleMask: [.titled, .closable],
                    backing: .buffered, defer: true)
         self.title = "Yabomish 偏好設定"
@@ -118,6 +118,16 @@ final class PrefsWindow: NSPanel {
         let importBtn = NSButton(title: "匯入字表⋯", target: self, action: #selector(importCINClicked))
         stack.addArrangedSubview(importBtn)
 
+        // — 字頻同步資料夾 —
+        let syncLabel = NSTextField(labelWithString: YabomishPrefs.syncFolder ?? "未設定")
+        syncLabel.tag = 103
+        syncLabel.lineBreakMode = .byTruncatingMiddle
+        syncLabel.maximumNumberOfLines = 1
+        syncLabel.preferredMaxLayoutWidth = 160
+        let chooseBtn = NSButton(title: "選擇⋯", target: self, action: #selector(chooseSyncFolder))
+        let clearBtn = NSButton(title: "清除", target: self, action: #selector(clearSyncFolder))
+        stack.addArrangedSubview(row("字頻同步資料夾", hStack(syncLabel, chooseBtn, clearBtn)))
+
         // — Debug —
         let debugBtn = NSButton(checkboxWithTitle: "Debug 模式（記錄操作日誌）", target: self, action: #selector(debugChanged(_:)))
         debugBtn.state = YabomishPrefs.debugMode ? .on : .off
@@ -203,6 +213,27 @@ final class PrefsWindow: NSPanel {
 
     @objc private func importCINClicked() {
         YabomishInputController.importCIN(attachedTo: self)
+    }
+
+    @objc private func chooseSyncFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "選擇"
+        panel.message = "選擇字頻同步資料夾（建議 iCloud Drive 內的資料夾）"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        YabomishPrefs.syncFolder = url.path
+        findLabel(tag: 103)?.stringValue = url.path
+        let a = NSAlert()
+        a.messageText = "需要重新啟動輸入法"
+        a.informativeText = "字頻同步路徑已設定為：\n\(url.path)\n\n請登出再登入以套用。"
+        a.runModal()
+    }
+
+    @objc private func clearSyncFolder() {
+        YabomishPrefs.syncFolder = nil
+        findLabel(tag: 103)?.stringValue = "未設定"
     }
 
     @objc private func debugChanged(_ sender: NSButton) {
