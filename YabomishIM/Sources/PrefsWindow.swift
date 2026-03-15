@@ -219,6 +219,7 @@ final class PrefsWindow: NSPanel {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "選擇"
         panel.message = "選擇字頻同步資料夾（建議 iCloud Drive 內的資料夾）"
