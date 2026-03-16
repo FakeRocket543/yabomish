@@ -292,6 +292,7 @@ YabomishIM/
 ## 致謝
 
 - [@Marsjelly](https://github.com/Marsjelly) — 英文模式 Shift 修正、游標跟隨定位改善、安裝權限修正
+- [@jackyhuang72](https://github.com/jackyhuang72) — 注音鍵位對應修正（ㄛ/ㄨ/ㄟ/ㄩ/ㄝ）
 
 ## 支持作者
 
