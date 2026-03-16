@@ -362,7 +362,7 @@ class YabomishInputController: IMKInputController {
         if isSameSoundMode && composing == "'" && sameSoundBase.isEmpty {
             if char >= "a" && char <= "z" || char == "*" {
                 // 同音字模式：收集編碼，送字後列同音字
-                composing = String(char)
+                composing = "'" + String(char)
                 refreshCandidates()
                 updateMarkedText(client: client)
                 showCandidatePanel(client: client)
@@ -501,9 +501,31 @@ class YabomishInputController: IMKInputController {
             return true
         }
 
+        // ,,ZH → toggle zhuyin lookup mode
+        if cmd == "zh" {
+            isZhuyinMode.toggle()
+            if isZhuyinMode {
+                showModeToast("注")
+            } else {
+                clearZhuyinSlots()
+                currentCandidates = []
+                panel.hide()
+                showModeToast(Self.modeLabels[inputMode] ?? "繁中")
+            }
+            return true
+        }
+
+        // ,,TO → enter same-sound lookup mode
+        if cmd == "to" {
+            isSameSoundMode = true
+            composing = "'"
+            updateMarkedText(client: client)
+            return true
+        }
+
         // ,,H → show available commands
         if cmd == "h" {
-            showCodeHintToast(",,T繁中 ,,S簡中 ,,SP速 ,,SL慢\n,,TS繁中→簡中 ,,ST簡中→繁中 ,,J日\n,,RS重置字頻（候選字順序跑掉時使用）\n,,C當前模式 ,,H說明", duration: 4.0)
+            showCodeHintToast(",,T繁中 ,,S簡中 ,,SP速 ,,SL慢\n,,TS繁中→簡中 ,,ST簡中→繁中 ,,J日\n,,ZH注音查碼 ,,TO同音字\n,,RS重置字頻 ,,C當前模式 ,,H說明", duration: 4.0)
             return true
         }
 
@@ -854,6 +876,18 @@ class YabomishInputController: IMKInputController {
 
     private func commitText(_ text: String, client: IMKTextInput) {
         DebugLog.log("commit: \"\(text)\" composing=\(composing) sameSound=\(isSameSoundMode) base=\(sameSoundBase)")
+
+        // Same-sound step 1 → step 2: user picked a char via code, now show homophones
+        if isSameSoundMode && sameSoundBase.isEmpty && text.count == 1 {
+            let results = ZhuyinLookup.shared.lookup(text)
+            if !results.isEmpty {
+                sameSoundBase = text
+                _ = handleSameSound(client: client)
+                return
+            }
+            // No homophones — fall through to normal commit
+        }
+
         let range = client.markedRange()
         client.insertText(text, replacementRange: range)
         justCommitted = true
