@@ -14,6 +14,7 @@ final class CandidatePanel: NSPanel {
     private var highlightIndex = 0
     private let pageSize = 9
     private var showGeneration = 0
+    var onCandidateSelected: ((String) -> Void)?
 
     // MARK: - Cursor-mode views
 
@@ -401,9 +402,42 @@ final class CandidatePanel: NSPanel {
 
     override func mouseDown(with event: NSEvent) {
         if isFixed {
+            // Check if click hit a candidate label
+            let loc = event.locationInWindow
+            if let hit = fixedLabel.hitTest(contentView!.convert(loc, to: fixedLabel)),
+               hit is NSTextField {
+                // Fixed mode: find which candidate was clicked
+                let start = pageStart
+                for i in 0..<pageSize {
+                    let candIdx = start + i
+                    guard candIdx < candidates.count else { break }
+                    // fixedLabel is a single text field; use selectByKey approach
+                    if i < selKeys.count {
+                        if let c = selectByKey(selKeys[i]) {
+                            onCandidateSelected?(c)
+                            return
+                        }
+                    }
+                }
+            }
             dragOffset = event.locationInWindow
             NSCursor.closedHand.push()
         } else {
+            // Cursor mode: check which label was clicked
+            let loc = event.locationInWindow
+            let viewLoc = contentView!.convert(loc, to: stackView)
+            for i in 0..<pageSize {
+                let label = labels[i]
+                guard !label.isHidden else { continue }
+                if label.frame.contains(viewLoc) {
+                    let candIdx = pageStart + i
+                    guard candIdx < candidates.count else { break }
+                    highlightIndex = candIdx
+                    rebuildCurrentMode()
+                    onCandidateSelected?(candidates[candIdx])
+                    return
+                }
+            }
             super.mouseDown(with: event)
         }
     }

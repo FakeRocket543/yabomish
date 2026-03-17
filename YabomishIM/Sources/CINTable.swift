@@ -50,6 +50,7 @@ final class CINTable {
     private(set) var cinName: String = ""
 
     var isEmpty: Bool { table.isEmpty }
+    private(set) var maxCodeLength: Int = 4
 
     func reload() {
         table = [:]
@@ -63,6 +64,36 @@ final class CINTable {
         let bundlePath = Bundle.main.path(forResource: "liu", ofType: "cin")
         if FileManager.default.fileExists(atPath: userPath) { load(path: userPath) }
         else if let p = bundlePath { load(path: p) }
+        loadExtras()
+        maxCodeLength = table.keys.map(\.count).max() ?? 4
+        NSLog("YabomishIM: maxCodeLength = %d", maxCodeLength)
+    }
+
+    /// Load tab-separated extras from ~/Library/YabomishIM/tables/*.txt (+ sync folder)
+    private func loadExtras() {
+        var dirs = [NSHomeDirectory() + "/Library/YabomishIM/tables"]
+        if let sync = YabomishPrefs.syncFolder {
+            dirs.append((sync as NSString).appendingPathComponent("tables"))
+        }
+        for dir in dirs {
+            guard let files = try? FileManager.default.contentsOfDirectory(atPath: dir) else { continue }
+            for file in files where file.hasSuffix(".txt") {
+                let path = dir + "/" + file
+                guard let data = FileManager.default.contents(atPath: path),
+                      let content = String(data: data, encoding: .utf8) else { continue }
+                var count = 0
+                content.enumerateLines { line, _ in
+                    let parts = line.split(separator: "\t", maxSplits: 1).map(String.init)
+                    guard parts.count == 2 else { return }
+                    let code = parts[0].lowercased()
+                    let value = parts[1]
+                    self.table[code, default: []].append(value)
+                    for i in 1...code.count { self.prefixes.insert(String(code.prefix(i))) }
+                    count += 1
+                }
+                NSLog("YabomishIM: Loaded %d entries from %@/%@", count, dir, file)
+            }
+        }
     }
 
     // MARK: - Load

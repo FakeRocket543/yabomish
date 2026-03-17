@@ -1,7 +1,7 @@
 import Cocoa
 import InputMethodKit
 
-private let kMaxCodeLength = 4
+
 
 /// Hardware keyCode → QWERTY character mapping (layout-independent)
 private let keyCodeToChar: [UInt16: Character] = [
@@ -46,11 +46,8 @@ class YabomishInputController: IMKInputController {
 
     private static let cinTable: CINTable = {
         let t = CINTable()
-        let userPath = NSHomeDirectory() + "/Library/YabomishIM/liu.cin"
-        let bundlePath = Bundle.main.path(forResource: "liu", ofType: "cin")
-        if FileManager.default.fileExists(atPath: userPath) { t.load(path: userPath) }
-        else if let p = bundlePath { t.load(path: p) }
-        else { NSLog("YabomishIM: No CIN table. Place liu.cin in ~/Library/YabomishIM/") }
+        t.reload()
+        if t.isEmpty { NSLog("YabomishIM: No CIN table. Place liu.cin in ~/Library/YabomishIM/") }
         return t
     }()
 
@@ -395,7 +392,8 @@ class YabomishInputController: IMKInputController {
         }
 
         let newComposing = composing + char
-        let maxLen = isSameSoundMode ? kMaxCodeLength + 1 : kMaxCodeLength
+        let baseMaxLen = Self.cinTable.maxCodeLength
+        let maxLen = isSameSoundMode ? baseMaxLen + 1 : baseMaxLen
 
         if newComposing.count > maxLen {
             if !currentCandidates.isEmpty {
@@ -413,7 +411,7 @@ class YabomishInputController: IMKInputController {
 
         refreshCandidates()
 
-        if currentCandidates.isEmpty && composing.count >= kMaxCodeLength && !isWildcard {
+        if currentCandidates.isEmpty && composing.count >= baseMaxLen && !isWildcard {
             NSSound.beep()
             resetComposing(client: client)
             return true
@@ -444,7 +442,8 @@ class YabomishInputController: IMKInputController {
         if composing.isEmpty { return false }
         if sameSoundStep2 && panel.isVisible_ { panel.pageDown(); return true }
         if currentCandidates.isEmpty { NSSound.beep(); return true }
-        commitText(currentCandidates[0], client: client)
+        let selected = panel.selectedCandidate() ?? currentCandidates[0]
+        commitText(selected, client: client)
         return true
     }
 
@@ -491,6 +490,14 @@ class YabomishInputController: IMKInputController {
             Self.freqTracker.reset()
             showModeToast("字頻已重置\n候選字恢復預設順序")
             NSLog("YabomishIM: frequency data reset")
+            return true
+        }
+
+        // ,,RL → reload CIN table + extras
+        if cmd == "rl" {
+            Self.cinTable.reload()
+            showModeToast("字表已重載\n\(Self.cinTable.maxCodeLength) 碼")
+            NSLog("YabomishIM: table reloaded, maxCodeLength=%d", Self.cinTable.maxCodeLength)
             return true
         }
 
@@ -889,7 +896,7 @@ class YabomishInputController: IMKInputController {
         }
 
         let range = client.markedRange()
-        client.insertText(text, replacementRange: range)
+        client.insertText(text.replacingOccurrences(of: "\\n", with: "\n"), replacementRange: range)
         justCommitted = true
         if !composing.isEmpty && !isSameSoundMode {
             Self.freqTracker.record(code: composing, char: text)
@@ -1040,6 +1047,10 @@ class YabomishInputController: IMKInputController {
         let fromOtherIM = !Self.yabomishWasActive
         Self.yabomishWasActive = true
         Self.activeSession = self
+        panel.onCandidateSelected = { [weak self] text in
+            guard let self, let client = self.client() else { return }
+            self.commitText(text, client: client)
+        }
         composing = ""
         currentCandidates = []
         isWildcard = false
@@ -1064,6 +1075,15 @@ class YabomishInputController: IMKInputController {
         alert.window.level = .modalPanel
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         importCIN()
+    }
+
+    static func reloadTable() {
+        cinTable.reload()
+        NSLog("YabomishIM: table reloaded via UI, maxCodeLength=%d", cinTable.maxCodeLength)
+    }
+
+    static func importCIN(from url: URL, attachedTo window: NSWindow?) {
+        importSelectedCIN(from: url, attachedTo: window)
     }
 
     static func importCIN(attachedTo window: NSWindow? = nil) {

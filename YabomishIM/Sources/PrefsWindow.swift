@@ -114,7 +114,8 @@ final class PrefsWindow: NSPanel {
         stack.addArrangedSubview(sectionHeader("資料"))
 
         let importBtn = NSButton(title: "匯入字表⋯", target: self, action: #selector(importCINClicked))
-        stack.addArrangedSubview(importBtn)
+        let editExtrasBtn = NSButton(title: "編輯擴充表⋯", target: self, action: #selector(openExtrasFolder))
+        stack.addArrangedSubview(row("字表", hStack(importBtn, editExtrasBtn)))
 
         let syncLabel = NSTextField(labelWithString: YabomishPrefs.syncFolder ?? "未設定")
         syncLabel.tag = 103
@@ -123,7 +124,7 @@ final class PrefsWindow: NSPanel {
         syncLabel.preferredMaxLayoutWidth = 160
         let chooseBtn = NSButton(title: "選擇⋯", target: self, action: #selector(chooseSyncFolder))
         let clearBtn = NSButton(title: "清除", target: self, action: #selector(clearSyncFolder))
-        stack.addArrangedSubview(row("字頻同步", hStack(syncLabel, chooseBtn, clearBtn)))
+        stack.addArrangedSubview(row("同步資料夾", hStack(syncLabel, chooseBtn, clearBtn)))
 
         // ━━━ 除錯 ━━━
         stack.addArrangedSubview(sectionHeader("除錯"))
@@ -217,7 +218,45 @@ final class PrefsWindow: NSPanel {
     }
 
     @objc private func importCINClicked() {
-        YabomishInputController.importCIN(attachedTo: self)
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.plainText]
+        panel.message = "選擇字表（.cin）或擴充表（.txt）"
+        guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+
+        let cinFiles = panel.urls.filter { $0.pathExtension.lowercased() == "cin" }
+        let txtFiles = panel.urls.filter { $0.pathExtension.lowercased() == "txt" }
+
+        // .cin → 匯入主表
+        if let cin = cinFiles.first {
+            YabomishInputController.importCIN(from: cin, attachedTo: self)
+        }
+
+        // .txt → 複製到 tables/
+        if !txtFiles.isEmpty {
+            let dir = NSHomeDirectory() + "/Library/YabomishIM/tables"
+            try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+            var imported: [String] = []
+            for url in txtFiles {
+                let dst = dir + "/" + url.lastPathComponent
+                try? FileManager.default.removeItem(atPath: dst)
+                try? FileManager.default.copyItem(at: url, to: URL(fileURLWithPath: dst))
+                imported.append(url.lastPathComponent)
+            }
+            YabomishInputController.reloadTable()
+            let a = NSAlert()
+            a.messageText = "已匯入 \(imported.count) 個擴充表"
+            a.informativeText = imported.joined(separator: "\n") + "\n\n字表已自動重載。"
+            a.runModal()
+        }
+    }
+
+    @objc private func openExtrasFolder() {
+        let dir = NSHomeDirectory() + "/Library/YabomishIM/tables"
+        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(URL(fileURLWithPath: dir))
     }
 
     @objc private func chooseSyncFolder() {

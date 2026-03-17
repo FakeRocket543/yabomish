@@ -71,8 +71,18 @@ case "$LABEL_PREF" in
         ;;
 esac
 
-# Ensure user CIN directory and check for liu.cin
+# Ensure user CIN directory and tables
 mkdir -p "$USER_CIN_DIR"
+mkdir -p "$USER_CIN_DIR/tables"
+
+# Copy bundled extra tables (emoji etc.)
+TABLES_SRC="$SCRIPT_DIR/Resources/tables"
+if [ -d "$TABLES_SRC" ]; then
+    for f in "$TABLES_SRC"/*.txt; do
+        [ -f "$f" ] && [[ "$(basename "$f")" != *-example* ]] && cp "$f" "$USER_CIN_DIR/tables/"
+    done
+    echo "✅ 擴充表已安裝到 $USER_CIN_DIR/tables/"
+fi
 
 # 如果專案根目錄有 liu.cin，自動複製
 PROJECT_CIN="$SCRIPT_DIR/../liu.cin"

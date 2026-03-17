@@ -1,0 +1,5 @@
+ccrev	Review this code for bugs and improvements:
+ccexp	Explain this code step by step:
+ccfix	Fix this bug:
+gtcmt	Write a concise commit message for these changes:
+qasum	Summarize this data and highlight key insights:

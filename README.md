@@ -37,8 +37,40 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 | `,,ZH` | — | 切換注音查碼模式（同 `';`） |
 | `,,TO` | — | 進入同音字查詢模式（同先按 `'`） |
 | `,,RS` | — | 重置字頻統計（候選字順序跑掉時使用） |
+| `,,RL` | — | 重載字表 + 擴充表 |
 | `,,C` | — | 顯示當前模式 |
 | `,,H` | — | 顯示命令說明 |
+
+### 擴充表 `v0.2.10`
+
+在 `~/Library/YabomishIM/tables/` 放入 `.txt` 檔即可擴充字表，格式為 tab-separated：
+
+```
+emfgf	😀
+ccrev	Review this code for bugs and improvements:
+```
+
+- 安裝時預設包含 `emoji.txt`（1,906 個 emoji，`em` + 分類碼 + 2 字母，共 5 碼）
+- 附帶 `prompts-example.txt` 範例，可自行改名為 `prompts.txt` 使用
+- 新增/修改後打 `,,RL` 即時重載，不需重新登入
+- 偏好設定可「匯入字表」或「編輯擴充表」
+- 如已設定同步資料夾，該路徑下的 `tables/` 也會自動載入
+
+#### Emoji 分類
+
+| 前綴 | 分類 | 範例 |
+|------|------|------|
+| `emf` | 表情 | `emfgf` → 😀 |
+| `emp` | 人物 | `empnj` → 🥷 |
+| `ema` | 動物自然 | `emadf` → 🐶 |
+| `emd` | 飲食 | `emdba` → 🍌 |
+| `emt` | 交通地點 | `emtrc` → 🚀 |
+| `emo` | 物品 | `emolb` → 💡 |
+| `ems` | 符號 | `emshm` → ❤️ |
+| `emv` | 活動 | `emvsc` → ⚽ |
+| `emg` | 旗幟 | `emgiw` → 🇹🇼 |
+
+不確定碼時可用萬用碼瀏覽：`emf*` 列出所有表情 emoji。
 
 ### 輸入功能
 - 萬用碼 `*` 模糊查詢（prefix 預過濾加速）`v0.1.10` `v0.1.14`
@@ -61,7 +93,7 @@ macOS 嘸蝦米輸入法的開源實作，純 Swift、零依賴。
 ### 智慧排序
 - 字頻學習：unigram + bigram 前後文排序 `v0.1.10` `v0.1.13`
 - 每 500 次自動 decay（×0.9）防膨脹 `v0.1.14`
-- 字頻同步：可指定 iCloud Drive 等雲端資料夾，跨機共享學習資料 `v0.2.5`
+- 同步資料夾：可指定 iCloud Drive 等雲端資料夾，跨機共享字頻與自訂擴充表 `v0.2.5` `v0.2.10`
 
 ### 設定介面
 - GUI 偏好設定視窗（從輸入法選單開啟）`v0.1.15`
@@ -170,7 +202,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./setu
 - 蝦頭方向（← 向左 / → 向右）
 - 狀態列名稱（Yabo / Yabomish）
 - 匯入字表（選擇 `liu.cin` 檔案匯入）
-- 字頻同步資料夾（指定 iCloud Drive 等雲端資料夾，跨機共享字頻學習資料）
+- 同步資料夾（指定 iCloud Drive 等雲端資料夾，跨機共享字頻與自訂擴充表）
 - Debug 模式（記錄操作日誌至 `~/Library/YabomishIM/debug.log`，方便回報問題）
 
 也可用 `defaults write` 指令：
@@ -208,7 +240,7 @@ defaults write com.yabomishim.inputmethod.YabomishIM menuBarLabel yabomish
 # Debug 模式（記錄操作日誌）
 defaults write com.yabomishim.inputmethod.YabomishIM debugMode -bool true
 
-# 字頻同步資料夾（指定後需重新登入）
+# 同步資料夾（指定後需重新登入，同步 freq.json + tables/*.txt）
 defaults write com.yabomishim.inputmethod.YabomishIM syncFolder "$HOME/Library/Mobile Documents/com~apple~CloudDocs/YabomishIM"
 ```
 
@@ -233,8 +265,10 @@ git pull
 | `t2s.json` | 繁→簡對照表（內建於 App bundle，可自行覆蓋） |
 | `s2t.json` | 簡→繁對照表（內建於 App bundle，可自行覆蓋） |
 | `debug.log` | Debug 日誌（開啟 Debug 模式後自動產生） |
+| `tables/emoji.txt` | emoji 擴充表（安裝時自動部署，1,906 個 emoji） |
+| `tables/*.txt` | 自訂擴充表（tab-separated `編碼<Tab>內容`，`,,RL` 重載） |
 
-App 載入順序：先找 `~/Library/YabomishIM/` 下的檔案，找不到才用 App bundle 內建版本。更換字表只需替換 `~/Library/YabomishIM/liu.cin`，無需重新編譯。
+App 載入順序：先找 `~/Library/YabomishIM/` 下的檔案，找不到才用 App bundle 內建版本。擴充表從 `tables/` 目錄載入；如有設定同步資料夾，該路徑下的 `freq.json` 與 `tables/*.txt` 也會一併載入，適合將自訂擴充表（如 `prompts.txt`）放在 iCloud Drive 跨機共享。更換字表只需替換 `~/Library/YabomishIM/liu.cin`，無需重新編譯。
 
 ## 架構
 
@@ -264,6 +298,7 @@ YabomishIM/
 
 | 版本 | 日期 | 重點 |
 |------|------|------|
+| 0.2.10 | 2026-03-17 | 擴充表系統（`tables/*.txt`）、emoji 1906 碼、動態碼長、候選字點擊送字、`,,RL` 重載 |
 | 0.2.8 | 2026-03-17 | 注音鍵位對應修正（ㄛ/ㄨ/ㄟ/ㄩ/ㄝ） |
 | 0.2.7 | 2026-03-16 | `,,ZH` 注音查碼、`,,TO` 同音字查詢命令 |
 | 0.2.6 | 2026-03-15 | 全型空格、字頻 iCloud 同步、偏好設定分組、視窗前景化修正 |
@@ -293,6 +328,7 @@ YabomishIM/
 
 - [@Marsjelly](https://github.com/Marsjelly) — 英文模式 Shift 修正、游標跟隨定位改善、安裝權限修正
 - [@jackyhuang72](https://github.com/jackyhuang72) — 注音鍵位對應修正（ㄛ/ㄨ/ㄟ/ㄩ/ㄝ）
+- [@haoweicrushu](https://github.com/haoweicrushu) — 提議碼長可設定（PR #2，已改為動態計算）
 
 ## 支持作者
 

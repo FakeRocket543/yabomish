@@ -2,6 +2,22 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.2.10] — 2026-03-17
+
+### 新增
+- 擴充表系統：`~/Library/YabomishIM/tables/*.txt` 放入 tab-separated 檔案即可擴充字表
+  - 支援 iCloud 同步（共用字頻同步路徑下的 `tables/` 目錄）
+  - 安裝時自動部署 `emoji.txt`（1,906 個 Unicode 16.0 emoji，`emX` 五碼編碼）
+  - 附帶 `prompts-example.txt` 範例（5 條通用 AI prompt shortcode）
+- `,,RL` 命令：重載字表 + 擴充表（新增/修改 tables/ 後免重新登入）
+- 偏好設定「匯入字表」：自動判斷 `.cin`（主表）/ `.txt`（擴充表）
+- 偏好設定「編輯擴充表」：直接開啟 tables/ 目錄
+- 候選字窗滑鼠點擊直接送字（游標模式 + 固定模式）
+- 空白鍵送出方向鍵選取的候選字（原本固定送第一個）
+
+### 變更
+- 碼長上限改為動態計算（從載入的字表自動推導，不再 hardcode 為 4）
+
 ## [0.2.8] — 2026-03-17
 
 ### 修正

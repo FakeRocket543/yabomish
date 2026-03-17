@@ -97,6 +97,16 @@ else
     echo "   首次切換到 Yabomish 時會引導你匯入 liu.cin。"
 fi
 
+# Deploy bundled extra tables (emoji etc.)
+mkdir -p "$USER_CIN_DIR/tables"
+TABLES_SRC="$INSTALL_DIR/$APP_NAME.app/Contents/Resources/tables"
+if [ -d "$TABLES_SRC" ]; then
+    for f in "$TABLES_SRC"/*.txt; do
+        [ -f "$f" ] && [[ "$(basename "$f")" != *-example* ]] && cp "$f" "$USER_CIN_DIR/tables/"
+    done
+    echo "✅ 擴充表已安裝到 $USER_CIN_DIR/tables/"
+fi
+
 echo ""
 echo "✅ 安裝完成！"
 echo "   請登出再登入，或到 系統設定 → 鍵盤 → 輸入方式 加入「Yabomish」"
