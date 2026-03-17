@@ -83,7 +83,8 @@ final class CINTable {
                       let content = String(data: data, encoding: .utf8) else { continue }
                 var count = 0
                 content.enumerateLines { line, _ in
-                    let parts = line.split(separator: "\t", maxSplits: 1).map(String.init)
+                    var parts = line.split(separator: "\t", maxSplits: 1).map(String.init)
+                    if parts.count < 2 { parts = line.split(separator: " ", maxSplits: 1).map(String.init) }
                     guard parts.count == 2 else { return }
                     let code = parts[0].lowercased()
                     let value = parts[1]

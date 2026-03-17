@@ -82,8 +82,8 @@ class YabomishInputController: IMKInputController {
     private var eatNextSpace = false
     private var lastCommitted = ""
     private var justCommitted = false
-    private var isSameSoundMode = false
-    private var sameSoundBase = ""  // the char selected in step 1
+    private var isHomophoneMode = false
+    private var homophoneBase = ""  // the char selected in step 1
 
     // Zhuyin reverse lookup mode
     private var isZhuyinMode = false
@@ -125,7 +125,7 @@ class YabomishInputController: IMKInputController {
         let keyCode = event.keyCode
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
-        DebugLog.log("key=\(keyCode) chars=\(event.characters ?? "") composing=\(composing) candidates=\(currentCandidates.count) zhuyin=\(isZhuyinMode) sameSound=\(isSameSoundMode)")
+        DebugLog.log("key=\(keyCode) chars=\(event.characters ?? "") composing=\(composing) candidates=\(currentCandidates.count) zhuyin=\(isZhuyinMode) homophone=\(isHomophoneMode)")
 
         if flags.contains(.command) || flags.contains(.control) || flags.contains(.option) {
             return false
@@ -177,18 +177,18 @@ class YabomishInputController: IMKInputController {
             return handleZhuyinKey(keyCode, client: client)
         }
 
-        // ' (single quote, keyCode 39) → same-sound mode
-        if keyCode == 39 && !isSameSoundMode && composing.isEmpty {
-            // Post-commit: just committed a char → show same-sound list directly
+        // ' (single quote, keyCode 39) → homophone mode
+        if keyCode == 39 && !isHomophoneMode && composing.isEmpty {
+            // Post-commit: just committed a char → show homophone list directly
             if justCommitted && !lastCommitted.isEmpty {
-                isSameSoundMode = true
-                sameSoundBase = lastCommitted
-                _ = handleSameSound(client: client)
+                isHomophoneMode = true
+                homophoneBase = lastCommitted
+                _ = handleHomophone(client: client)
                 return true
             }
             // Idle: enter pending state for '; (zhuyin) detection
             // If next key is not ';', outputs 、 (頓號) instead
-            isSameSoundMode = true
+            isHomophoneMode = true
             composing = "'"
             updateMarkedText(client: client)
             return true
@@ -232,8 +232,8 @@ class YabomishInputController: IMKInputController {
         if keyCode == 49 {
             if eatNextSpace { eatNextSpace = false; return true }
             // Idle ' + space → output 、 (頓號)
-            if isSameSoundMode && composing == "'" && sameSoundBase.isEmpty {
-                isSameSoundMode = false
+            if isHomophoneMode && composing == "'" && homophoneBase.isEmpty {
+                isHomophoneMode = false
                 composing = ""
                 client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -250,7 +250,7 @@ class YabomishInputController: IMKInputController {
         if keyCode == 53 { return handleEscape(client: client) }
         // Enter
         if keyCode == 36 {
-            if sameSoundStep2, let sel = panel.selectedCandidate() {
+            if homophoneStep2, let sel = panel.selectedCandidate() {
                 commitText(sel, client: client); return true
             }
             return handleEnter(client: client)
@@ -337,8 +337,8 @@ class YabomishInputController: IMKInputController {
 
     private func handleLetterInput(_ char: String, client: IMKTextInput) -> Bool {
         // '; → toggle zhuyin mode (official Boshiamy shortcut)
-        if isSameSoundMode && composing == "'" && char == ";" {
-            isSameSoundMode = false
+        if isHomophoneMode && composing == "'" && char == ";" {
+            isHomophoneMode = false
             composing = ""
             client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                  replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -355,8 +355,8 @@ class YabomishInputController: IMKInputController {
             return true
         }
 
-        // Idle ' followed by non-; letter → enter same-sound code input mode
-        if isSameSoundMode && composing == "'" && sameSoundBase.isEmpty {
+        // Idle ' followed by non-; letter → enter homophone code input mode
+        if isHomophoneMode && composing == "'" && homophoneBase.isEmpty {
             if char >= "a" && char <= "z" || char == "*" {
                 // 同音字模式：收集編碼，送字後列同音字
                 composing = "'" + String(char)
@@ -366,7 +366,7 @@ class YabomishInputController: IMKInputController {
                 return true
             }
             // Non-letter: output 頓號 then process char normally
-            isSameSoundMode = false
+            isHomophoneMode = false
             composing = ""
             client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                  replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -375,7 +375,7 @@ class YabomishInputController: IMKInputController {
         }
 
         // ,, command buffer: second comma triggers command mode
-        if composing == "," && char == "," && !isSameSoundMode {
+        if composing == "," && char == "," && !isHomophoneMode {
             isInCommaCommand = true
             commaCommandBuffer = ""
             composing = ",,"
@@ -393,16 +393,16 @@ class YabomishInputController: IMKInputController {
 
         let newComposing = composing + char
         let baseMaxLen = Self.cinTable.maxCodeLength
-        let maxLen = isSameSoundMode ? baseMaxLen + 1 : baseMaxLen
+        let maxLen = isHomophoneMode ? baseMaxLen + 1 : baseMaxLen
 
         if newComposing.count > maxLen {
-            if !currentCandidates.isEmpty {
+            if YabomishPrefs.autoCommit && !currentCandidates.isEmpty {
                 commitText(currentCandidates[0], client: client)
                 composing = char
                 isWildcard = false
             } else {
                 NSSound.beep()
-                resetComposing(client: client)
+                if currentCandidates.isEmpty { resetComposing(client: client) }
                 return true
             }
         } else {
@@ -440,7 +440,7 @@ class YabomishInputController: IMKInputController {
 
     private func handleSpace(client: IMKTextInput) -> Bool {
         if composing.isEmpty { return false }
-        if sameSoundStep2 && panel.isVisible_ { panel.pageDown(); return true }
+        if homophoneStep2 && panel.isVisible_ { panel.pageDown(); return true }
         if currentCandidates.isEmpty { NSSound.beep(); return true }
         let selected = panel.selectedCandidate() ?? currentCandidates[0]
         commitText(selected, client: client)
@@ -522,9 +522,9 @@ class YabomishInputController: IMKInputController {
             return true
         }
 
-        // ,,TO → enter same-sound lookup mode
+        // ,,TO → enter homophone lookup mode
         if cmd == "to" {
-            isSameSoundMode = true
+            isHomophoneMode = true
             composing = "'"
             updateMarkedText(client: client)
             return true
@@ -710,24 +710,24 @@ class YabomishInputController: IMKInputController {
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
     }
 
-    // MARK: - Same-Sound Lookup
+    // MARK: - Homophone Lookup
 
-    private func handleSameSound(client: IMKTextInput) -> Bool {
-        let results = ZhuyinLookup.shared.lookup(sameSoundBase)
+    private func handleHomophone(client: IMKTextInput) -> Bool {
+        let results = ZhuyinLookup.shared.lookup(homophoneBase)
         guard let first = results.first else { NSSound.beep(); resetComposing(client: client); return true }
         // 只取第一個讀音的同音字（聲調區分）
         currentCandidates = ZhuyinLookup.shared.sortByFreq(first.chars)
-        composing = sameSoundBase
-        NSLog("YabomishIM: sameSound base=%@ zhuyin=%@ candidates=%d",
-              sameSoundBase, first.zhuyin, currentCandidates.count)
-        updateMarkedText("\(sameSoundBase)[\(first.zhuyin)]", client: client)
+        composing = homophoneBase
+        NSLog("YabomishIM: homophone base=%@ zhuyin=%@ candidates=%d",
+              homophoneBase, first.zhuyin, currentCandidates.count)
+        updateMarkedText("\(homophoneBase)[\(first.zhuyin)]", client: client)
         showCandidatePanel(client: client)
         return true
     }
 
-    /// In same-sound step 2, space = next page (not commit first candidate)
-    private var sameSoundStep2: Bool {
-        isSameSoundMode && !sameSoundBase.isEmpty
+    /// In homophone step 2, space = next page (not commit first candidate)
+    private var homophoneStep2: Bool {
+        isHomophoneMode && !homophoneBase.isEmpty
     }
 
     // MARK: - Mode Toast
@@ -805,7 +805,7 @@ class YabomishInputController: IMKInputController {
     }
 
     private func refreshCandidates() {
-        let code = isSameSoundMode ? String(composing.dropFirst()) : composing
+        let code = isHomophoneMode ? String(composing.dropFirst()) : composing
 
         // ,,J mode: auto-append , and . to look up hiragana/katakana
         if inputMode == .j {
@@ -882,14 +882,14 @@ class YabomishInputController: IMKInputController {
     }
 
     private func commitText(_ text: String, client: IMKTextInput) {
-        DebugLog.log("commit: \"\(text)\" composing=\(composing) sameSound=\(isSameSoundMode) base=\(sameSoundBase)")
+        DebugLog.log("commit: \"\(text)\" composing=\(composing) homophone=\(isHomophoneMode) base=\(homophoneBase)")
 
-        // Same-sound step 1 → step 2: user picked a char via code, now show homophones
-        if isSameSoundMode && sameSoundBase.isEmpty && text.count == 1 {
+        // Homophone step 1 → step 2: user picked a char via code, now show homophones
+        if isHomophoneMode && homophoneBase.isEmpty && text.count == 1 {
             let results = ZhuyinLookup.shared.lookup(text)
             if !results.isEmpty {
-                sameSoundBase = text
-                _ = handleSameSound(client: client)
+                homophoneBase = text
+                _ = handleHomophone(client: client)
                 return
             }
             // No homophones — fall through to normal commit
@@ -898,7 +898,7 @@ class YabomishInputController: IMKInputController {
         let range = client.markedRange()
         client.insertText(text.replacingOccurrences(of: "\\n", with: "\n"), replacementRange: range)
         justCommitted = true
-        if !composing.isEmpty && !isSameSoundMode {
+        if !composing.isEmpty && !isHomophoneMode {
             Self.freqTracker.record(code: composing, char: text)
             Self.freqTracker.recordBigram(prev: lastCommitted, char: text)
             Self.freqTracker.saveIfNeeded()
@@ -907,17 +907,17 @@ class YabomishInputController: IMKInputController {
         composing = ""
         currentCandidates = []
         isWildcard = false
-        let wasSameSound = isSameSoundMode
-        isSameSoundMode = false
-        sameSoundBase = ""
+        let wasHomophone = isHomophoneMode
+        isHomophoneMode = false
+        homophoneBase = ""
         panel.hide()
 
         // 拆碼提示（同音字選字時一定顯示，且延長）
         if text.count == 1 {
             let codes = Self.cinTable.reverseLookup(text)
-            if !codes.isEmpty && (wasSameSound || YabomishPrefs.showCodeHint) {
+            if !codes.isEmpty && (wasHomophone || YabomishPrefs.showCodeHint) {
                 showCodeHintToast("\(text) → \(codes.joined(separator: " / "))",
-                                  duration: wasSameSound ? 3.0 : 1.2)
+                                  duration: wasHomophone ? 3.0 : 1.2)
             }
         }
     }
@@ -930,8 +930,8 @@ class YabomishInputController: IMKInputController {
         composing = ""
         currentCandidates = []
         isWildcard = false
-        isSameSoundMode = false
-        sameSoundBase = ""
+        isHomophoneMode = false
+        homophoneBase = ""
         eatNextSpace = false
         isInCommaCommand = false
         commaCommandBuffer = ""
@@ -1055,8 +1055,8 @@ class YabomishInputController: IMKInputController {
         currentCandidates = []
         isWildcard = false
         eatNextSpace = false
-        isSameSoundMode = false
-        sameSoundBase = ""
+        isHomophoneMode = false
+        homophoneBase = ""
         justCommitted = false
         clearZhuyinSlots()
         if fromOtherIM && YabomishPrefs.showActivateToast {
