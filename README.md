@@ -68,7 +68,7 @@ ccrev	Review this code for bugs and improvements:
 | `emo` | 物品 | `emolb` → 💡 |
 | `ems` | 符號 | `emshm` → ❤️ |
 | `emv` | 活動 | `emvsc` → ⚽ |
-| `emg` | 旗幟 | `emgiw` → 🇹🇼 |
+| `emg` | 旗幟 | `emgtw` → 🇹🇼 |
 
 不確定碼時可用萬用碼瀏覽：`emf*` 列出所有表情 emoji。
 
