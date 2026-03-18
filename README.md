@@ -61,13 +61,13 @@ ccrev	Review this code for bugs and improvements:
 | 前綴 | 分類 | 範例 |
 |------|------|------|
 | `emf` | 表情 | `emfgf` → 😀 |
-| `emp` | 人物 | `empnj` → 🥷 |
+| `emp` | 人物 | `empni` → 🥷 |
 | `ema` | 動物自然 | `emadf` → 🐶 |
 | `emd` | 飲食 | `emdba` → 🍌 |
-| `emt` | 交通地點 | `emtrc` → 🚀 |
-| `emo` | 物品 | `emolb` → 💡 |
-| `ems` | 符號 | `emshm` → ❤️ |
-| `emv` | 活動 | `emvsc` → ⚽ |
+| `emt` | 交通地點 | `emtck` → 🚀 |
+| `emo` | 物品 | `emoig` → 💡 |
+| `ems` | 符號 | `emfre` → ❤️ |
+| `emv` | 活動 | `emvsb` → ⚽ |
 | `emg` | 旗幟 | `emgtw` → 🇹🇼 |
 
 不確定碼時可用萬用碼瀏覽：`emf*` 列出所有表情 emoji。
