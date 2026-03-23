@@ -23,7 +23,8 @@ sudo chmod -R  a+rX "$INSTALL_DIR/$APP_NAME.app"
 
 # 蝦頭方向選擇
 ICON_DIR="$INSTALL_DIR/$APP_NAME.app/Contents/Resources"
-ICON_PREF=$(defaults read com.yabomishim.inputmethod.YabomishIM iconDirection 2>/dev/null || echo "left")
+ICON_PREF=$(defaults read com.yabomishim.inputmethod.YabomishIM iconDirection 2>/dev/null | tr -d '[:space:]')
+[ -z "$ICON_PREF" ] && ICON_PREF="left"
 ICON_CUR="← 向左"
 [ "$ICON_PREF" = "right" ] && ICON_CUR="→ 向右"
 echo ""
@@ -46,7 +47,8 @@ fi
 
 # 狀態列名稱選擇
 PLIST="$INSTALL_DIR/$APP_NAME.app/Contents/Info.plist"
-LABEL_PREF=$(defaults read com.yabomishim.inputmethod.YabomishIM menuBarLabel 2>/dev/null || echo "yabomish")
+LABEL_PREF=$(defaults read com.yabomishim.inputmethod.YabomishIM menuBarLabel 2>/dev/null | tr -d '[:space:]')
+[ -z "$LABEL_PREF" ] && LABEL_PREF="yabomish"
 LABEL_CUR="Yabomish"
 [ "$LABEL_PREF" = "yabo" ] && LABEL_CUR="Yabo"
 echo ""

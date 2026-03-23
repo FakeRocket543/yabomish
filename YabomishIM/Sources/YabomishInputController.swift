@@ -989,7 +989,15 @@ class YabomishInputController: IMKInputController {
             cursorRect = client.firstRect(forCharacterRange: queryRange, actualRange: nil)
         }
 
-        let hasCursor = cursorRect.minX > 0 || cursorRect.minY > 0
+        DebugLog.log("firstRect=\(cursorRect) queryRange=(\(queryRange.location),\(queryRange.length)) markedRange=(\(markedRange.location),\(markedRange.length))")
+
+        let hasCursor: Bool = {
+            guard cursorRect.minX > 0 || cursorRect.minY > 0
+                  || cursorRect.size.height > 0 else { return false }
+            let pt = NSPoint(x: cursorRect.midX, y: cursorRect.midY)
+            return NSScreen.screens.contains(where: { $0.visibleFrame.contains(pt) })
+        }()
+        DebugLog.log("hasCursor=\(hasCursor) screens=\(NSScreen.screens.map { NSStringFromRect($0.visibleFrame) })")
         if hasCursor {
             let pt = NSPoint(x: cursorRect.midX, y: cursorRect.midY)
             panel.targetScreen = NSScreen.screens.first(where: { $0.frame.contains(pt) })
