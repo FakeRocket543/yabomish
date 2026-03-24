@@ -2,6 +2,17 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.2.13] — 2026-03-24
+
+### 新增
+- 拼音查碼模式：`,,PYS`（簡體字＋簡體碼）/ `,,PYT`（繁體字＋繁體碼）
+  - 新增 `pinyin_data.json`（萌典注音機械轉換，1,338 音節）
+  - 輸入拼音字母 + 聲調數字 1-5（空白鍵=一聲）查碼
+  - 支援 `v` → `ü` 轉換
+
+### 修正
+- 游標跟隨模式：選字窗左邊界溢出修正（參考[唯音輸入法](https://github.com/vChewing/vChewing-macOS)的邊界處理方案，`pt.x < screen.visibleFrame.minX` 時歸位）
+
 ## [0.2.12] — 2026-03-23
 
 ### 修正
