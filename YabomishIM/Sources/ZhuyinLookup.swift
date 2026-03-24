@@ -6,6 +6,7 @@ final class ZhuyinLookup {
 
     private var charToZhuyins: [String: [String]] = [:]
     private var zhuyinToChars: [String: [String]] = [:]
+    private var pinyinToChars: [String: [String]] = [:]
     private var charFreq: [String: Int] = [:]
 
     private init() {
@@ -31,6 +32,15 @@ final class ZhuyinLookup {
             charFreq = freq
         }
         NSLog("YabomishIM: zhuyin loaded — %d readings, %d chars, %d freq", z2c.count, c2z.count, charFreq.count)
+
+        // 載入拼音表
+        if let pp = Bundle.main.path(forResource: "pinyin_data", ofType: "json"),
+           let pd = try? Data(contentsOf: URL(fileURLWithPath: pp)),
+           let pj = try? JSONSerialization.jsonObject(with: pd) as? [String: Any],
+           let p2c = pj["pinyin_to_chars"] as? [String: [String]] {
+            pinyinToChars = p2c
+            NSLog("YabomishIM: pinyin loaded — %d readings", p2c.count)
+        }
     }
 
     /// 依萌典字頻排序（高頻在前，無頻率的排最後）
@@ -52,5 +62,16 @@ final class ZhuyinLookup {
     /// 注音反查：輸入注音，回傳對應的字
     func charsForZhuyin(_ zhuyin: String) -> [String] {
         zhuyinToChars[zhuyin] ?? []
+    }
+
+    /// 拼音反查：輸入拼音（如 "zhong1"），回傳對應的字
+    /// 使用者輸入 v 代替 ü（如 lv4 = 綠）
+    func charsForPinyin(_ pinyin: String) -> [String] {
+        // 先直接查
+        if let chars = pinyinToChars[pinyin], !chars.isEmpty { return chars }
+        // v → ü 轉換（lv→lü, nv→nü）
+        let converted = pinyin.replacingOccurrences(of: "v", with: "ü")
+        if converted != pinyin, let chars = pinyinToChars[converted], !chars.isEmpty { return chars }
+        return []
     }
 }

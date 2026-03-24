@@ -279,9 +279,15 @@ final class CandidatePanel: NSPanel {
         let screen = effectiveScreen
         var pt = origin
         pt.y -= (self.frame.height + 4)
+        // 底部溢出：翻到游標上方
         if pt.y < screen.visibleFrame.minY { pt.y = origin.y + 20 }
+        // 右邊界
         if pt.x + frame.width > screen.visibleFrame.maxX {
             pt.x = screen.visibleFrame.maxX - frame.width
+        }
+        // 左邊界
+        if pt.x < screen.visibleFrame.minX {
+            pt.x = screen.visibleFrame.minX
         }
         setFrameOrigin(pt)
     }

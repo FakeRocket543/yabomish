@@ -92,6 +92,11 @@ class YabomishInputController: IMKInputController {
     private var zyMedial  = ""     // 介音 slot (ㄧㄨㄩ)
     private var zyFinal   = ""     // 韻母 slot
 
+    // Pinyin reverse lookup mode
+    private var isPinyinMode = false
+    private var pinyinSimplified = true   // true=簡體 false=繁體
+    private var pinyinBuffer = ""  // 使用者輸入的拼音字母
+
     // ,, command buffer
     private var commaCommandBuffer = ""   // collects chars after ",,"
     private var isInCommaCommand = false  // true after seeing ",,"
@@ -175,6 +180,11 @@ class YabomishInputController: IMKInputController {
         // — Zhuyin reverse lookup mode —
         if isZhuyinMode {
             return handleZhuyinKey(keyCode, client: client)
+        }
+
+        // — Pinyin reverse lookup mode —
+        if isPinyinMode {
+            return handlePinyinKey(keyCode, client: client)
         }
 
         // ' (single quote, keyCode 39) → homophone mode
@@ -512,9 +522,31 @@ class YabomishInputController: IMKInputController {
         if cmd == "zh" {
             isZhuyinMode.toggle()
             if isZhuyinMode {
+                isPinyinMode = false; pinyinBuffer = ""
                 showModeToast("注")
             } else {
                 clearZhuyinSlots()
+                currentCandidates = []
+                panel.hide()
+                showModeToast(Self.modeLabels[inputMode] ?? "繁中")
+            }
+            return true
+        }
+
+        // ,,PYS / ,,PYT → pinyin lookup (simplified / traditional)
+        if cmd == "pys" || cmd == "pyt" {
+            let entering = !isPinyinMode || (cmd == "pys") != pinyinSimplified
+            if entering {
+                isPinyinMode = true
+                pinyinSimplified = (cmd == "pys")
+                isZhuyinMode = false; clearZhuyinSlots()
+                pinyinBuffer = ""
+                currentCandidates = []
+                panel.hide()
+                showModeToast(cmd == "pys" ? "拼簡" : "拼繁")
+            } else {
+                isPinyinMode = false
+                pinyinBuffer = ""
                 currentCandidates = []
                 panel.hide()
                 showModeToast(Self.modeLabels[inputMode] ?? "繁中")
@@ -532,7 +564,7 @@ class YabomishInputController: IMKInputController {
 
         // ,,H → show available commands
         if cmd == "h" {
-            showCodeHintToast(",,T繁中 ,,S簡中 ,,SP速 ,,SL慢\n,,TS繁中→簡中 ,,ST簡中→繁中 ,,J日\n,,ZH注音查碼 ,,TO同音字\n,,RS重置字頻 ,,C當前模式 ,,H說明", duration: 4.0)
+            showCodeHintToast(",,T繁中 ,,S簡中 ,,SP速 ,,SL慢\n,,TS繁中→簡中 ,,ST簡中→繁中 ,,J日\n,,ZH注音查碼 ,,PYS拼音查碼(簡) ,,PYT拼音查碼(繁) ,,TO同音字\n,,RS重置字頻 ,,C當前模式 ,,H說明", duration: 4.0)
             return true
         }
 
@@ -696,6 +728,123 @@ class YabomishInputController: IMKInputController {
             return codes.isEmpty ? char : "\(char) \(codes.joined(separator: "/"))"
         }
         updateMarkedText(zhuyin, client: client)
+        showCandidatePanel(client: client)
+        return true
+    }
+
+    // MARK: - Pinyin reverse lookup
+
+    private func handlePinyinKey(_ keyCode: UInt16, client: IMKTextInput) -> Bool {
+        // Escape → exit pinyin mode
+        if keyCode == 53 {
+            if !pinyinBuffer.isEmpty || !currentCandidates.isEmpty {
+                pinyinBuffer = ""
+                currentCandidates = []
+                panel.hide()
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            } else {
+                isPinyinMode = false
+                showModeToast(Self.modeLabels[inputMode] ?? "繁中")
+            }
+            return true
+        }
+
+        // Backspace
+        if keyCode == 51 {
+            if currentCandidates.isEmpty && !pinyinBuffer.isEmpty {
+                pinyinBuffer = String(pinyinBuffer.dropLast())
+                if pinyinBuffer.isEmpty {
+                    client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                         replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                } else {
+                    updateMarkedText(pinyinBuffer, client: client)
+                }
+            } else if !currentCandidates.isEmpty {
+                currentCandidates = []
+                panel.hide()
+                updateMarkedText(pinyinBuffer, client: client)
+            }
+            return true
+        }
+
+        // When candidates are showing: selection keys, navigation, space
+        if !currentCandidates.isEmpty {
+            if let digit = keyCodeToDigit[keyCode],
+               let selected = panel.selectByKey(digit) {
+                let char = String(selected.prefix(1))
+                let codes = Self.cinTable.reverseLookup(char)
+                commitText(char, client: client)
+                showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
+                pinyinBuffer = ""
+                currentCandidates = []
+                panel.hide()
+                return true
+            }
+            if keyCode == 49 { panel.pageDown(); return true }
+            if panel.isFixedMode {
+                if keyCode == 123 { panel.movePrev(); return true }
+                if keyCode == 124 { panel.moveNext(); return true }
+                if keyCode == 126 { panel.pageUp(); return true }
+                if keyCode == 125 { panel.pageDown(); return true }
+            } else {
+                if keyCode == 126 { panel.moveUp(); return true }
+                if keyCode == 125 { panel.moveDown(); return true }
+                if keyCode == 123 { panel.pageUp(); return true }
+                if keyCode == 124 { panel.pageDown(); return true }
+            }
+            if keyCode == 48 { panel.pageDown(); return true }
+            if keyCode == 36, let sel = panel.selectedCandidate() {
+                let char = String(sel.prefix(1))
+                let codes = Self.cinTable.reverseLookup(char)
+                commitText(char, client: client)
+                showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
+                pinyinBuffer = ""
+                currentCandidates = []
+                panel.hide()
+                return true
+            }
+            return true
+        }
+
+        // 數字鍵 1-5 → 聲調，觸發查詢
+        if let digit = keyCodeToDigit[keyCode], let d = digit.wholeNumberValue, (1...5).contains(d), !pinyinBuffer.isEmpty {
+            return pinyinLookup(pinyinBuffer + "\(d)", client: client)
+        }
+        // Space → 聲調 1（一聲）
+        if keyCode == 49 && !pinyinBuffer.isEmpty {
+            return pinyinLookup(pinyinBuffer + "1", client: client)
+        }
+
+        // 字母鍵 → 收集拼音
+        if let ch = keyCodeToChar[keyCode], ch.isLetter {
+            pinyinBuffer += String(ch)
+            updateMarkedText(pinyinBuffer, client: client)
+            return true
+        }
+
+        return true
+    }
+
+    private func pinyinLookup(_ pinyin: String, client: IMKTextInput) -> Bool {
+        let chars = ZhuyinLookup.shared.charsForPinyin(pinyin)
+        guard !chars.isEmpty else { NSSound.beep(); return true }
+        let display: [String]
+        if pinyinSimplified {
+            let t2s = Self.cinTable.t2s
+            var seen = Set<String>()
+            display = chars.compactMap { char -> String? in
+                let s = t2s[char] ?? char
+                return seen.insert(s).inserted ? s : nil
+            }
+        } else {
+            display = chars
+        }
+        currentCandidates = display.map { char in
+            let codes = Self.cinTable.reverseLookup(char)
+            return codes.isEmpty ? char : "\(char) \(codes.joined(separator: "/"))"
+        }
+        updateMarkedText(pinyin, client: client)
         showCandidatePanel(client: client)
         return true
     }
@@ -985,8 +1134,17 @@ class YabomishInputController: IMKInputController {
         } else {
             queryRange = client.selectedRange()
         }
+        // 回退重試策略：若 firstRect 回傳零座標，逐字往前退再試。
+        // 參考自 vChewing-macOS 的 IMKTextInputImpl.swift
+        // https://github.com/vChewing/vChewing-macOS
         if queryRange.location != NSNotFound {
+            var loc = queryRange.location
             cursorRect = client.firstRect(forCharacterRange: queryRange, actualRange: nil)
+            while cursorRect.origin == .zero && loc > 0 {
+                loc -= 1
+                cursorRect = client.firstRect(
+                    forCharacterRange: NSRange(location: loc, length: 0), actualRange: nil)
+            }
         }
 
         DebugLog.log("firstRect=\(cursorRect) queryRange=(\(queryRange.location),\(queryRange.length)) markedRange=(\(markedRange.location),\(markedRange.length))")
@@ -1041,11 +1199,18 @@ class YabomishInputController: IMKInputController {
         PrefsWindow.shared.showWindow()
     }
 
+    private static var lastAppliedKeyboardLayout: String?
+
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
         _ = Self.inputSourceObserver  // 確保 observer 已註冊
-        if let client = sender as? IMKTextInput {
-            client.overrideKeyboard(withKeyboardNamed: "com.apple.keylayout.ABC")
+        // 防重複呼叫阻塞操作（參考 vChewing 的 lastAppliedKeyboardLayout 做法）
+        let targetLayout = "com.apple.keylayout.ABC"
+        if Self.lastAppliedKeyboardLayout != targetLayout {
+            if let client = sender as? IMKTextInput {
+                client.overrideKeyboard(withKeyboardNamed: targetLayout)
+            }
+            Self.lastAppliedKeyboardLayout = targetLayout
         }
         // 首次啟動偵測空字表
         if Self.cinTable.isEmpty && !Self.hasPromptedImport {
@@ -1200,6 +1365,11 @@ class YabomishInputController: IMKInputController {
         if let client = sender as? (NSObjectProtocol & IMKTextInput) {
             if isZhuyinMode {
                 clearZhuyinSlots()
+                currentCandidates = []
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            } else if isPinyinMode {
+                pinyinBuffer = ""
                 currentCandidates = []
                 client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
