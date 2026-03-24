@@ -450,7 +450,7 @@ class YabomishInputController: IMKInputController {
 
     private func handleSpace(client: IMKTextInput) -> Bool {
         if composing.isEmpty { return false }
-        if homophoneStep2 && panel.isVisible_ { panel.pageDown(); return true }
+        if homophoneStep2 && panel.isVisible_ && composing == homophoneBase { panel.pageDown(); return true }
         if currentCandidates.isEmpty { NSSound.beep(); return true }
         let selected = panel.selectedCandidate() ?? currentCandidates[0]
         commitText(selected, client: client)
