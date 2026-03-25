@@ -254,6 +254,15 @@ git pull
 ./setup.sh
 ```
 
+## 移除
+
+```bash
+cd yabomish
+./uninstall.sh
+```
+
+腳本會移除 App、清除偏好設定，並詢問是否刪除使用者資料（`~/Library/YabomishIM/`）。完成後請登出再登入。
+
 ## 資料路徑
 
 所有使用者資料存放在 `~/Library/YabomishIM/`：
