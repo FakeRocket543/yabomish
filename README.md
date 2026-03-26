@@ -344,7 +344,7 @@ YabomishIM/
 - [@Marsjelly](https://github.com/Marsjelly) — 英文模式 Shift 修正、游標跟隨定位改善、安裝權限修正
 - [@jackyhuang72](https://github.com/jackyhuang72) — 注音鍵位對應修正（ㄛ/ㄨ/ㄟ/ㄩ/ㄝ）
 - [@haoweicrushu](https://github.com/haoweicrushu) — 提議碼長可設定（PR #2，已改為動態計算）
-- [威注音輸入法 vChewing](https://github.com/vChewing/vChewing-macOS) — 游標跟隨模式邊界處理參考
+- [威注音輸入法 vChewing](https://github.com/vChewing/vChewing-macOS) — 游標跟隨模式邊界處理參考、注音字表資料來源（[VanguardLexicon](https://atomgit.com/vChewing/vChewing-VanguardLexicon)，MIT 授權）
 
 ## 支持作者
 
@@ -355,7 +355,7 @@ YabomishIM/
 
 ### 注音對照表
 
-內建 `zhuyin_data.json` 取自 [g0v/moedict-data](https://github.com/g0v/moedict-data)（教育部《重編國語辭典修訂本》，CC BY-ND 3.0 TW），涵蓋 9,913 字、1,338 組注音。
+內建 `zhuyin_data.json` 取自[威注音輸入法](https://github.com/vChewing/vChewing-macOS)的 [VanguardLexicon](https://atomgit.com/vChewing/vChewing-VanguardLexicon) 字表（MIT 授權），涵蓋 7,633 字、1,387 組注音。字表已按威注音的繁體單字權重排序，罕見讀音（權重為 0）不收錄，確保同音字查詢結果貼近實際使用。
 
 ### 繁簡對照表
 
@@ -363,7 +363,7 @@ YabomishIM/
 
 > Copyright OpenCC Authors. Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
-曾嘗試合併 [Unihan](https://www.unicode.org/reports/tr38/) 與 [libchewing](https://github.com/chewing/libchewing) 擴充至 43,985 字，但新增的大量 CJK Extension B+ 罕用字在多數字型中無法顯示，同音候選反而不實用，因此回退至純萌典版本。
+曾使用 [g0v/moedict-data](https://github.com/g0v/moedict-data)（教育部《重編國語辭典修訂本》）作為注音資料來源，但萌典收錄所有讀音不分常用罕用，導致同音字查詢混入大量罕見讀音的字（如「色」的 ㄕㄜˋ、「庫」的 ㄕㄜˋ），改用威注音字表後解決。
 
 ## 授權
 

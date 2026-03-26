@@ -48,15 +48,23 @@ final class ZhuyinLookup {
         chars.sorted { (charFreq[$0] ?? 0) > (charFreq[$1] ?? 0) }
     }
 
-    /// 查同音字：輸入一個字，回傳 [(注音, [同音字])]
+    /// 查同音字：輸入一個字，回傳 [(注音, [同音字])]，按同音字群字頻總和排序（常用讀音在前）
+    /// homophoneMultiReading=false 時只回傳字頻最高的那組讀音
     func lookup(_ char: String) -> [(zhuyin: String, chars: [String])] {
         guard let zhuyins = charToZhuyins[char] else { return [] }
-        return zhuyins.compactMap { zy in
+        let all = zhuyins.compactMap { zy -> (zhuyin: String, chars: [String], freq: Int)? in
             guard let chars = zhuyinToChars[zy] else { return nil }
-            // 排除自己
             let filtered = chars.filter { $0 != char }
-            return filtered.isEmpty ? nil : (zy, filtered)
+            guard !filtered.isEmpty else { return nil }
+            let freq = filtered.reduce(0) { $0 + (charFreq[$1] ?? 0) }
+            return (zy, filtered, freq)
+        }.sorted { $0.freq > $1.freq }
+        if YabomishPrefs.homophoneMultiReading {
+            return all.map { ($0.zhuyin, $0.chars) }
         }
+        // 預設只回傳最高頻的一組讀音
+        guard let best = all.first else { return [] }
+        return [(best.zhuyin, best.chars)]
     }
 
     /// 注音反查：輸入注音，回傳對應的字

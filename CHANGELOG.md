@@ -2,6 +2,14 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.2.15] — 2026-03-26
+
+### 修正
+- 同音字查詢結果混入大量不相關的字（如查「社」出現「色」「庫」，查「攝」出現「鑷」「顳」「陟」）
+  - 根本原因：萌典收錄所有讀音不分常用罕用，罕見讀音的字被歸入同音字群
+  - 改用[威注音 VanguardLexicon](https://atomgit.com/vChewing/vChewing-VanguardLexicon) 字表重建 `zhuyin_data.json`，只收繁體權重 > 0 的字並按權重排序
+- 多音字預設只顯示最常用讀音的同音字（可透過 `homophoneMultiReading` 開啟全部讀音）
+
 ## [0.2.14] — 2026-03-24
 
 ### 修正

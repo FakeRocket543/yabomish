@@ -92,6 +92,12 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "iconDirection") }
     }
 
+    /// 同音字查詢包含多音字的罕見讀音（如「色」的 ㄕㄜˋ）
+    static var homophoneMultiReading: Bool {
+        get { defaults.object(forKey: "homophoneMultiReading") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "homophoneMultiReading") }
+    }
+
     /// Debug mode: write detailed logs to ~/Library/YabomishIM/debug.log
     static var debugMode: Bool {
         get { defaults.object(forKey: "debugMode") as? Bool ?? false }

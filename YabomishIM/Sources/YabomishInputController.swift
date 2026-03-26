@@ -1045,7 +1045,15 @@ class YabomishInputController: IMKInputController {
         }
 
         let range = client.markedRange()
-        client.insertText(text.replacingOccurrences(of: "\\n", with: "\n"), replacementRange: range)
+        let output = text.replacingOccurrences(of: "\\n", with: "\n")
+        // 長文字（擴充表詞條等）：先清 marked text 再插入，避免部分 App 以 markedRange length 截斷
+        if output.count > range.length && range.length > 0 {
+            client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                 replacementRange: range)
+            client.insertText(output, replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+        } else {
+            client.insertText(output, replacementRange: range)
+        }
         justCommitted = true
         if !composing.isEmpty && !isHomophoneMode {
             Self.freqTracker.record(code: composing, char: text)
