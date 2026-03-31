@@ -2,6 +2,13 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.2.16] — 2026-03-31
+
+### 修正
+- 多螢幕環境下固定候選字窗跑到錯誤螢幕（cmux / Ghostty 等 GPU 終端 `firstRect` 回傳無效座標時的 fallback 路徑）
+  - `activeScreen` 改為優先用滑鼠位置判斷所在螢幕，打字時滑鼠幾乎一定在同一螢幕上
+  - CGWindowList fallback 改為找 frontmost app 面積最大的視窗（原本用 `.lazy.first` 隨機取第一個匹配視窗）
+
 ## [0.2.15] — 2026-03-26
 
 ### 修正

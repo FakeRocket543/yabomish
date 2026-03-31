@@ -11,12 +11,22 @@ private let keyCodeToChar: [UInt16: Character] = [
     38: "j", 40: "k", 37: "l", 45: "n", 46: "m",
     43: ",", 47: ".", 41: ";", 44: "/",
     33: "[", 30: "]",
+    27: "-", 24: "=", 42: "\\", 50: "`",
 ]
 
 /// Selection key keyCodes (number row: 1-9, 0)
 private let keyCodeToDigit: [UInt16: Character] = [
     18: "1", 19: "2", 20: "3", 21: "4", 23: "5",
     22: "6", 26: "7", 28: "8", 25: "9", 29: "0",
+]
+
+/// Shift+key → QWERTY shifted symbol (layout-independent)
+private let keyCodeToShifted: [UInt16: Character] = [
+    18: "!", 19: "@", 20: "#", 21: "$", 23: "%",
+    22: "^", 26: "&", 28: "*", 25: "(", 29: ")",
+    27: "_", 24: "+", 33: "{", 30: "}", 42: "|",
+    41: ":", 39: "\"", 43: "<", 47: ">", 44: "?",
+    50: "~",
 ]
 
 /// Standard Zhuyin keyboard: keyCode → Zhuyin symbol
@@ -136,15 +146,25 @@ class YabomishInputController: IMKInputController {
             return false
         }
 
+        // 英文模式：用 keyCode 查表輸出 QWERTY 字元，不依賴系統鍵盤佈局
+        // （避免法文 AZERTY 等非 QWERTY 佈局導致輸出錯位）
         if isEnglishMode {
             if flags.contains(.shift) { shiftWasUsedWithOtherKey = true }
+            if let ch = keyCodeToChar[keyCode] ?? keyCodeToDigit[keyCode] {
+                var s = String(ch)
+                let wantUpper = flags.contains(.shift) != flags.contains(.capsLock)
+                if wantUpper { s = s.uppercased() }
+                client.insertText(s, replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                return true
+            }
             return false
         }
 
         // Hold Shift → temporary English input (lowercase)
         // Exception: Shift+8 = '*' wildcard when composing
+        // 用 keyCode 28 (數字鍵 8) 判斷，不依賴 event.characters（佈局無關）
         if flags.contains(.shift) && !flags.contains(.command) && !flags.contains(.control) && !flags.contains(.option) {
-            if let chars = event.characters, chars == "*", !composing.isEmpty {
+            if keyCode == 28, !composing.isEmpty {
                 shiftWasUsedWithOtherKey = true
                 return handleWildcardInput(client: client)
             }
@@ -172,6 +192,10 @@ class YabomishInputController: IMKInputController {
             if let ch = keyCodeToChar[keyCode] {
                 let s = flags.contains(.capsLock) ? String(ch).uppercased() : String(ch)
                 client.insertText(s, replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                return true
+            }
+            if let sh = keyCodeToShifted[keyCode] {
+                client.insertText(String(sh), replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
                 return true
             }
             return false
@@ -287,9 +311,8 @@ class YabomishInputController: IMKInputController {
         if keyCode == 121 && panel.isVisible_ { panel.pageDown(); return true }
         if keyCode == 116 && panel.isVisible_ { panel.pageUp(); return true }
 
-        // Wildcard: keyCode 44 is '/' on QWERTY but we use Shift+8 for '*'
-        // Actually check characters for '*' since it's shift+8 on all layouts
-        if let chars = event.characters, chars == "*", !composing.isEmpty {
+        // Wildcard: Shift+8 → '*'，用 keyCode 28 判斷（佈局無關，不依賴 event.characters）
+        if keyCode == 28, flags.contains(.shift), !composing.isEmpty {
             return handleWildcardInput(client: client)
         }
 
@@ -319,6 +342,12 @@ class YabomishInputController: IMKInputController {
         // Letter/punctuation keys — use keyCode for layout independence
         if let ch = keyCodeToChar[keyCode] {
             return handleLetterInput(String(ch), client: client)
+        }
+
+        // Digits when idle: output QWERTY digit (layout-independent)
+        if composing.isEmpty, let digit = keyCodeToDigit[keyCode] {
+            client.insertText(String(digit), replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            return true
         }
 
         return !composing.isEmpty
@@ -1103,25 +1132,32 @@ class YabomishInputController: IMKInputController {
 
     private static var cachedActiveScreen: (screen: NSScreen, time: Date)?
 
-    /// 取得 client app 所在螢幕（透過 frontmost app 的 key window）
+    /// 取得 client app 所在螢幕（優先用滑鼠位置，fallback 到 CGWindowList）
     private func activeScreen(for client: IMKTextInput) -> NSScreen {
-        // 快取 0.5 秒，避免每次選字都呼叫 CGWindowList
         if let cached = Self.cachedActiveScreen, Date().timeIntervalSince(cached.time) < 0.5 {
             return cached.screen
         }
         let result: NSScreen
-        if let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
-           let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]],
-           let screen = list.lazy.compactMap({ info -> NSScreen? in
-               guard let ownerPID = info[kCGWindowOwnerPID as String] as? Int32, ownerPID == pid,
-                     let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
-                     let x = bounds["X"], let y = bounds["Y"] else { return nil }
-               return NSScreen.screens.first { s in
-                   let pt = NSPoint(x: x + 10, y: s.frame.maxY - y - 10)
-                   return s.frame.contains(pt)
-               }
-           }).first {
+        // 優先：滑鼠所在螢幕（打字時滑鼠通常在同一螢幕）
+        let mouse = NSEvent.mouseLocation
+        if let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) {
             result = screen
+        } else if let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+           let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] {
+            // Fallback：找 frontmost app 面積最大的視窗（最可能是主視窗）
+            var best: (screen: NSScreen, area: CGFloat) = (NSScreen.main ?? NSScreen.screens[0], 0)
+            for info in list {
+                guard let ownerPID = info[kCGWindowOwnerPID as String] as? Int32, ownerPID == pid,
+                      let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
+                      let x = bounds["X"], let y = bounds["Y"],
+                      let w = bounds["Width"], let h = bounds["Height"] else { continue }
+                let area = w * h
+                guard area > best.area else { continue }
+                if let s = NSScreen.screens.first(where: {
+                    $0.frame.contains(NSPoint(x: x + w / 2, y: $0.frame.maxY - y - h / 2))
+                }) { best = (s, area) }
+            }
+            result = best.screen
         } else {
             result = NSScreen.main ?? NSScreen.screens[0]
         }
