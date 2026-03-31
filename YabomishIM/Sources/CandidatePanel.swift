@@ -45,7 +45,7 @@ final class CandidatePanel: NSPanel {
         self.backgroundColor = .clear
         self.hasShadow = true
         self.isMovableByWindowBackground = false
-        self.collectionBehavior = [.canJoinAllSpaces, .stationary]
+        self.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
 
         let contentVisual = NSVisualEffectView()
         contentVisual.material = .popover

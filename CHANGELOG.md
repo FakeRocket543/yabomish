@@ -2,6 +2,11 @@
 
 所有版本的變更紀錄。格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.2.17] — 2026-03-31
+
+### 修正
+- 全螢幕 App（cmux / Ghostty 等）中候選字窗不顯示：`collectionBehavior` 加入 `.fullScreenAuxiliary`
+
 ## [0.2.16] — 2026-03-31
 
 ### 修正
