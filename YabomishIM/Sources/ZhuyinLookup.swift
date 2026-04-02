@@ -8,6 +8,8 @@ final class ZhuyinLookup {
     private var zhuyinToChars: [String: [String]] = [:]
     private var pinyinToChars: [String: [String]] = [:]
     private var charFreq: [String: Int] = [:]
+    // bigram boost: prevZhuyin → curZhuyin → [(char, freq)]
+    private var bigramBoost: [String: [String: [(String, Int)]]] = [:]
 
     private init() {
         let userPath = NSHomeDirectory() + "/Library/YabomishIM/zhuyin_data.json"
@@ -41,35 +43,117 @@ final class ZhuyinLookup {
             pinyinToChars = p2c
             NSLog("YabomishIM: pinyin loaded — %d readings", p2c.count)
         }
+
+        // 載入 bigram boost 表
+        if let bp = Bundle.main.path(forResource: "bigram_boost", ofType: "json"),
+           let bd = try? Data(contentsOf: URL(fileURLWithPath: bp)),
+           let bj = try? JSONSerialization.jsonObject(with: bd) as? [String: [String: [[Any]]]] {
+            for (prevZy, inner) in bj {
+                var innerDict: [String: [(String, Int)]] = [:]
+                for (curZy, pairs) in inner {
+                    innerDict[curZy] = pairs.compactMap { arr in
+                        guard arr.count >= 2,
+                              let ch = arr[0] as? String,
+                              let freq = arr[1] as? Int else { return nil }
+                        return (ch, freq)
+                    }
+                }
+                bigramBoost[prevZy] = innerDict
+            }
+            NSLog("YabomishIM: bigram boost loaded — %d prev entries", bigramBoost.count)
+        }
     }
 
-    /// 依萌典字頻排序（高頻在前，無頻率的排最後）
+    /// 依 zhuyin_data.json 的排序（已含一般字優先+字頻排序）
     func sortByFreq(_ chars: [String]) -> [String] {
         chars.sorted { (charFreq[$0] ?? 0) > (charFreq[$1] ?? 0) }
     }
 
-    /// 查同音字：輸入一個字，回傳 [(注音, [同音字])]，按同音字群字頻總和排序（常用讀音在前）
-    /// homophoneMultiReading=false 時只回傳字頻最高的那組讀音
-    func lookup(_ char: String) -> [(zhuyin: String, chars: [String])] {
+    /// 帶上下文的排序：用前一個字做 bigram reranking
+    func sortByFreq(_ chars: [String], prevChar: String?) -> [String] {
+        guard let prev = prevChar,
+              let prevZhuyins = charToZhuyins[prev],
+              !prevZhuyins.isEmpty else {
+            return sortByFreq(chars)
+        }
+        // 收集所有 boost
+        var boostMap: [String: Int] = [:]
+        for ch in chars {
+            guard let curZhuyins = charToZhuyins[ch] else { continue }
+            for pzy in prevZhuyins {
+                for czy in curZhuyins {
+                    if let pairs = bigramBoost[pzy]?[czy] {
+                        for (c, f) in pairs where c == ch {
+                            boostMap[ch] = max(boostMap[ch] ?? 0, f)
+                        }
+                    }
+                }
+            }
+        }
+        if boostMap.isEmpty { return sortByFreq(chars) }
+        // boost 字排前面，其餘按字頻
+        let boosted = chars.filter { boostMap[$0] != nil }.sorted { (boostMap[$0] ?? 0) > (boostMap[$1] ?? 0) }
+        let rest = chars.filter { boostMap[$0] == nil }.sorted { (charFreq[$0] ?? 0) > (charFreq[$1] ?? 0) }
+        return boosted + rest
+    }
+
+    /// 查同音字：輸入一個字，回傳 [(注音, [同音字])]
+    /// prevChar: 前一個已確認的字（用於 bigram reranking）
+    func lookup(_ char: String, prevChar: String? = nil) -> [(zhuyin: String, chars: [String])] {
         guard let zhuyins = charToZhuyins[char] else { return [] }
         let all = zhuyins.compactMap { zy -> (zhuyin: String, chars: [String], freq: Int)? in
-            guard let chars = zhuyinToChars[zy] else { return nil }
-            let filtered = chars.filter { $0 != char }
+            guard let raw = zhuyinToChars[zy] else { return nil }
+            let filtered = raw.filter { $0 != char }
             guard !filtered.isEmpty else { return nil }
+            // 用 bigram reranking 排序同音字
+            let sorted = (prevChar != nil)
+                ? sortByFreq(filtered, prevChar: prevChar)
+                : filtered  // zhuyin_data.json 已排好序
             let freq = filtered.reduce(0) { $0 + (charFreq[$1] ?? 0) }
-            return (zy, filtered, freq)
+            return (zy, sorted, freq)
         }.sorted { $0.freq > $1.freq }
         if YabomishPrefs.homophoneMultiReading {
             return all.map { ($0.zhuyin, $0.chars) }
         }
-        // 預設只回傳最高頻的一組讀音
         guard let best = all.first else { return [] }
         return [(best.zhuyin, best.chars)]
     }
 
-    /// 注音反查：輸入注音，回傳對應的字
+    /// 注音反查：輸入注音，回傳對應的字（已按一般字優先+字頻排序）
     func charsForZhuyin(_ zhuyin: String) -> [String] {
         zhuyinToChars[zhuyin] ?? []
+    }
+
+    /// 注音反查（帶上下文）：用前一個字的注音做 bigram reranking
+    /// prevChar: 前一個已確認的字（可為 nil）
+    func charsForZhuyin(_ zhuyin: String, prevChar: String?) -> [String] {
+        let base = zhuyinToChars[zhuyin] ?? []
+        guard let prev = prevChar,
+              let prevZhuyins = charToZhuyins[prev],
+              !prevZhuyins.isEmpty else {
+            return base
+        }
+        // 從前一個字的所有讀音中，找最佳 boost
+        var bestBoosts: [(String, Int)] = []
+        for pzy in prevZhuyins {
+            if let pairs = bigramBoost[pzy]?[zhuyin] {
+                for (ch, freq) in pairs {
+                    if freq > (bestBoosts.first(where: { $0.0 == ch })?.1 ?? 0) {
+                        bestBoosts.removeAll { $0.0 == ch }
+                        bestBoosts.append((ch, freq))
+                    }
+                }
+            }
+        }
+        guard !bestBoosts.isEmpty else { return base }
+        // boost 字按頻率排前面，其餘照原排序
+        bestBoosts.sort { $0.1 > $1.1 }
+        let boostChars = Set(bestBoosts.map { $0.0 })
+        var result = bestBoosts.map { $0.0 }
+        for ch in base where !boostChars.contains(ch) {
+            result.append(ch)
+        }
+        return result
     }
 
     /// 拼音反查：輸入拼音（如 "zhong1"），回傳對應的字

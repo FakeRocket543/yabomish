@@ -749,7 +749,8 @@ class YabomishInputController: IMKInputController {
     }
 
     private func zhuyinLookup(_ zhuyin: String, client: IMKTextInput) -> Bool {
-        let chars = ZhuyinLookup.shared.charsForZhuyin(zhuyin)
+        let prevChar = lastCommitted.isEmpty ? nil : lastCommitted
+        let chars = ZhuyinLookup.shared.charsForZhuyin(zhuyin, prevChar: prevChar)
         guard !chars.isEmpty else { NSSound.beep(); return true }
         // Format: "字 碼" for each candidate
         currentCandidates = chars.map { char in
@@ -891,10 +892,9 @@ class YabomishInputController: IMKInputController {
     // MARK: - Homophone Lookup
 
     private func handleHomophone(client: IMKTextInput) -> Bool {
-        let results = ZhuyinLookup.shared.lookup(homophoneBase)
+        let results = ZhuyinLookup.shared.lookup(homophoneBase, prevChar: lastCommitted.isEmpty ? nil : lastCommitted)
         guard let first = results.first else { NSSound.beep(); resetComposing(client: client); return true }
-        // 只取第一個讀音的同音字（聲調區分）
-        currentCandidates = ZhuyinLookup.shared.sortByFreq(first.chars)
+        currentCandidates = first.chars
         composing = homophoneBase
         NSLog("YabomishIM: homophone base=%@ zhuyin=%@ candidates=%d",
               homophoneBase, first.zhuyin, currentCandidates.count)
@@ -1064,7 +1064,7 @@ class YabomishInputController: IMKInputController {
 
         // Homophone step 1 → step 2: user picked a char via code, now show homophones
         if isHomophoneMode && homophoneBase.isEmpty && text.count == 1 {
-            let results = ZhuyinLookup.shared.lookup(text)
+            let results = ZhuyinLookup.shared.lookup(text, prevChar: lastCommitted.isEmpty ? nil : lastCommitted)
             if !results.isEmpty {
                 homophoneBase = text
                 _ = handleHomophone(client: client)
