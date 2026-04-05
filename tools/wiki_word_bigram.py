@@ -10,6 +10,7 @@ import ctypes, json, os, time
 from ctypes import c_char_p, c_int, c_int32, c_void_p, POINTER, Structure
 from pathlib import Path
 from collections import Counter, defaultdict
+from tqdm import tqdm
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 WIKI = DATA / "wiki_work" / "wiki_clean.txt"
@@ -99,7 +100,10 @@ def main():
         word_bigram = Counter({tuple(k.split("\t")): v for k, v in ckpt["bigrams"].items()})
         print(f"  ⏩ 從 checkpoint 續跑: line {start_line:,}, {len(word_bigram):,} bigrams")
 
-    for i in range(start_line, len(lines), BATCH_SIZE):
+    for i in tqdm(range(start_line, len(lines), BATCH_SIZE),
+                  initial=start_line // BATCH_SIZE,
+                  total=(len(lines) + BATCH_SIZE - 1) // BATCH_SIZE,
+                  desc="斷詞", unit="batch"):
         batch = lines[i:i+BATCH_SIZE]
         batch_num = i // BATCH_SIZE + 1
 
@@ -111,24 +115,17 @@ def main():
         except Exception as e:
             errors += 1
             if errors <= 5:
-                print(f"  batch {batch_num} error: {e}")
+                tqdm.write(f"  batch {batch_num} error: {e}")
 
         # Checkpoint every 50000 batches
         if batch_num % 50000 == 0:
-            elapsed = time.time() - t0
-            speed = (i - start_line + len(batch)) / elapsed if elapsed > 0 else 0
-            eta = (len(lines) - i - len(batch)) / speed if speed > 0 else 0
-            print(f"  {i+len(batch):,}/{len(lines):,} lines, "
-                  f"{len(word_bigram):,} bigrams, "
-                  f"{speed:.0f} lines/s, ETA {eta/60:.0f}m ({elapsed:.0f}s)")
-            # Save checkpoint
             ckpt_data = {
                 "line": i + len(batch),
                 "bigrams": {f"{k[0]}\t{k[1]}": v for k, v in word_bigram.items()}
             }
             with open(ckpt_path, 'w') as f:
                 json.dump(ckpt_data, f, ensure_ascii=False)
-            print(f"  💾 checkpoint saved")
+            tqdm.write(f"  💾 checkpoint saved ({len(word_bigram):,} bigrams)")
 
     # Final progress
     elapsed = time.time() - t0
