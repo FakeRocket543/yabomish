@@ -339,8 +339,11 @@ class YabomishInputController: IMKInputController {
             }
         }
 
-        // '/' passthrough when idle (useful for editor slash commands)
-        if keyCode == 44 && composing.isEmpty { return false }
+        // '/' passthrough when idle — 自己插入，避免法文鍵盤佈局錯位
+        if keyCode == 44 && composing.isEmpty {
+            client.insertText("/", replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            return true
+        }
 
         // Letter/punctuation keys — use keyCode for layout independence
         if let ch = keyCodeToChar[keyCode] {
