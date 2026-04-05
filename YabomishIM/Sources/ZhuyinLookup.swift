@@ -10,6 +10,10 @@ final class ZhuyinLookup {
     private var charFreq: [String: Int] = [:]
     // bigram boost: prevZhuyin → curZhuyin → [(char, freq)]
     private var bigramBoost: [String: [String: [(String, Int)]]] = [:]
+    /// Bigram suggest: prev_char → [next_char, ...]
+    private var bigramSuggest: [String: [String]] = [:]
+    /// Trigram suggest: prev2chars → [next_char, ...]
+    private var trigramSuggest: [String: [String]] = [:]
 
     private init() {
         let userPath = NSHomeDirectory() + "/Library/YabomishIM/zhuyin_data.json"
@@ -61,6 +65,22 @@ final class ZhuyinLookup {
                 bigramBoost[prevZy] = innerDict
             }
             NSLog("YabomishIM: bigram boost loaded — %d prev entries", bigramBoost.count)
+        }
+
+        // 載入 bigram suggest 表
+        if let sp = Bundle.main.path(forResource: "bigram_suggest", ofType: "json"),
+           let sd = try? Data(contentsOf: URL(fileURLWithPath: sp)),
+           let sj = try? JSONSerialization.jsonObject(with: sd) as? [String: [String]] {
+            bigramSuggest = sj
+            NSLog("YabomishIM: bigram suggest loaded — %d entries", sj.count)
+        }
+
+        // 載入 trigram suggest 表
+        if let tp = Bundle.main.path(forResource: "trigram_suggest", ofType: "json"),
+           let td = try? Data(contentsOf: URL(fileURLWithPath: tp)),
+           let tj = try? JSONSerialization.jsonObject(with: td) as? [String: [String]] {
+            trigramSuggest = tj
+            NSLog("YabomishIM: trigram suggest loaded — %d entries", tj.count)
         }
     }
 
@@ -165,5 +185,18 @@ final class ZhuyinLookup {
         let converted = pinyin.replacingOccurrences(of: "v", with: "ü")
         if converted != pinyin, let chars = pinyinToChars[converted], !chars.isEmpty { return chars }
         return []
+    }
+
+    /// Bigram 聯想：輸入前一個字，回傳建議的下一個字
+    func suggestNext(after prev: String) -> [String] {
+        guard let last = prev.last else { return [] }
+        return bigramSuggest[String(last)] ?? []
+    }
+
+    /// Trigram 聯想：輸入前兩個字，回傳建議的下一個字
+    func suggestNextTrigram(prev2: String) -> [String] {
+        guard prev2.count >= 2 else { return [] }
+        let key = String(prev2.suffix(2))
+        return trigramSuggest[key] ?? []
     }
 }

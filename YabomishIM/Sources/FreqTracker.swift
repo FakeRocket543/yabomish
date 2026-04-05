@@ -50,11 +50,13 @@ final class FreqTracker {
     }
 
     func sorted(_ candidates: [String], forCode code: String) -> [String] {
+        if code.hasPrefix(",") { return candidates }
         guard let counts = freq[code] else { return candidates }
         return candidates.sorted { (counts[$0] ?? 0) > (counts[$1] ?? 0) }
     }
 
     func sortedWithContext(_ candidates: [String], forCode code: String, prev: String) -> [String] {
+        if code.hasPrefix(",") { return candidates }
         guard !prev.isEmpty else { return sorted(candidates, forCode: code) }
         let unigramCounts = freq[code] ?? [:]
         let bigramCounts = bigram[prev] ?? [:]

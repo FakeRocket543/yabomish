@@ -91,6 +91,8 @@ class YabomishInputController: IMKInputController {
     private var shiftWasUsedWithOtherKey = false
     private var eatNextSpace = false
     private var lastCommitted = ""
+    /// 前兩個 commit 的字（用於 trigram 聯想）
+    private var recentCommitted = ""
     private var justCommitted = false
     private var isHomophoneMode = false
     private var homophoneBase = ""  // the char selected in step 1
@@ -344,8 +346,12 @@ class YabomishInputController: IMKInputController {
             return handleLetterInput(String(ch), client: client)
         }
 
-        // Digits when idle: output QWERTY digit (layout-independent)
+        // Digits when idle: select bigram suggestion or output digit
         if composing.isEmpty, let digit = keyCodeToDigit[keyCode] {
+            if !currentCandidates.isEmpty, let selected = panel.selectByKey(digit) {
+                commitText(selected, client: client)
+                return true
+            }
             client.insertText(String(digit), replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             return true
         }
@@ -692,10 +698,16 @@ class YabomishInputController: IMKInputController {
         if !currentCandidates.isEmpty {
             if let digit = keyCodeToDigit[keyCode],
                let selected = panel.selectByKey(digit) {
-                let char = String(selected.prefix(1))
-                let codes = Self.cinTable.reverseLookup(char)
-                commitText(char, client: client)
-                showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
+                // NER 詞組候選: [phrase] 格式
+                if selected.hasPrefix("[") && selected.hasSuffix("]") {
+                    let phrase = String(selected.dropFirst().dropLast())
+                    commitText(phrase, client: client)
+                } else {
+                    let char = String(selected.prefix(1))
+                    let codes = Self.cinTable.reverseLookup(char)
+                    commitText(char, client: client)
+                    showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
+                }
                 clearZhuyinSlots()
                 currentCandidates = []
                 panel.hide()
@@ -716,10 +728,15 @@ class YabomishInputController: IMKInputController {
             if keyCode == 48 { panel.pageDown(); return true }  // Tab
             // Enter → select highlighted
             if keyCode == 36, let sel = panel.selectedCandidate() {
-                let char = String(sel.prefix(1))
-                let codes = Self.cinTable.reverseLookup(char)
-                commitText(char, client: client)
-                showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
+                if sel.hasPrefix("[") && sel.hasSuffix("]") {
+                    let phrase = String(sel.dropFirst().dropLast())
+                    commitText(phrase, client: client)
+                } else {
+                    let char = String(sel.prefix(1))
+                    let codes = Self.cinTable.reverseLookup(char)
+                    commitText(char, client: client)
+                    showCodeHintToast("\(char) → \(codes.joined(separator: " / "))")
+                }
                 clearZhuyinSlots()
                 currentCandidates = []
                 panel.hide()
@@ -752,11 +769,18 @@ class YabomishInputController: IMKInputController {
         let prevChar = lastCommitted.isEmpty ? nil : lastCommitted
         let chars = ZhuyinLookup.shared.charsForZhuyin(zhuyin, prevChar: prevChar)
         guard !chars.isEmpty else { NSSound.beep(); return true }
-        // Format: "字 碼" for each candidate
-        currentCandidates = chars.map { char in
+
+        // NER 詞組候選（多字詞排最前面）
+        let phrases = PhraseLookup.shared.phrasesForZhuyin([zhuyin])
+        let phraseCandidates = phrases.prefix(5).map { "[\($0.phrase)]" }
+
+        // 單字候選
+        let charCandidates = chars.map { char -> String in
             let codes = Self.cinTable.reverseLookup(char)
             return codes.isEmpty ? char : "\(char) \(codes.joined(separator: "/"))"
         }
+
+        currentCandidates = Array(phraseCandidates) + charCandidates
         updateMarkedText(zhuyin, client: client)
         showCandidatePanel(client: client)
         return true
@@ -1056,6 +1080,18 @@ class YabomishInputController: IMKInputController {
             break
         }
 
+        // 領域感知：依社群上下文微調同碼字排序
+        if YabomishPrefs.communityBoost && candidates.count > 1
+            && PhraseLookup.shared.hasActiveContext && !code.hasPrefix(",") {
+            let boosted = candidates.sorted { a, b in
+                let ba = PhraseLookup.shared.communityBoost(for: a)
+                let bb = PhraseLookup.shared.communityBoost(for: b)
+                if ba != bb { return ba > bb }
+                return false // 保持原排序
+            }
+            candidates = boosted
+        }
+
         currentCandidates = candidates
     }
 
@@ -1091,6 +1127,13 @@ class YabomishInputController: IMKInputController {
         }
         lastCommitted = text
         composing = ""
+
+        // 追蹤最近 commit 的文字（用於 trigram + NER）
+        recentCommitted += text
+        if recentCommitted.count > 10 { recentCommitted = String(recentCommitted.suffix(10)) }
+
+        // 更新社群上下文（Layer 3）
+        PhraseLookup.shared.updateContext(committed: text)
         currentCandidates = []
         isWildcard = false
         let wasHomophone = isHomophoneMode
@@ -1104,6 +1147,51 @@ class YabomishInputController: IMKInputController {
             if !codes.isEmpty && (wasHomophone || YabomishPrefs.showCodeHint) {
                 showCodeHintToast("\(text) → \(codes.joined(separator: " / "))",
                                   duration: wasHomophone ? 3.0 : 1.2)
+            }
+        }
+
+        // 聯想輸入：3 層合併（2-gram + 3-gram + NER 詞組補全）
+        if !wasHomophone && !isZhuyinMode && YabomishPrefs.bigramSuggest {
+            var suggestions: [String] = []
+            var seen = Set<String>()
+
+            // Layer 3: NER 詞組補全（最優先，只存尚未輸入的部分）
+            if recentCommitted.count >= 2 {
+                for len in [4, 3, 2] {
+                    guard recentCommitted.count >= len else { continue }
+                    let prefix = String(recentCommitted.suffix(len))
+                    for phrase in PhraseLookup.shared.completions(for: prefix) {
+                        let remainder = String(phrase.dropFirst(prefix.count))
+                        if !remainder.isEmpty && seen.insert(remainder).inserted {
+                            suggestions.append(remainder)
+                        }
+                        if suggestions.count >= 3 { break }
+                    }
+                    if suggestions.count >= 3 { break }
+                }
+            }
+
+            // Layer 2: 3-gram（前兩字 → 下一字）
+            if recentCommitted.count >= 2 {
+                for ch in ZhuyinLookup.shared.suggestNextTrigram(prev2: recentCommitted) {
+                    if seen.insert(ch).inserted { suggestions.append(ch) }
+                }
+            }
+
+            // Layer 1: 2-gram（前一字 → 下一字）
+            for ch in ZhuyinLookup.shared.suggestNext(after: text) {
+                if seen.insert(ch).inserted { suggestions.append(ch) }
+            }
+
+            if !suggestions.isEmpty {
+                // 領域感知：依社群上下文重排
+                if YabomishPrefs.communityBoost && PhraseLookup.shared.hasActiveContext {
+                    suggestions.sort { a, b in
+                        PhraseLookup.shared.communityBoost(for: a) > PhraseLookup.shared.communityBoost(for: b)
+                    }
+                }
+                currentCandidates = Array(suggestions.prefix(6))
+                showCandidatePanel(client: client)
             }
         }
     }
@@ -1275,6 +1363,7 @@ class YabomishInputController: IMKInputController {
         isHomophoneMode = false
         homophoneBase = ""
         justCommitted = false
+        recentCommitted = ""
         clearZhuyinSlots()
         if fromOtherIM && YabomishPrefs.showActivateToast {
             showModeToast(isEnglishMode ? "A" : (Self.modeLabels[inputMode] ?? "繁中"))
@@ -1304,52 +1393,35 @@ class YabomishInputController: IMKInputController {
     }
 
     static func importCIN(attachedTo window: NSWindow? = nil) {
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.main.async {
             guard let src = chooseCINFileURL() else { return }
-            DispatchQueue.main.async {
-                importSelectedCIN(from: src, attachedTo: window)
-            }
+            importSelectedCIN(from: src, attachedTo: window)
         }
     }
 
     private static func chooseCINFileURL() -> URL? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = [
-            "-e", "tell current application to activate",
-            "-e", "POSIX path of (choose file with prompt \"選擇嘸蝦米字表\")"
-        ]
-
-        let stdout = Pipe()
-        let stderr = Pipe()
-        process.standardOutput = stdout
-        process.standardError = stderr
-
-        do {
-            try process.run()
-        } catch {
-            NSLog("YabomishIM: Failed to launch file chooser: %@", error.localizedDescription)
-            return nil
-        }
-
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            let errData = stderr.fileHandleForReading.readDataToEndOfFile()
-            if let err = String(data: errData, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines),
-               !err.isEmpty {
-                NSLog("YabomishIM: File chooser cancelled/failed: %@", err)
+        var result: URL?
+        // Must run on main thread for NSOpenPanel
+        let work = {
+            let panel = NSOpenPanel()
+            panel.prompt = "匯入"
+            panel.message = "選擇嘸蝦米字表 (.cin)"
+            panel.allowedContentTypes = [.plainText]
+            panel.allowsOtherFileTypes = true
+            panel.canChooseDirectories = false
+            panel.canChooseFiles = true
+            panel.level = .floating
+            NSApp.activate(ignoringOtherApps: true)
+            if panel.runModal() == .OK {
+                result = panel.url
             }
-            return nil
         }
-
-        let outData = stdout.fileHandleForReading.readDataToEndOfFile()
-        guard let path = String(data: outData, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-            !path.isEmpty else {
-            return nil
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.sync { work() }
         }
-        return URL(fileURLWithPath: path)
+        return result
     }
 
     private static func activateForForegroundUI() {
@@ -1425,6 +1497,7 @@ class YabomishInputController: IMKInputController {
         }
         panel.hide()
         Self.activeSession = nil
+        Self.lastDeactivateTime = Date()
         super.deactivateServer(sender)
     }
 }

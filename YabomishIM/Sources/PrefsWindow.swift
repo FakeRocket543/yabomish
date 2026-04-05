@@ -82,6 +82,14 @@ final class PrefsWindow: NSPanel {
         zyBtn.state = YabomishPrefs.zhuyinReverseLookup ? .on : .off
         stack.addArrangedSubview(zyBtn)
 
+        let suggestBtn = NSButton(checkboxWithTitle: "聯想輸入（送字後建議下一字）", target: self, action: #selector(bigramSuggestChanged(_:)))
+        suggestBtn.state = YabomishPrefs.bigramSuggest ? .on : .off
+        stack.addArrangedSubview(suggestBtn)
+
+        let communityBtn = NSButton(checkboxWithTitle: "領域感知（依上下文調整聯想排序）", target: self, action: #selector(communityBoostChanged(_:)))
+        communityBtn.state = YabomishPrefs.communityBoost ? .on : .off
+        stack.addArrangedSubview(communityBtn)
+
         // ━━━ 外觀 ━━━
         stack.addArrangedSubview(sectionHeader("外觀"))
 
@@ -193,6 +201,14 @@ final class PrefsWindow: NSPanel {
 
     @objc private func zhuyinLookupChanged(_ sender: NSButton) {
         YabomishPrefs.zhuyinReverseLookup = sender.state == .on
+    }
+
+    @objc private func bigramSuggestChanged(_ sender: NSButton) {
+        YabomishPrefs.bigramSuggest = sender.state == .on
+    }
+
+    @objc private func communityBoostChanged(_ sender: NSButton) {
+        YabomishPrefs.communityBoost = sender.state == .on
     }
 
     @objc private func activateToastChanged(_ sender: NSButton) {

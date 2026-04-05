@@ -40,7 +40,7 @@ if [ -f "$RES_DIR/pinyin_data.json" ]; then
     cp "$RES_DIR/pinyin_data.json" "$APP_BUNDLE/Contents/Resources/"
 fi
 # Copy character maps
-for f in t2s.json s2t.json char_freq.json bigram_boost.json; do
+for f in t2s.json s2t.json char_freq.json bigram_boost.json bigram_suggest.json trigram_suggest.json yabomish_ime.db; do
     if [ -f "$RES_DIR/$f" ]; then
         cp "$RES_DIR/$f" "$APP_BUNDLE/Contents/Resources/"
     fi

@@ -98,6 +98,18 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "homophoneMultiReading") }
     }
 
+    /// Bigram 聯想（送字後建議下一個字）
+    static var bigramSuggest: Bool {
+        get { defaults.object(forKey: "bigramSuggest") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "bigramSuggest") }
+    }
+
+    /// 領域感知（根據上下文社群調整聯想排序）
+    static var communityBoost: Bool {
+        get { defaults.object(forKey: "communityBoost") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "communityBoost") }
+    }
+
     /// Debug mode: write detailed logs to ~/Library/YabomishIM/debug.log
     static var debugMode: Bool {
         get { defaults.object(forKey: "debugMode") as? Bool ?? false }

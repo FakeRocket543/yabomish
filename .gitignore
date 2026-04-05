@@ -11,3 +11,8 @@ yabomish
 create_dmg.sh
 tools/gen_pinyin_data.pyvChewing-macOS/
 .claude/
+data/
+*.bak
+YabomishIM/Resources/yabomish_ime.db
+__pycache__/
+.serena/

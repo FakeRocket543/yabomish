@@ -32,9 +32,11 @@ DUMP_FILE = WORK / "zhwiki-latest-pages-articles.xml.bz2"
 EXTRACT_DIR = WORK / "extracted"
 CLEAN_FILE = WORK / "wiki_clean.txt"
 SEG_FILE = WORK / "wiki_segmented.txt"
+SEG_DIR = WORK / "seg_batches"
 
-BATCH_SIZE = 64
+BATCH_SIZE = 8
 MAX_LEN = 512
+SEG_BATCH_LINES = 300000  # 每 30 萬段輸出一個批次檔
 
 
 def step_download():
@@ -106,12 +108,8 @@ def step_extract():
     print(f"  完成: {articles} articles, {count} lines → {CLEAN_FILE}")
 
 
-def step_segment():
-    if SEG_FILE.exists():
-        print(f"  斷詞結果已存在: {SEG_FILE}")
-        return
-
-    print("  載入 ckip_mlx...")
+def _load_ckip_model():
+    """載入 ckip_mlx 模型，回傳 (model, vocab, unk_id, mx)"""
     import sys as _sys
     CKIP_MLX = Path("/Users/fl/Python/ckip_mlx")
     _sys.path.insert(0, str(CKIP_MLX))
@@ -131,34 +129,41 @@ def step_segment():
         for i, line in enumerate(f):
             vocab[line.strip()] = i
     unk_id = vocab.get("[UNK]", 100)
+    return model, vocab, unk_id, mx
 
-    def segment_batch(texts):
-        max_len = max(len(t) for t in texts) + 2
-        batch_ids, batch_mask = [], []
-        for t in texts:
-            ids = [101] + [vocab.get(ch, unk_id) for ch in t] + [102]
-            pad = max_len - len(ids)
-            batch_ids.append(ids + [0] * pad)
-            batch_mask.append([1] * len(ids) + [0] * pad)
-        out = model(mx.array(batch_ids), attention_mask=mx.array(batch_mask))
-        mx.eval(out)
-        preds_batch = mx.argmax(out, axis=-1).tolist()
-        results = []
-        for idx, t in enumerate(texts):
-            preds = preds_batch[idx]
-            words, cur = [], ""
-            for i, ch in enumerate(t):
-                if preds[i + 1] == 0 and cur:
-                    words.append(cur)
-                    cur = ch
-                else:
-                    cur += ch
-            if cur:
+
+def _segment_batch(texts, model, vocab, unk_id, mx):
+    max_len = max(len(t) for t in texts) + 2
+    batch_ids, batch_mask = [], []
+    for t in texts:
+        ids = [101] + [vocab.get(ch, unk_id) for ch in t] + [102]
+        pad = max_len - len(ids)
+        batch_ids.append(ids + [0] * pad)
+        batch_mask.append([1] * len(ids) + [0] * pad)
+    out = model(mx.array(batch_ids), attention_mask=mx.array(batch_mask))
+    mx.eval(out)
+    preds_batch = mx.argmax(out, axis=-1).tolist()
+    results = []
+    for idx, t in enumerate(texts):
+        preds = preds_batch[idx]
+        words, cur = [], ""
+        for i, ch in enumerate(t):
+            if preds[i + 1] == 0 and cur:
                 words.append(cur)
-            results.append(words)
-        return results
+                cur = ch
+            else:
+                cur += ch
+        if cur:
+            words.append(cur)
+        results.append(words)
+    return results
+
+
+def step_segment():
+    SEG_DIR.mkdir(parents=True, exist_ok=True)
 
     # 讀取 + 切段
+    print("  讀取 wiki_clean.txt 並切段...")
     segments = []
     with open(CLEAN_FILE, encoding="utf-8") as f:
         for line in f:
@@ -170,29 +175,81 @@ def step_segment():
                         segments.append(seg)
 
     total = len(segments)
-    print(f"  共 {total:,} 段, batch_size={BATCH_SIZE}")
+    num_batches = (total + SEG_BATCH_LINES - 1) // SEG_BATCH_LINES
+    print(f"  共 {total:,} 段, 分 {num_batches} 批 (每批 {SEG_BATCH_LINES:,})")
+
+    # 找出已完成的批次
+    done_batches = set()
+    for p in sorted(SEG_DIR.glob("seg_batch_*.txt")):
+        idx = int(p.stem.split("_")[-1])
+        # 驗證檔案行數是否正確
+        with open(p, encoding="utf-8") as f:
+            lines = sum(1 for _ in f)
+        start = idx * SEG_BATCH_LINES
+        expected = min(SEG_BATCH_LINES, total - start)
+        if lines == expected:
+            done_batches.add(idx)
+            print(f"    批次 {idx:03d} 已完成 ({lines:,} 行), 跳過")
+        else:
+            print(f"    批次 {idx:03d} 不完整 ({lines:,}/{expected:,}), 將重跑")
+
+    remaining = [i for i in range(num_batches) if i not in done_batches]
+    if not remaining:
+        print("  所有批次已完成！")
+        return
+
+    print(f"  需處理 {len(remaining)} 批: {remaining}")
+    print("  載入 ckip_mlx...")
+    model, vocab, unk_id, mx = _load_ckip_model()
 
     # warmup
-    segment_batch(segments[:2])
+    _segment_batch(segments[:2], model, vocab, unk_id, mx)
 
     import time
-    t0 = time.time()
-    with open(SEG_FILE, "w", encoding="utf-8") as out:
-        for i in range(0, total, BATCH_SIZE):
-            batch = segments[i:i + BATCH_SIZE]
-            results = segment_batch(batch)
-            for tokens in results:
-                out.write(" ".join(tokens) + "\n")
-            done = min(i + BATCH_SIZE, total)
-            if done % 10000 < BATCH_SIZE:
-                elapsed = time.time() - t0
-                speed = done / elapsed
-                eta = (total - done) / speed
-                print(f"    {done:,}/{total:,} ({done * 100 // total}%) "
-                      f"{speed:.0f} seg/s, ETA {eta / 60:.0f}min")
+    for batch_idx in remaining:
+        start = batch_idx * SEG_BATCH_LINES
+        end = min(start + SEG_BATCH_LINES, total)
+        batch_segs = segments[start:end]
+        batch_file = SEG_DIR / f"seg_batch_{batch_idx:03d}.txt"
+        batch_total = len(batch_segs)
 
-    elapsed = time.time() - t0
-    print(f"  完成: {SEG_FILE} ({elapsed / 60:.1f}min, {total / elapsed:.0f} seg/s)")
+        print(f"\n  === 批次 {batch_idx:03d} ({start:,}~{end:,}, {batch_total:,} 段) ===")
+        t0 = time.time()
+
+        with open(batch_file, "w", encoding="utf-8") as out:
+            for i in range(0, batch_total, BATCH_SIZE):
+                batch = batch_segs[i:i + BATCH_SIZE]
+                results = _segment_batch(batch, model, vocab, unk_id, mx)
+                for tokens in results:
+                    out.write(" ".join(tokens) + "\n")
+                done = min(i + BATCH_SIZE, batch_total)
+                if done % 10000 < BATCH_SIZE:
+                    elapsed = time.time() - t0
+                    speed = done / elapsed if elapsed > 0 else 0
+                    eta = (batch_total - done) / speed if speed > 0 else 0
+                    print(f"    {done:,}/{batch_total:,} ({done * 100 // batch_total}%) "
+                          f"{speed:.0f} seg/s, ETA {eta / 60:.0f}min")
+
+        elapsed = time.time() - t0
+        print(f"  批次 {batch_idx:03d} 完成: {batch_file.name} "
+              f"({elapsed / 60:.1f}min, {batch_total / elapsed:.0f} seg/s)")
+
+
+def step_merge_segments():
+    """合併所有批次檔為 wiki_segmented.txt"""
+    batch_files = sorted(SEG_DIR.glob("seg_batch_*.txt"))
+    if not batch_files:
+        print("  ⚠️  找不到批次檔！請先執行斷詞。")
+        return
+    print(f"  合併 {len(batch_files)} 個批次檔...")
+    total = 0
+    with open(SEG_FILE, "w", encoding="utf-8") as out:
+        for bf in batch_files:
+            with open(bf, encoding="utf-8") as f:
+                for line in f:
+                    out.write(line)
+                    total += 1
+    print(f"  完成: {SEG_FILE} ({total:,} 行)")
 
 
 def step_ngram():
@@ -315,26 +372,37 @@ def main():
     parser.add_argument("--skip-download", action="store_true")
     parser.add_argument("--from-extract", action="store_true")
     parser.add_argument("--from-segment", action="store_true")
+    parser.add_argument("--from-ngram", action="store_true", help="只跑合併+統計")
+    parser.add_argument("--merge-only", action="store_true", help="只合併批次檔")
     args = parser.parse_args()
 
-    if not args.from_extract and not args.from_segment:
-        print("[1/4] 下載維基中文 dump...")
+    if args.merge_only:
+        print("[合併] 合併斷詞批次檔...")
+        step_merge_segments()
+        return
+
+    if not args.from_extract and not args.from_segment and not args.from_ngram:
+        print("[1/5] 下載維基中文 dump...")
         if args.skip_download:
             print("  跳過")
         else:
             step_download()
 
-    if not args.from_segment:
+    if not args.from_segment and not args.from_ngram:
         if not args.from_extract:
-            print("\n[2/4] 抽取純文字 + 繁體轉換...")
+            print("\n[2/5] 抽取純文字 + 繁體轉換...")
         else:
-            print("[2/4] 抽取純文字 + 繁體轉換...")
+            print("[2/5] 抽取純文字 + 繁體轉換...")
         step_extract()
 
-        print("\n[3/4] ckip 斷詞...")
+    if not args.from_ngram:
+        print("\n[3/5] ckip 斷詞（分批）...")
         step_segment()
 
-    print("\n[4/4] 統計 n-gram...")
+    print("\n[4/5] 合併斷詞批次檔...")
+    step_merge_segments()
+
+    print("\n[5/5] 統計 n-gram...")
     step_ngram()
 
     print("\n✅ 全部完成！")
