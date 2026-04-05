@@ -1,5 +1,6 @@
 import Cocoa
 import InputMethodKit
+import NaturalLanguage
 
 
 
@@ -1129,8 +1130,13 @@ class YabomishInputController: IMKInputController {
         composing = ""
 
         // 追蹤最近 commit 的文字（用於 trigram + NER）
+        // 句子結束時重置上下文，避免跨句聯想
         recentCommitted += text
         if recentCommitted.count > 10 { recentCommitted = String(recentCommitted.suffix(10)) }
+        let sentenceEnders: Set<Character> = ["。", "！", "？", ".", "!", "?", "\n", "；", ";"]
+        if let last = text.last, sentenceEnders.contains(last) {
+            recentCommitted = ""
+        }
 
         // 更新社群上下文（Layer 3）
         PhraseLookup.shared.updateContext(committed: text)
@@ -1151,7 +1157,8 @@ class YabomishInputController: IMKInputController {
         }
 
         // 聯想輸入：3 層合併（2-gram + 3-gram + NER 詞組補全）
-        if !wasHomophone && !isZhuyinMode && YabomishPrefs.bigramSuggest {
+        // 句子結束後不聯想
+        if !wasHomophone && !isZhuyinMode && YabomishPrefs.bigramSuggest && !recentCommitted.isEmpty {
             var suggestions: [String] = []
             var seen = Set<String>()
 
