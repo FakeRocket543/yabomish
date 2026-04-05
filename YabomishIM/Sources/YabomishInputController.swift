@@ -1162,14 +1162,13 @@ class YabomishInputController: IMKInputController {
         // 聯想輸入：3 層合併（2-gram + 3-gram + NER 詞組補全）
         // 句子結束後不聯想；虛詞（的、了、在、是）後不聯想
         if !wasHomophone && !isZhuyinMode && YabomishPrefs.bigramSuggest && !recentCommitted.isEmpty {
-            // NLTagger 詞性判斷：繁→簡後標注，虛詞跳過聯想
+            // NLTagger 詞性判斷：虛詞結尾跳過聯想
             let skipTags: Set<String> = ["Particle", "Preposition", "Conjunction", "Determiner"]
-            let simplified = recentCommitted.map { Self.cinTable.convert(String($0), map: Self.cinTable.t2s) }.joined()
             let tagger = NLTagger(tagSchemes: [.lexicalClass])
-            tagger.string = simplified
-            tagger.setLanguage(.simplifiedChinese, range: simplified.startIndex..<simplified.endIndex)
+            tagger.string = recentCommitted
+            tagger.setLanguage(.traditionalChinese, range: recentCommitted.startIndex..<recentCommitted.endIndex)
             var lastTag: String?
-            tagger.enumerateTags(in: simplified.startIndex..<simplified.endIndex, unit: .word, scheme: .lexicalClass) { tag, _ in
+            tagger.enumerateTags(in: recentCommitted.startIndex..<recentCommitted.endIndex, unit: .word, scheme: .lexicalClass) { tag, _ in
                 lastTag = tag?.rawValue
                 return true
             }
