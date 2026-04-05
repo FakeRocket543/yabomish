@@ -88,8 +88,18 @@ def main():
     print(f"[3/4] ckip 斷詞 + 統計詞級 bigram (batch={BATCH_SIZE})...")
     word_bigram = Counter()
     errors = 0
+    start_line = 0
 
-    for i in range(0, len(lines), BATCH_SIZE):
+    # Resume from checkpoint
+    ckpt_path = DATA / "word_bigram_ckpt.json"
+    if ckpt_path.exists():
+        with open(ckpt_path) as f:
+            ckpt = json.load(f)
+        start_line = ckpt["line"]
+        word_bigram = Counter({tuple(k.split("\t")): v for k, v in ckpt["bigrams"].items()})
+        print(f"  ⏩ 從 checkpoint 續跑: line {start_line:,}, {len(word_bigram):,} bigrams")
+
+    for i in range(start_line, len(lines), BATCH_SIZE):
         batch = lines[i:i+BATCH_SIZE]
         batch_num = i // BATCH_SIZE + 1
 
@@ -103,15 +113,29 @@ def main():
             if errors <= 5:
                 print(f"  batch {batch_num} error: {e}")
 
-        if batch_num % 50000 == 0 or i + BATCH_SIZE >= len(lines):
+        # Checkpoint every 50000 batches
+        if batch_num % 50000 == 0:
             elapsed = time.time() - t0
-            speed = (i + len(batch)) / elapsed if elapsed > 0 else 0
+            speed = (i - start_line + len(batch)) / elapsed if elapsed > 0 else 0
             eta = (len(lines) - i - len(batch)) / speed if speed > 0 else 0
             print(f"  {i+len(batch):,}/{len(lines):,} lines, "
                   f"{len(word_bigram):,} bigrams, "
                   f"{speed:.0f} lines/s, ETA {eta/60:.0f}m ({elapsed:.0f}s)")
+            # Save checkpoint
+            ckpt_data = {
+                "line": i + len(batch),
+                "bigrams": {f"{k[0]}\t{k[1]}": v for k, v in word_bigram.items()}
+            }
+            with open(ckpt_path, 'w') as f:
+                json.dump(ckpt_data, f, ensure_ascii=False)
+            print(f"  💾 checkpoint saved")
 
-    print(f"  總 bigram: {len(word_bigram):,}, errors: {errors}")
+    # Final progress
+    elapsed = time.time() - t0
+    print(f"  總 bigram: {len(word_bigram):,}, errors: {errors} ({elapsed:.0f}s)")
+    # Remove checkpoint on completion
+    if ckpt_path.exists():
+        ckpt_path.unlink()
 
     print(f"[4/4] 建 word_bigram.json (freq>={MIN_FREQ}, top {TOP_K})...")
     grouped = defaultdict(list)
