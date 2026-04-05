@@ -293,7 +293,13 @@ class YabomishInputController: IMKInputController {
             return handleEnter(client: client)
         }
         // Arrow keys — navigate/page when candidate panel is visible
+        // 聯想建議狀態（composing 為空）：方向鍵不攔截，讓使用者移動游標
         if panel.isVisible_ && (keyCode == 123 || keyCode == 124 || keyCode == 125 || keyCode == 126) {
+            if composing.isEmpty {
+                currentCandidates = []
+                panel.hide()
+                return false
+            }
             if panel.isFixedMode {
                 // Fixed (horizontal): ←→ navigate, ↑↓ page
                 if keyCode == 123 { panel.movePrev(); return true }   // ←
