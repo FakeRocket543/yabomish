@@ -1,71 +1,82 @@
 #!/usr/bin/env python3
 """
-詞級 bigram pipeline：用 Apple NLTokenizer 斷詞，統計詞→詞共現。
+詞級 bigram pipeline：用 ckip_mlx_c (C++ MLX) 斷詞，統計詞→詞共現。
 給 iOS 版聯想輸入用。
 
 用法: python3 tools/wiki_word_bigram.py
-輸出: data/word_bigram.json (prev_word → [next_word1, next_word2, ...])
+輸出: data/word_bigram.json
 """
-import subprocess, json, tempfile, os
+import ctypes, json, os, time
+from ctypes import c_char_p, c_int, c_int32, c_void_p, POINTER, Structure
 from pathlib import Path
-from collections import Counter
+from collections import Counter, defaultdict
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 WIKI = DATA / "wiki_work" / "wiki_clean.txt"
 OUT = DATA / "word_bigram.json"
 
+CKIP_LIB = "/Users/fl/Python/ckip_mlx_c/libckip_bert.dylib"
+CKIP_MODELS = os.path.expanduser("~/Python/ckip_mlx/models")
+
 MIN_FREQ = 10
 TOP_K = 5
-BATCH_SIZE = 5000  # lines per Swift batch
+BATCH_SIZE = 8
 
-def tokenize_batch(lines: list[str]) -> list[list[str]]:
-    """Call Swift to tokenize lines using NLTokenizer."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
-        f.write('\n'.join(lines))
-        tmp = f.name
-    
-    swift_code = f'''
-import Foundation
-import NaturalLanguage
 
-let text = try! String(contentsOfFile: "{tmp}", encoding: .utf8)
-let tokenizer = NLTokenizer(unit: .word)
-tokenizer.setLanguage(.traditionalChinese)
+class WsResult(Structure):
+    _fields_ = [("words", POINTER(c_char_p)), ("num_words", c_int)]
 
-for line in text.components(separatedBy: "\\n") {{
-    guard !line.isEmpty else {{ print(""); continue }}
-    tokenizer.string = line
-    var words: [String] = []
-    tokenizer.enumerateTokens(in: line.startIndex..<line.endIndex) {{ range, _ in
-        let w = String(line[range])
-        if w.count >= 2 {{ words.append(w) }}  // skip single chars
-        return true
-    }}
-    print(words.joined(separator: "\\t"))
-}}
-'''
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.swift', delete=False) as sf:
-        sf.write(swift_code)
-        swift_tmp = sf.name
-    
-    result = subprocess.run(['swift', swift_tmp], capture_output=True, text=True, timeout=300)
-    os.unlink(tmp)
-    os.unlink(swift_tmp)
-    
-    tokenized = []
-    for line in result.stdout.strip().split('\n'):
-        if line:
-            tokenized.append(line.split('\t'))
-        else:
-            tokenized.append([])
-    return tokenized
+class PosResult(Structure):
+    _fields_ = [("words", POINTER(c_char_p)), ("tags", POINTER(c_char_p)), ("num_words", c_int)]
+
+class NerResult(Structure):
+    _fields_ = [("texts", POINTER(c_char_p)), ("types", POINTER(c_char_p)),
+                 ("starts", POINTER(c_int)), ("num_entities", c_int)]
+
+class CkipResult(Structure):
+    _fields_ = [("ws", POINTER(WsResult)), ("pos", POINTER(PosResult)),
+                 ("ner", POINTER(NerResult)), ("num_sentences", c_int),
+                 ("error_code", c_int32), ("error_msg", c_char_p)]
+
+
+def load_ckip():
+    lib = ctypes.CDLL(CKIP_LIB)
+    lib.ckip_load.restype = c_void_p
+    lib.ckip_load.argtypes = [c_char_p]
+    lib.ckip_analyze.restype = CkipResult
+    lib.ckip_analyze.argtypes = [c_void_p, POINTER(c_char_p), c_int]
+    lib.ckip_result_free.argtypes = [POINTER(CkipResult)]
+    lib.ckip_free.argtypes = [c_void_p]
+    handle = lib.ckip_load(CKIP_MODELS.encode())
+    return lib, handle
+
+
+def tokenize_batch(lib, handle, lines):
+    """Tokenize using ckip_analyze, extract WS results."""
+    n = len(lines)
+    arr = (c_char_p * n)(*(l.encode('utf-8') for l in lines))
+    r = lib.ckip_analyze(handle, arr, n)
+    results = []
+    if r.error_code == 0:
+        for i in range(r.num_sentences):
+            w = r.ws[i]
+            words = [w.words[j].decode('utf-8') for j in range(w.num_words)
+                     if len(w.words[j].decode('utf-8')) >= 2]
+            results.append(words)
+    lib.ckip_result_free(ctypes.byref(r))
+    while len(results) < n:
+        results.append([])
+    return results
 
 
 def main():
-    import time
     t0 = time.time()
-    
-    print(f"[1/3] 讀取 wiki_clean.txt...")
+
+    print(f"[1/4] 載入 ckip_mlx_c...")
+    lib, handle = load_ckip()
+    print(f"  OK ({time.time()-t0:.1f}s)")
+
+    print(f"[2/4] 讀取 wiki_clean.txt...")
     lines = []
     with open(WIKI, encoding='utf-8') as f:
         for line in f:
@@ -73,53 +84,57 @@ def main():
             if len(line) >= 4:
                 lines.append(line)
     print(f"  {len(lines):,} lines ({time.time()-t0:.0f}s)")
-    
-    print(f"[2/3] NLTokenizer 斷詞 + 統計詞級 bigram...")
+
+    print(f"[3/4] ckip 斷詞 + 統計詞級 bigram (batch={BATCH_SIZE})...")
     word_bigram = Counter()
-    total_batches = (len(lines) + BATCH_SIZE - 1) // BATCH_SIZE
-    
+    errors = 0
+
     for i in range(0, len(lines), BATCH_SIZE):
         batch = lines[i:i+BATCH_SIZE]
         batch_num = i // BATCH_SIZE + 1
-        
+
         try:
-            tokenized = tokenize_batch(batch)
+            tokenized = tokenize_batch(lib, handle, batch)
+            for words in tokenized:
+                for j in range(len(words) - 1):
+                    word_bigram[(words[j], words[j+1])] += 1
         except Exception as e:
-            print(f"  batch {batch_num} error: {e}, skipping")
-            continue
-        
-        for words in tokenized:
-            for j in range(len(words) - 1):
-                word_bigram[(words[j], words[j+1])] += 1
-        
-        if batch_num % 20 == 0 or batch_num == total_batches:
-            print(f"  batch {batch_num}/{total_batches}, bigrams: {len(word_bigram):,} ({time.time()-t0:.0f}s)")
-    
-    print(f"  總 bigram: {len(word_bigram):,}")
-    
-    print(f"[3/3] 建 word_bigram.json (freq>={MIN_FREQ}, top {TOP_K})...")
-    # Group by prev_word
-    from collections import defaultdict
+            errors += 1
+            if errors <= 5:
+                print(f"  batch {batch_num} error: {e}")
+
+        if batch_num % 50000 == 0 or i + BATCH_SIZE >= len(lines):
+            elapsed = time.time() - t0
+            speed = (i + len(batch)) / elapsed if elapsed > 0 else 0
+            eta = (len(lines) - i - len(batch)) / speed if speed > 0 else 0
+            print(f"  {i+len(batch):,}/{len(lines):,} lines, "
+                  f"{len(word_bigram):,} bigrams, "
+                  f"{speed:.0f} lines/s, ETA {eta/60:.0f}m ({elapsed:.0f}s)")
+
+    print(f"  總 bigram: {len(word_bigram):,}, errors: {errors}")
+
+    print(f"[4/4] 建 word_bigram.json (freq>={MIN_FREQ}, top {TOP_K})...")
     grouped = defaultdict(list)
     for (w1, w2), freq in word_bigram.items():
         if freq >= MIN_FREQ:
             grouped[w1].append((w2, freq))
-    
+
     result = {}
     for w, pairs in grouped.items():
         pairs.sort(key=lambda x: x[1], reverse=True)
         result[w] = [w2 for w2, _ in pairs[:TOP_K]]
-    
+
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False)
-    
+
     sz = os.path.getsize(OUT)
     print(f"  {len(result):,} entries, {sz/1e6:.1f} MB")
     print(f"  完成 ({time.time()-t0:.0f}s)")
-    
-    # Sample
-    for w in ['研究', '臺灣', '中國', '美國', '大學', '政府', '電影', '音樂']:
+
+    for w in ['研究', '臺灣', '中國', '美國', '大學', '政府', '電影', '音樂', '量子', '共產黨']:
         print(f"  {w} → {result.get(w, [])}")
+
+    lib.ckip_free(handle)
 
 
 if __name__ == '__main__':
