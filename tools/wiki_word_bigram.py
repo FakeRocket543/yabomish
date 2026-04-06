@@ -1,143 +1,173 @@
 #!/usr/bin/env python3
 """
-詞級 bigram pipeline v2：ckip-mlx fp16 WS-only。
-修正：checkpoint 只存行號，bigram 用 pickle（快 100x）。
-~320 lines/s, 9.1M lines ETA ~8 hours.
+Step 1: ckip-mlx 斷詞 → parquet (每 100 萬行一個 shard)
+Step 2: 從 parquet 算詞級 n-gram
 
-用法: python3 tools/wiki_word_bigram.py
+用法:
+  python3 tools/wiki_word_bigram.py ws       # 斷詞 → parquet shards
+  python3 tools/wiki_word_bigram.py ngram    # parquet → word_bigram.json
 """
-import sys, json, os, time, gc, pickle
+import sys, json, os, time
 sys.path.insert(0, os.path.expanduser("~/Python/ckip_mlx"))
 
-import mlx.core as mx
-from bert_mlx import BertForTokenClassification
 from pathlib import Path
-from collections import Counter, defaultdict
-from tqdm import tqdm
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 WIKI = DATA / "wiki_work" / "wiki_clean.txt"
+SHARD_DIR = DATA / "wiki_ws_shards"
 OUT = DATA / "word_bigram.json"
-CKPT_LINE = DATA / "word_bigram_ckpt_line.txt"
-CKPT_DATA = DATA / "word_bigram_ckpt.pkl"
 MODEL_DIR = os.path.expanduser("~/Python/ckip_mlx/models")
 
-MIN_FREQ = 10
-TOP_K = 5
 BATCH_SIZE = 8
 MAX_SEQ = 510
-CKPT_INTERVAL = 500_000  # every 500K lines
+SHARD_SIZE = 1_000_000
 
 
-class WPTokenizer:
-    def __init__(self, vocab_path):
-        self.vocab = {}
-        with open(vocab_path) as f:
-            for i, line in enumerate(f):
-                self.vocab[line.strip()] = i
-        self.unk = self.vocab.get("[UNK]", 100)
-        self.cls = self.vocab.get("[CLS]", 101)
-        self.sep = self.vocab.get("[SEP]", 102)
+def cmd_ws():
+    import mlx.core as mx
+    from bert_mlx import BertForTokenClassification
+    import pyarrow as pa, pyarrow.parquet as pq
+    from tqdm import tqdm
 
-    def encode_batch(self, texts):
-        all_ids, all_masks, all_spans = [], [], []
-        max_len = 0
-        for t in texts:
-            t = t[:MAX_SEQ]
-            ids = [self.cls] + [self.vocab.get(c, self.unk) for c in t] + [self.sep]
-            all_ids.append(ids)
-            all_masks.append([1] * len(ids))
-            all_spans.append([None] + list(range(len(t))) + [None])
-            max_len = max(max_len, len(ids))
-        for i in range(len(all_ids)):
-            pad = max_len - len(all_ids[i])
-            all_ids[i] += [0] * pad
-            all_masks[i] += [0] * pad
-        return mx.array(all_ids), mx.array(all_masks), all_spans
+    SHARD_DIR.mkdir(exist_ok=True)
 
+    # Find which shard to resume from
+    existing = sorted(SHARD_DIR.glob("shard_*.parquet"))
+    start_shard = len(existing)
+    start_line = start_shard * SHARD_SIZE
+    print(f"已有 {start_shard} shards, 從 line {start_line:,} 續跑")
 
-def decode_ws(preds, spans, text):
-    words, cur = [], ""
-    for i, s in enumerate(spans):
-        if s is None: continue
-        if s >= len(text): break
-        if preds[i] == 0 and cur:
-            words.append(cur); cur = text[s]
-        else:
-            cur += text[s]
-    if cur: words.append(cur)
-    return [w for w in words if len(w) >= 2]
-
-
-def main():
-    t0 = time.time()
-
-    print("[1/4] 載入 ckip-mlx WS fp16...")
+    # Load model
     ws_dir = os.path.join(MODEL_DIR, "ws-fp16")
-    with open(os.path.join(ws_dir, "config.json")) as f:
-        config = json.load(f)
-    config["num_labels"] = 2
-    model = BertForTokenClassification(config)
+    with open(os.path.join(ws_dir, "config.json")) as f: cfg = json.load(f)
+    cfg["num_labels"] = 2
+    model = BertForTokenClassification(cfg)
     model.load_weights(os.path.join(ws_dir, "weights.safetensors"))
     mx.eval(model.parameters())
-    tok = WPTokenizer(os.path.join(MODEL_DIR, "vocab.txt"))
-    print(f"  OK ({time.time()-t0:.1f}s)")
 
-    print("[2/4] 讀取 wiki_clean.txt...")
-    lines = []
+    vocab = {}
+    with open(os.path.join(MODEL_DIR, "vocab.txt")) as f:
+        for i, l in enumerate(f): vocab[l.strip()] = i
+    unk, cls, sep = vocab.get("[UNK]",100), vocab.get("[CLS]",101), vocab.get("[SEP]",102)
+
+    def enc(texts):
+        ids, masks, spans = [], [], []
+        ml = 0
+        for t in texts:
+            t = t[:MAX_SEQ]
+            d = [cls]+[vocab.get(c,unk) for c in t]+[sep]
+            ids.append(d); masks.append([1]*len(d))
+            spans.append([None]+list(range(len(t)))+[None])
+            ml = max(ml, len(d))
+        for i in range(len(ids)):
+            p = ml-len(ids[i]); ids[i]+=[0]*p; masks[i]+=[0]*p
+        return mx.array(ids), mx.array(masks), spans
+
+    def decode(preds, spans, text):
+        words, cur = [], ""
+        for i, s in enumerate(spans):
+            if s is None: continue
+            if s >= len(text): break
+            if preds[i] == 0 and cur: words.append(cur); cur = text[s]
+            else: cur += text[s]
+        if cur: words.append(cur)
+        return [w for w in words if len(w) >= 2]
+
+    # Stream and shard
+    t0 = time.time()
+    idx = 0
+    shard_words = []  # list of "word1\tword2\t..." strings
+    shard_num = start_shard
+
     with open(WIKI, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if len(line) >= 4:
-                lines.append(line)
-    print(f"  {len(lines):,} lines ({time.time()-t0:.0f}s)")
+        batch_buf = []
+        pbar = tqdm(desc=f"斷詞 (shard {shard_num})", unit="line")
 
-    # Resume
-    word_bigram = Counter()
-    start_line = 0
-    if CKPT_LINE.exists() and CKPT_DATA.exists():
-        start_line = int(CKPT_LINE.read_text().strip())
-        with open(CKPT_DATA, "rb") as f:
-            word_bigram = pickle.load(f)
-        print(f"  ⏩ 續跑: line {start_line:,}, {len(word_bigram):,} bigrams")
+        for raw in f:
+            raw = raw.strip()
+            if len(raw) < 4: continue
+            if idx < start_line:
+                idx += 1; continue
+            batch_buf.append(raw)
+            idx += 1
 
-    print(f"[3/4] 斷詞 + 統計 (batch={BATCH_SIZE}, ~320 lines/s)...")
-    remaining = len(lines) - start_line
-    pbar = tqdm(total=remaining, initial=0, desc="斷詞", unit="line")
+            if len(batch_buf) >= BATCH_SIZE:
+                try:
+                    ids, masks, spans = enc(batch_buf)
+                    preds = mx.argmax(model(ids, masks), axis=-1).tolist()
+                    for j, text in enumerate(batch_buf):
+                        words = decode(preds[j], spans[j], text)
+                        if words:
+                            shard_words.append("\t".join(words))
+                except Exception:
+                    pass
+                pbar.update(len(batch_buf))
+                batch_buf = []
 
-    for i in range(start_line, len(lines), BATCH_SIZE):
-        batch = lines[i:i+BATCH_SIZE]
-        try:
-            ids, masks, spans = tok.encode_batch(batch)
-            logits = model(ids, masks)
-            preds = mx.argmax(logits, axis=-1).tolist()
+            # Save shard
+            if len(shard_words) >= SHARD_SIZE:
+                out_path = SHARD_DIR / f"shard_{shard_num:03d}.parquet"
+                table = pa.table({"words": shard_words})
+                pq.write_table(table, out_path, compression="zstd")
+                elapsed = time.time() - t0
+                speed = (idx - start_line) / elapsed
+                print(f"\n💾 {out_path.name}: {len(shard_words):,} rows, "
+                      f"{os.path.getsize(out_path)/1e6:.1f} MB, "
+                      f"{speed:.0f} lines/s")
+                shard_words = []
+                shard_num += 1
+                pbar.set_description(f"斷詞 (shard {shard_num})")
 
-            for j, text in enumerate(batch):
-                words = decode_ws(preds[j], spans[j], text)
-                for k in range(len(words) - 1):
-                    word_bigram[(words[k], words[k+1])] += 1
-        except Exception:
-            pass
+        # Final batch
+        if batch_buf:
+            try:
+                ids, masks, spans = enc(batch_buf)
+                preds = mx.argmax(model(ids, masks), axis=-1).tolist()
+                for j, text in enumerate(batch_buf):
+                    words = decode(preds[j], spans[j], text)
+                    if words:
+                        shard_words.append("\t".join(words))
+            except Exception: pass
+            pbar.update(len(batch_buf))
 
-        pbar.update(len(batch))
+        # Final shard
+        if shard_words:
+            out_path = SHARD_DIR / f"shard_{shard_num:03d}.parquet"
+            table = pa.table({"words": shard_words})
+            pq.write_table(table, out_path, compression="zstd")
+            print(f"\n💾 {out_path.name}: {len(shard_words):,} rows")
 
-        # Checkpoint (pickle, fast)
-        processed = i + len(batch)
-        if processed % CKPT_INTERVAL < BATCH_SIZE:
-            CKPT_LINE.write_text(str(processed))
-            with open(CKPT_DATA, "wb") as f:
-                pickle.dump(word_bigram, f)
-            tqdm.write(f"  💾 ckpt: {processed:,} lines, {len(word_bigram):,} bigrams")
+        pbar.close()
 
-    pbar.close()
-    print(f"  完成: {len(word_bigram):,} bigrams ({time.time()-t0:.0f}s)")
+    elapsed = time.time() - t0
+    total_shards = len(list(SHARD_DIR.glob("shard_*.parquet")))
+    print(f"\n✅ 斷詞完成: {total_shards} shards, {elapsed/3600:.1f}h")
 
-    print(f"[4/4] 建 word_bigram.json (freq>={MIN_FREQ}, top {TOP_K})...")
+
+def cmd_ngram():
+    import pyarrow.parquet as pq
+    from collections import Counter, defaultdict
+
+    shards = sorted(SHARD_DIR.glob("shard_*.parquet"))
+    print(f"讀取 {len(shards)} shards...")
+
+    bg = Counter()
+    total = 0
+    for sp in shards:
+        table = pq.read_table(sp)
+        for row in table["words"].to_pylist():
+            words = row.split("\t")
+            for i in range(len(words) - 1):
+                bg[(words[i], words[i+1])] += 1
+            total += 1
+        print(f"  {sp.name}: +{len(table):,} rows, 累計 bigrams {len(bg):,}")
+
+    print(f"\n總行數: {total:,}, raw bigrams: {len(bg):,}")
+
+    MIN_FREQ, TOP_K = 10, 5
     grouped = defaultdict(list)
-    for (w1, w2), freq in word_bigram.items():
-        if freq >= MIN_FREQ:
-            grouped[w1].append((w2, freq))
-
+    for (w1, w2), freq in bg.items():
+        if freq >= MIN_FREQ: grouped[w1].append((w2, freq))
     result = {}
     for w, pairs in grouped.items():
         pairs.sort(key=lambda x: x[1], reverse=True)
@@ -146,16 +176,15 @@ def main():
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False)
 
-    print(f"  {len(result):,} entries, {os.path.getsize(OUT)/1e6:.1f} MB")
-
+    print(f"\n📦 word_bigram.json: {len(result):,} entries, {os.path.getsize(OUT)/1e6:.1f} MB")
     for w in ["研究", "臺灣", "中國", "美國", "大學", "政府", "電影", "音樂", "量子", "共產黨"]:
         print(f"  {w} → {result.get(w, [])}")
 
-    # Cleanup
-    CKPT_LINE.unlink(missing_ok=True)
-    CKPT_DATA.unlink(missing_ok=True)
-    print(f"  總耗時: {(time.time()-t0)/3600:.1f} hours")
-
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 2:
+        print("用法:\n  python3 tools/wiki_word_bigram.py ws     # 斷詞\n  python3 tools/wiki_word_bigram.py ngram  # 算 bigram")
+        sys.exit(1)
+    if sys.argv[1] == "ws": cmd_ws()
+    elif sys.argv[1] == "ngram": cmd_ngram()
+    else: print(f"未知指令: {sys.argv[1]}")
