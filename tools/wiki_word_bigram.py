@@ -204,31 +204,48 @@ def cmd_ngram():
     files = shards + partials
     print(f"讀取 {len(shards)} shards + {len(partials)} partials...")
 
-    bg = Counter()
+    bg2, bg3, bg4 = Counter(), Counter(), Counter()
     total = 0
     for sp in files:
         for row in pq.read_table(sp)["words"].to_pylist():
             words = row.split("\t")
-            for i in range(len(words) - 1):
-                bg[(words[i], words[i+1])] += 1
+            n = len(words)
+            for i in range(n - 1):
+                bg2[(words[i], words[i+1])] += 1
+            for i in range(n - 2):
+                bg3[(words[i], words[i+1], words[i+2])] += 1
+            for i in range(n - 3):
+                bg4[(words[i], words[i+1], words[i+2], words[i+3])] += 1
             total += 1
-        print(f"  {sp.name}: 累計 {total:,} rows, {len(bg):,} bigrams")
+        print(f"  {sp.name}: {total:,} rows | 2g:{len(bg2):,} 3g:{len(bg3):,} 4g:{len(bg4):,}")
 
-    MIN_FREQ, TOP_K = 10, 5
-    grouped = defaultdict(list)
-    for (w1, w2), freq in bg.items():
-        if freq >= MIN_FREQ: grouped[w1].append((w2, freq))
-    result = {}
-    for w, pairs in grouped.items():
-        pairs.sort(key=lambda x: x[1], reverse=True)
-        result[w] = [w2 for w2, _ in pairs[:TOP_K]]
+    SAMPLES = ["研究", "臺灣", "中國", "美國", "大學", "政府", "電影", "音樂", "量子", "共產黨"]
 
-    with open(OUT, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False)
-
-    print(f"\n📦 word_bigram.json: {len(result):,} entries, {os.path.getsize(OUT)/1e6:.1f} MB")
-    for w in ["研究", "臺灣", "中國", "美國", "大學", "政府", "電影", "音樂", "量子", "共產黨"]:
-        print(f"  {w} → {result.get(w, [])}")
+    for name, counter, n, min_freq in [
+        ("word_bigram", bg2, 2, 10),
+        ("word_trigram", bg3, 3, 5),
+        ("word_4gram", bg4, 4, 3),
+    ]:
+        grouped = defaultdict(list)
+        for key, freq in counter.items():
+            if freq >= min_freq:
+                grouped[key[:-1]].append((key[-1], freq))
+        result = {}
+        for ctx, pairs in grouped.items():
+            pairs.sort(key=lambda x: x[1], reverse=True)
+            k = "\t".join(ctx) if n > 2 else ctx[0]
+            result[k] = [w for w, _ in pairs[:5]]
+        out = DATA / f"{name}.json"
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False)
+        print(f"\n📦 {name}.json: {len(result):,} entries, {os.path.getsize(out)/1e6:.1f} MB (freq≥{min_freq})")
+        for w in SAMPLES:
+            if n == 2:
+                print(f"  {w} → {result.get(w, [])}")
+            else:
+                hits = [(k, v) for k, v in result.items() if k.startswith(w)][:3]
+                for k, v in hits:
+                    print(f"  {k} → {v}")
 
 
 if __name__ == "__main__":
