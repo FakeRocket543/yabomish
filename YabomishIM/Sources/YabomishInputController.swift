@@ -153,10 +153,15 @@ class YabomishInputController: IMKInputController {
         // （避免法文 AZERTY 等非 QWERTY 佈局導致輸出錯位）
         if isEnglishMode {
             if flags.contains(.shift) { shiftWasUsedWithOtherKey = true }
+            let wantShift = flags.contains(.shift) != flags.contains(.capsLock)
+            // Shift+數字鍵 → 符號（!@#$%^&*()）
+            if wantShift, let sh = keyCodeToShifted[keyCode] {
+                client.insertText(String(sh), replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+                return true
+            }
             if let ch = keyCodeToChar[keyCode] ?? keyCodeToDigit[keyCode] {
                 var s = String(ch)
-                let wantUpper = flags.contains(.shift) != flags.contains(.capsLock)
-                if wantUpper { s = s.uppercased() }
+                if wantShift { s = s.uppercased() }
                 client.insertText(s, replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
                 return true
             }
