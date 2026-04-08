@@ -1398,6 +1398,12 @@ class YabomishInputController: IMKInputController {
         if fromOtherIM && YabomishPrefs.showActivateToast {
             showModeToast(isEnglishMode ? "A" : (Self.modeLabels[inputMode] ?? "繁中"))
         }
+        // 語料下載檢查（背景執行，不阻塞）
+        if !DataDownloader.isDataAvailable {
+            DataDownloader.ensureData { ok in
+                if !ok { NSLog("YabomishIM: 語料尚未下載，聯想/重排功能停用") }
+            }
+        }
     }
 
     static func promptImportCIN() {

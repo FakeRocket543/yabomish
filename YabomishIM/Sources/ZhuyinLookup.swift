@@ -15,6 +15,13 @@ final class ZhuyinLookup {
     /// Trigram suggest: prev2chars → [next_char, ...]
     private var trigramSuggest: [String: [String]] = [:]
 
+    /// Resolve data file: ~/Library/Application Support/YabomishIM/ → Bundle fallback
+    private func dataPath(_ name: String, _ ext: String) -> String? {
+        let support = NSHomeDirectory() + "/Library/Application Support/YabomishIM/\(name).\(ext)"
+        if FileManager.default.fileExists(atPath: support) { return support }
+        return Bundle.main.path(forResource: name, ofType: ext)
+    }
+
     private init() {
         let userPath = NSHomeDirectory() + "/Library/YabomishIM/zhuyin_data.json"
         let bundlePath = Bundle.main.path(forResource: "zhuyin_data", ofType: "json")
@@ -32,7 +39,7 @@ final class ZhuyinLookup {
         charToZhuyins = c2z
 
         // 載入萌典字頻
-        if let fp = Bundle.main.path(forResource: "char_freq", ofType: "json"),
+        if let fp = dataPath("char_freq", "json"),
            let fd = try? Data(contentsOf: URL(fileURLWithPath: fp)),
            let freq = try? JSONSerialization.jsonObject(with: fd) as? [String: Int] {
             charFreq = freq
@@ -49,7 +56,7 @@ final class ZhuyinLookup {
         }
 
         // 載入 bigram boost 表
-        if let bp = Bundle.main.path(forResource: "bigram_boost", ofType: "json"),
+        if let bp = dataPath("bigram_boost", "json"),
            let bd = try? Data(contentsOf: URL(fileURLWithPath: bp)),
            let bj = try? JSONSerialization.jsonObject(with: bd) as? [String: [String: [[Any]]]] {
             for (prevZy, inner) in bj {
@@ -68,7 +75,7 @@ final class ZhuyinLookup {
         }
 
         // 載入 bigram suggest 表
-        if let sp = Bundle.main.path(forResource: "bigram_suggest", ofType: "json"),
+        if let sp = dataPath("bigram_suggest", "json"),
            let sd = try? Data(contentsOf: URL(fileURLWithPath: sp)),
            let sj = try? JSONSerialization.jsonObject(with: sd) as? [String: [String]] {
             bigramSuggest = sj
@@ -76,7 +83,7 @@ final class ZhuyinLookup {
         }
 
         // 載入 trigram suggest 表
-        if let tp = Bundle.main.path(forResource: "trigram_suggest", ofType: "json"),
+        if let tp = dataPath("trigram_suggest", "json"),
            let td = try? Data(contentsOf: URL(fileURLWithPath: tp)),
            let tj = try? JSONSerialization.jsonObject(with: td) as? [String: [String]] {
             trigramSuggest = tj

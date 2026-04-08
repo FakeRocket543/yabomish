@@ -10,7 +10,7 @@ final class PhraseLookup {
     private var sessionCommunities: [Int: Int] = [:]
 
     private init() {
-        let userPath = NSHomeDirectory() + "/Library/YabomishIM/yabomish_ime.db"
+        let userPath = NSHomeDirectory() + "/Library/Application Support/YabomishIM/yabomish_ime.db"
         let bundlePath = Bundle.main.path(forResource: "yabomish_ime", ofType: "db")
         let path = FileManager.default.fileExists(atPath: userPath) ? userPath : bundlePath
 
