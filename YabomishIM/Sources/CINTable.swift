@@ -81,10 +81,19 @@ final class CINTable {
         }
         // 2. If no .bin, try compiling .cin → .bin on the fly
         if entryCount == 0 {
-            let userCin = AppConstants.cinPath
-            if FileManager.default.fileExists(atPath: userCin) {
-                CINCompiler.compile(src: userCin, dst: userBin)
+            // Check new path first, then legacy macOS path
+            let cinPaths = [
+                AppConstants.cinPath,
+                NSHomeDirectory() + "/Library/YabomishIM/liu.cin",
+            ]
+            for cinPath in cinPaths {
+                guard FileManager.default.fileExists(atPath: cinPath) else { continue }
+                CINCompiler.compile(src: cinPath, dst: userBin)
                 if FileManager.default.fileExists(atPath: userBin) { loadBin(path: userBin) }
+                if entryCount > 0 { break }
+                // Compile failed, try text fallback
+                parseCINIntoOverlay(path: cinPath)
+                if !overlay.isEmpty { break }
             }
         }
         #if os(macOS)
@@ -310,7 +319,7 @@ final class CINTable {
     private func loadExtras() {
         let dir = AppConstants.tablesDir
         #if os(macOS)
-        var dirs = [dir]
+        var dirs = [dir, NSHomeDirectory() + "/Library/YabomishIM/tables"]
         if let sync = YabomishPrefs.syncFolder {
             dirs.append((sync as NSString).appendingPathComponent("tables"))
         }
