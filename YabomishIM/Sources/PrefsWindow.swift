@@ -292,7 +292,7 @@ final class PrefsWindow: NSPanel {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
-        panel.allowedContentTypes = [.plainText]
+        panel.allowedContentTypes = [.plainText, .text, .data]
         panel.message = "選擇字表（.cin）或擴充表（.txt）"
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
 
