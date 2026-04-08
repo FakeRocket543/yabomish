@@ -136,6 +136,14 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "charSuggest") }
     }
 
+    /// Domain dictionary toggle (per-domain key, e.g. "domain_it")
+    static func domainEnabled(_ key: String) -> Bool {
+        defaults.object(forKey: key) as? Bool ?? false
+    }
+    static func setDomainEnabled(_ key: String, _ value: Bool) {
+        defaults.set(value, forKey: key)
+    }
+
     /// Chengyu suggestions first (before ngram)
     static var chengyuFirst: Bool {
         get { defaults.object(forKey: "chengyuFirst") as? Bool ?? false }

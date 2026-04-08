@@ -45,6 +45,12 @@ for f in t2s.json s2t.json; do
         cp "$RES_DIR/$f" "$APP_BUNDLE/Contents/Resources/"
     fi
 done
+# Copy binary data files (mmap)
+for f in bigram.bin trigram.bin word_ngram.bin chengyu.bin phrases.bin ner_phrases.bin; do
+    if [ -f "$RES_DIR/$f" ]; then
+        cp "$RES_DIR/$f" "$APP_BUNDLE/Contents/Resources/"
+    fi
+done
 
 # Write PkgInfo
 echo -n "APPL????" > "$APP_BUNDLE/Contents/PkgInfo"
