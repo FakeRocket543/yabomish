@@ -110,6 +110,38 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "communityBoost") }
     }
 
+    // MARK: - New engine (Phase 1 feature flag)
+
+    /// Use the new shared InputEngine (from iOS). Set to false to use legacy controller.
+    static var useNewEngine: Bool {
+        get { defaults.object(forKey: "useNewEngine") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "useNewEngine") }
+    }
+
+    /// Fuzzy match: try adjacent-key substitution when no candidates found
+    static var fuzzyMatch: Bool {
+        get { defaults.object(forKey: "fuzzyMatch") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "fuzzyMatch") }
+    }
+
+    /// Word-level suggestions (phrases, chengyu, domain terms)
+    static var wordSuggest: Bool {
+        get { defaults.object(forKey: "wordSuggest") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "wordSuggest") }
+    }
+
+    /// Char-level suggestions (bigram, trigram)
+    static var charSuggest: Bool {
+        get { defaults.object(forKey: "charSuggest") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "charSuggest") }
+    }
+
+    /// Chengyu suggestions first (before ngram)
+    static var chengyuFirst: Bool {
+        get { defaults.object(forKey: "chengyuFirst") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "chengyuFirst") }
+    }
+
     /// Debug mode: write detailed logs to ~/Library/YabomishIM/debug.log
     static var debugMode: Bool {
         get { defaults.object(forKey: "debugMode") as? Bool ?? false }
