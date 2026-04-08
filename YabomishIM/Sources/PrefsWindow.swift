@@ -4,7 +4,7 @@ final class PrefsWindow: NSPanel {
     static let shared = PrefsWindow()
 
     private init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 360, height: 640),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 420, height: 720),
                    styleMask: [.titled, .closable],
                    backing: .buffered, defer: true)
         self.title = "Yabomish 偏好設定"
@@ -17,18 +17,37 @@ final class PrefsWindow: NSPanel {
         bg.state = .active
         self.contentView = bg
 
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.drawsBackground = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        bg.addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: bg.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: bg.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: bg.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bg.bottomAnchor),
+        ])
+
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 14
         stack.edgeInsets = NSEdgeInsets(top: 16, left: 20, bottom: 16, right: 20)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        bg.addSubview(stack)
+
+        let flipView = NSView()
+        flipView.translatesAutoresizingMaskIntoConstraints = false
+        flipView.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: bg.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: bg.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: bg.trailingAnchor),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: bg.bottomAnchor),
+            stack.topAnchor.constraint(equalTo: flipView.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: flipView.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: flipView.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: flipView.bottomAnchor),
+        ])
+        scrollView.documentView = flipView
+        NSLayoutConstraint.activate([
+            flipView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
         ])
 
         // ━━━ 選字窗 ━━━
@@ -134,6 +153,34 @@ final class PrefsWindow: NSPanel {
         let clearBtn = NSButton(title: "清除", target: self, action: #selector(clearSyncFolder))
         stack.addArrangedSubview(row("同步資料夾", hStack(syncLabel, chooseBtn, clearBtn)))
 
+        // ━━━ 領域詞庫 ━━━
+        stack.addArrangedSubview(sectionHeader("領域詞庫"))
+
+        let domains = WikiCorpus.domainKeys
+        let cols = 3
+        let rows = (domains.count + cols - 1) / cols
+        var gridRows: [[NSView]] = []
+        for r in 0..<rows {
+            var cells: [NSView] = []
+            for c in 0..<cols {
+                let i = r * cols + c
+                if i < domains.count {
+                    let d = domains[i]
+                    let btn = NSButton(checkboxWithTitle: d.label, target: self, action: #selector(domainToggled(_:)))
+                    btn.identifier = NSUserInterfaceItemIdentifier(d.key)
+                    btn.state = YabomishPrefs.domainEnabled(d.key) ? .on : .off
+                    cells.append(btn)
+                } else {
+                    cells.append(NSView())
+                }
+            }
+            gridRows.append(cells)
+        }
+        let grid = NSGridView(views: gridRows)
+        grid.rowSpacing = 4
+        grid.columnSpacing = 12
+        stack.addArrangedSubview(grid)
+
         // ━━━ 除錯 ━━━
         stack.addArrangedSubview(sectionHeader("除錯"))
 
@@ -209,6 +256,13 @@ final class PrefsWindow: NSPanel {
 
     @objc private func communityBoostChanged(_ sender: NSButton) {
         YabomishPrefs.communityBoost = sender.state == .on
+    }
+
+    @objc private func domainToggled(_ sender: NSButton) {
+        guard let key = sender.identifier?.rawValue else { return }
+        YabomishPrefs.setDomainEnabled(key, sender.state == .on)
+        WikiCorpus.shared.reloadDomains()
+        DomainMerger.merge()
     }
 
     @objc private func activateToastChanged(_ sender: NSButton) {

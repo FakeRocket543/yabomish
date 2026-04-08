@@ -51,6 +51,8 @@ for f in bigram.bin trigram.bin word_ngram.bin chengyu.bin phrases.bin ner_phras
         cp "$RES_DIR/$f" "$APP_BUNDLE/Contents/Resources/"
     fi
 done
+# Copy domain term binary files
+for f in "$RES_DIR"/terms_*.bin; do [ -f "$f" ] && cp "$f" "$APP_BUNDLE/Contents/Resources/"; done
 
 # Write PkgInfo
 echo -n "APPL????" > "$APP_BUNDLE/Contents/PkgInfo"
