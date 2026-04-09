@@ -366,11 +366,11 @@ class YabomishInputController: IMKInputController {
             return handleLetterInput(String(ch), client: client)
         }
 
-        // Digits when idle: select bigram suggestion or output digit
+        // Digits when idle: dismiss suggestions and output digit
         if composing.isEmpty, let digit = keyCodeToDigit[keyCode] {
-            if !currentCandidates.isEmpty, let selected = panel.selectByKey(digit) {
-                commitText(selected, client: client)
-                return true
+            if !currentCandidates.isEmpty {
+                currentCandidates = []
+                panel.hide()
             }
             client.insertText(String(digit), replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             return true
@@ -533,7 +533,15 @@ class YabomishInputController: IMKInputController {
     }
 
     private func handleEscape(client: IMKTextInput) -> Bool {
-        if composing.isEmpty { return false }
+        // Dismiss suggestions if composing is empty but candidates showing
+        if composing.isEmpty {
+            if !currentCandidates.isEmpty {
+                currentCandidates = []
+                panel.hide()
+                return true
+            }
+            return false
+        }
         resetComposing(client: client)
         return true
     }
