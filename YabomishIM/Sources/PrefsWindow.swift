@@ -143,6 +143,18 @@ final class PrefsWindow: NSPanel {
         communityBtn.state = YabomishPrefs.communityBoost ? .on : .off
         stack.addArrangedSubview(communityBtn)
 
+        let wordSuggestBtn = NSButton(checkboxWithTitle: "詞級聯想（詞組、成語、領域詞）", target: self, action: #selector(wordSuggestChanged(_:)))
+        wordSuggestBtn.state = YabomishPrefs.wordSuggest ? .on : .off
+        stack.addArrangedSubview(wordSuggestBtn)
+
+        let charSuggestBtn = NSButton(checkboxWithTitle: "字級聯想（bigram、trigram）", target: self, action: #selector(charSuggestChanged(_:)))
+        charSuggestBtn.state = YabomishPrefs.charSuggest ? .on : .off
+        stack.addArrangedSubview(charSuggestBtn)
+
+        let chengyuFirstBtn = NSButton(checkboxWithTitle: "成語優先（聯想時成語排在 n-gram 前面）", target: self, action: #selector(chengyuFirstChanged(_:)))
+        chengyuFirstBtn.state = YabomishPrefs.chengyuFirst ? .on : .off
+        stack.addArrangedSubview(chengyuFirstBtn)
+
         // ━━━ 外觀 ━━━
         stack.addArrangedSubview(sectionHeader("外觀"))
 
@@ -274,6 +286,18 @@ final class PrefsWindow: NSPanel {
 
     @objc private func communityBoostChanged(_ sender: NSButton) {
         YabomishPrefs.communityBoost = sender.state == .on
+    }
+
+    @objc private func wordSuggestChanged(_ sender: NSButton) {
+        YabomishPrefs.wordSuggest = sender.state == .on
+    }
+
+    @objc private func charSuggestChanged(_ sender: NSButton) {
+        YabomishPrefs.charSuggest = sender.state == .on
+    }
+
+    @objc private func chengyuFirstChanged(_ sender: NSButton) {
+        YabomishPrefs.chengyuFirst = sender.state == .on
     }
 
     @objc private func domainToggled(_ sender: NSButton) {

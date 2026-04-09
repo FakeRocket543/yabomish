@@ -45,6 +45,10 @@ for f in t2s.json s2t.json; do
         cp "$RES_DIR/$f" "$APP_BUNDLE/Contents/Resources/"
     fi
 done
+# Copy emoji character map
+if [ -f "$RES_DIR/emoji_char_map.json" ]; then
+    cp "$RES_DIR/emoji_char_map.json" "$APP_BUNDLE/Contents/Resources/"
+fi
 # Copy binary data files (mmap)
 for f in bigram.bin trigram.bin word_ngram.bin chengyu.bin phrases.bin ner_phrases.bin; do
     if [ -f "$RES_DIR/$f" ]; then

@@ -236,6 +236,34 @@ final class WikiCorpus {
         return results
     }
 
+    /// Given a prefix (e.g. "馬達"), return completions (e.g. "加斯加")
+    func completions(for prefix: String, limit: Int = 3) -> [String] {
+        guard prefix.count >= 2, let first = prefix.first else { return [] }
+        // Search both NER and phrase dictionary
+        var results: [String] = []
+        var seen = Set<String>()
+
+        // Phrase dictionary first (broader coverage)
+        for phrase in phraseLookup(char: String(first), limit: 30) {
+            if phrase.hasPrefix(prefix) && phrase.count > prefix.count {
+                let remainder = String(phrase.dropFirst(prefix.count))
+                if seen.insert(remainder).inserted { results.append(remainder) }
+                if results.count >= limit { return results }
+            }
+        }
+
+        // Then NER
+        let all = suggestPhrases(after: String(first), limit: 20)
+        for phrase in all {
+            if phrase.hasPrefix(prefix) && phrase.count > prefix.count {
+                let remainder = String(phrase.dropFirst(prefix.count))
+                if seen.insert(remainder).inserted { results.append(remainder) }
+                if results.count >= limit { break }
+            }
+        }
+        return results
+    }
+
     private func phraseLookup(char: String, limit: Int = 30) -> [String] {
         guard let d = phData, phKeyCount > 0,
               let s = char.unicodeScalars.first else { return [] }
@@ -282,6 +310,11 @@ final class WikiCorpus {
                              valIndexOff: wbValIndexOff, key: last, limit: limit)
         }
         return []
+    }
+
+    /// Backward compat
+    func suggestWordBigram(after word: String, limit: Int = 3) -> [String] {
+        return suggestWordNgram(context: [word], limit: limit)
     }
 
     func suggestChengyu(prefix: String, limit: Int = 3) -> [String] {
