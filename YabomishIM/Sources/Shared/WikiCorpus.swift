@@ -91,15 +91,6 @@ final class WikiCorpus {
 
     func reloadDomains() {
         domainBins.removeAll()
-        let merged = AppConstants.sharedDir + "/domain_merged.bin"
-        if let d = try? Data(contentsOf: URL(fileURLWithPath: merged), options: .mappedIfSafe),
-           d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D {
-            let ki = Int(d.u32(8)), vi = Int(d.u32(12))
-            guard ki <= d.count, vi <= d.count else { return }
-            domainBins.append(DomainBin(data: d, keyCount: Int(d.u32(4)),
-                                        keyIndexOff: ki, valIndexOff: vi))
-            return
-        }
         for (key, file, _) in Self.domainKeys {
             guard YabomishPrefs.domainEnabled(key),
                   let p = resolvePath(name: file, ext: "bin"),
