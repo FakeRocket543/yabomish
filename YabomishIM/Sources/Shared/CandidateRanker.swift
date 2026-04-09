@@ -11,7 +11,7 @@ final class CandidateRanker {
 
     /// Called after each commit to update domain context
     func updateDomainContext(_ text: String) {
-        guard YabomishPrefs.contextMode == "domain" else { return }
+        guard YabomishPrefs.suggestStrategy == "domain" else { return }
         for ch in text {
             let s = String(ch)
             let domains = domainsFor(s)
@@ -82,7 +82,7 @@ final class CandidateRanker {
         }
 
         // Domain-aware reranking (stable sort — only reorder when boost differs)
-        if YabomishPrefs.contextMode == "domain" && !domainHits.isEmpty && candidates.count > 1 {
+        if YabomishPrefs.suggestStrategy == "domain" && !domainHits.isEmpty && candidates.count > 1 {
             candidates.sort { domainBoost(for: $0) > domainBoost(for: $1) }
         }
 

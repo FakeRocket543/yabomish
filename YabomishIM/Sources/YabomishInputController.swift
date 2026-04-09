@@ -1108,18 +1108,6 @@ class YabomishInputController: IMKInputController {
             break
         }
 
-        // 領域感知：依社群上下文微調同碼字排序
-        if YabomishPrefs.communityBoost && candidates.count > 1
-            && PhraseLookup.shared.hasActiveContext && !code.hasPrefix(",") {
-            let boosted = candidates.sorted { a, b in
-                let ba = PhraseLookup.shared.communityBoost(for: a)
-                let bb = PhraseLookup.shared.communityBoost(for: b)
-                if ba != bb { return ba > bb }
-                return false // 保持原排序
-            }
-            candidates = boosted
-        }
-
         currentCandidates = candidates
     }
 
@@ -1183,80 +1171,49 @@ class YabomishInputController: IMKInputController {
             }
         }
 
-        // 聯想輸入：3 層合併（2-gram + 3-gram + NER 詞組補全）
-        // 句子結束後不聯想；虛詞（的、了、在、是）後不聯想
-        if !wasHomophone && !isZhuyinMode && YabomishPrefs.bigramSuggest && !recentCommitted.isEmpty {
-            // NLTagger 詞性判斷：虛詞結尾跳過聯想
-            let skipTags: Set<String> = ["Particle", "Preposition", "Conjunction", "Determiner"]
-            let tagger = NLTagger(tagSchemes: [.lexicalClass])
-            tagger.string = recentCommitted
-            tagger.setLanguage(.traditionalChinese, range: recentCommitted.startIndex..<recentCommitted.endIndex)
-            var lastTag: String?
-            tagger.enumerateTags(in: recentCommitted.startIndex..<recentCommitted.endIndex, unit: .word, scheme: .lexicalClass) { tag, _ in
-                lastTag = tag?.rawValue
-                return true
-            }
-            if let tag = lastTag, skipTags.contains(tag) {
-                // 虛詞結尾，不聯想
-            } else {
+        // 聯想輸入
+        if !wasHomophone && !isZhuyinMode && !recentCommitted.isEmpty {
+            // 虛詞過濾（查表，不用 NLTagger）
+            let lastChar = String(recentCommitted.suffix(1))
+            let skipChars: Set<String> = ["的","了","在","是","和","與","或","而","但","也","都","就","被","把","讓","給","從","到","對","為","著","過","嗎","呢","吧","啊","喔","哦","啦"]
+            if !skipChars.contains(lastChar) {
             var suggestions: [String] = []
             var seen = Set<String>()
 
-            // Layer 3: NER 詞組補全（最優先，只存尚未輸入的部分）
+            // 第二層：詞級語料（三選一）
             if recentCommitted.count >= 2 {
-                for len in [4, 3, 2] {
-                    guard recentCommitted.count >= len else { continue }
-                    let prefix = String(recentCommitted.suffix(len))
-                    for phrase in PhraseLookup.shared.completions(for: prefix) {
-                        let remainder = String(phrase.dropFirst(prefix.count))
-                        if !remainder.isEmpty && seen.insert(remainder).inserted {
-                            suggestions.append(remainder)
-                        }
-                        if suggestions.count >= 3 { break }
-                    }
-                    if suggestions.count >= 3 { break }
-                }
+                let prefix = String(recentCommitted.suffix(min(4, recentCommitted.count)))
+                let pool2 = WikiCorpus.shared.suggestWordCorpus(prefix: prefix)
+                    .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
+                    .filter { !$0.isEmpty }
+
+                // 第三層：詞庫（按 priority 排序）
+                let pool3 = WikiCorpus.shared.suggestAllDomains(prefix: prefix)
+                    .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
+                    .filter { !$0.isEmpty }
+
+                // 第一層策略決定順序
+                let ordered = YabomishPrefs.suggestStrategy == "domain" ? pool3 + pool2 : pool2 + pool3
+                for s in ordered where seen.insert(s).inserted { suggestions.append(s) }
             }
 
-            // Layer 2: 3-gram（前兩字 → 下一字）
-            if recentCommitted.count >= 2 {
-                for ch in ZhuyinLookup.shared.suggestNextTrigram(prev2: recentCommitted) {
+            // 第四層：字級聯想
+            if YabomishPrefs.charSuggest {
+                if recentCommitted.count >= 2 {
+                    for ch in ZhuyinLookup.shared.suggestNextTrigram(prev2: recentCommitted) {
+                        if seen.insert(ch).inserted { suggestions.append(ch) }
+                    }
+                }
+                for ch in ZhuyinLookup.shared.suggestNext(after: text) {
                     if seen.insert(ch).inserted { suggestions.append(ch) }
                 }
             }
 
-            // Layer 1: 2-gram（前一字 → 下一字）
-            for ch in ZhuyinLookup.shared.suggestNext(after: text) {
-                if seen.insert(ch).inserted { suggestions.append(ch) }
-            }
-
-            // Layer 0: WikiCorpus — 詞組補全 + 領域詞庫 + 成語
-            if recentCommitted.count >= 1 {
-                let prefix = String(recentCommitted.suffix(min(4, recentCommitted.count)))
-                for s in WikiCorpus.shared.phraseCompletions(for: prefix) {
-                    if seen.insert(s).inserted { suggestions.append(s) }
-                }
-                for s in WikiCorpus.shared.suggestDomainTerms(prefix: prefix) {
-                    if seen.insert(s).inserted { suggestions.append(s) }
-                }
-                if prefix.count >= 2 {
-                    for s in WikiCorpus.shared.suggestChengyu(prefix: prefix) {
-                        if seen.insert(s).inserted { suggestions.append(s) }
-                    }
-                }
-            }
-
             if !suggestions.isEmpty {
-                // 領域感知：依社群上下文重排
-                if YabomishPrefs.communityBoost && PhraseLookup.shared.hasActiveContext {
-                    suggestions.sort { a, b in
-                        PhraseLookup.shared.communityBoost(for: a) > PhraseLookup.shared.communityBoost(for: b)
-                    }
-                }
                 currentCandidates = Array(suggestions.prefix(6))
                 showCandidatePanel(client: client)
             }
-            } // end NLTagger else
+            } // end skip check
         }
     }
 
@@ -1412,6 +1369,15 @@ class YabomishInputController: IMKInputController {
         }
         let fromOtherIM = !Self.yabomishWasActive
         Self.yabomishWasActive = true
+        // 背景預熱：首次切入時提前載入所有語料，避免第一次按鍵卡頓
+        if fromOtherIM {
+            DispatchQueue.global(qos: .userInitiated).async {
+                ZhuyinLookup.shared.warmup()
+                _ = PhraseLookup.shared
+                _ = WikiCorpus.shared
+                _ = BigramSuggest.shared
+            }
+        }
         Self.activeSession = self
         panel.onCandidateSelected = { [weak self] text in
             guard let self, let client = self.client() else { return }

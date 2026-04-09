@@ -42,11 +42,25 @@ final class WikiCorpus {
 
     // Emoji char map
     private var emojiMap: [String: [String]] = [:]
-    private struct DomainBin { let data: Data; let keyCount: Int; let keyIndexOff: Int; let valIndexOff: Int }
+    private struct DomainBin { let data: Data; let keyCount: Int; let keyIndexOff: Int; let valIndexOff: Int; let priority: Int }
     private var domainBins: [DomainBin] = []
     var domainBinCount: Int { domainBins.count }
 
+    // Word-level news corpus (WBMM)
+    private var wnData: Data?
+    private var wnKeyCount = 0
+    private var wnKeyIndexOff = 0
+    private var wnValIndexOff = 0
+
+    /// All domain/corpus bins available for the third layer (checkbox + priority)
     static let domainKeys: [(key: String, file: String, label: String)] = [
+        // Built-in corpora (NER, phrases, chengyu, yoji)
+        ("domain_ner", "ner_phrases", "NER 詞組"),
+        ("domain_phrases", "phrases", "萌典詞組"),
+        ("domain_chengyu", "chengyu", "成語"),
+        ("domain_yoji", "yoji", "日式四字熟語"),
+        ("domain_cn_slang", "terms_cn_slang", "中式流行語"),
+        // Professional domains
         ("domain_it", "terms_it", "資訊科技"), ("domain_ee", "terms_ee", "電機電子"),
         ("domain_med", "terms_med", "醫學"), ("domain_law", "terms_law", "法律"),
         ("domain_phy", "terms_phy", "物理∕計量"), ("domain_chem", "terms_chem", "化學"),
@@ -60,15 +74,12 @@ final class WikiCorpus {
         ("domain_media", "terms_media", "新聞傳播"),
         ("domain_social", "terms_social", "社會行政"),
         ("domain_govt", "terms_govt", "政府機關"),
-        ("domain_cn_slang", "terms_cn_slang", "中式流行語"),
     ]
 
     private init() {
         loadTrigram()
-        loadNER()
-        loadPhrases()
         loadWordBigram()
-        loadChengyu()
+        loadWordNews()
         loadEmojiMap()
         reloadDomains()
     }
@@ -93,15 +104,66 @@ final class WikiCorpus {
     func reloadDomains() {
         domainBins.removeAll()
         for (key, file, _) in Self.domainKeys {
-            guard YabomishPrefs.domainEnabled(key),
-                  let p = resolvePath(name: file, ext: "bin"),
+            guard YabomishPrefs.domainEnabled(key) else { continue }
+            // NER and phrases use different formats — load with their own loaders
+            if key == "domain_ner" { loadNER(); continue }
+            if key == "domain_phrases" { loadPhrases(); continue }
+            // All others are WBMM
+            guard let p = resolvePath(name: file, ext: "bin"),
                   let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
                   d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
             let ki = Int(d.u32(8)), vi = Int(d.u32(12))
             guard ki <= d.count, vi <= d.count else { continue }
+            let pri = YabomishPrefs.domainPriority(key)
             domainBins.append(DomainBin(data: d, keyCount: Int(d.u32(4)),
-                                        keyIndexOff: ki, valIndexOff: vi))
+                                        keyIndexOff: ki, valIndexOff: vi, priority: pri))
         }
+        domainBins.sort { $0.priority < $1.priority }
+        // Clear NER/phrases if disabled
+        if !YabomishPrefs.domainEnabled("domain_ner") { nerData = nil; nerKeyCount = 0 }
+        if !YabomishPrefs.domainEnabled("domain_phrases") { phData = nil; phKeyCount = 0 }
+    }
+
+    /// Query all enabled domain bins + NER/phrases, sorted by priority
+    func suggestAllDomains(prefix: String, limit: Int = 5) -> [String] {
+        var results: [String] = []
+        var seen = Set<String>()
+
+        // Collect (priority, results) pairs
+        var ranked: [(pri: Int, vals: [String])] = []
+
+        // NER phrases
+        if nerData != nil && nerKeyCount > 0 {
+            let pri = YabomishPrefs.domainPriority("domain_ner")
+            let hits = suggestPhrases(after: String(prefix.suffix(1)), limit: 5)
+                .filter { $0.hasPrefix(prefix) }
+                .map { String($0.dropFirst(prefix.count)) }
+                .filter { !$0.isEmpty }
+            if !hits.isEmpty { ranked.append((pri, hits)) }
+        }
+
+        // Phrase dictionary
+        if phData != nil && phKeyCount > 0 {
+            let pri = YabomishPrefs.domainPriority("domain_phrases")
+            let hits = phraseCompletions(for: prefix)
+            if !hits.isEmpty { ranked.append((pri, hits)) }
+        }
+
+        // WBMM bins
+        for bin in domainBins {
+            let hits = queryWBMM(data: bin.data, keyCount: bin.keyCount, keyIndexOff: bin.keyIndexOff,
+                                 valIndexOff: bin.valIndexOff, key: prefix, limit: 3)
+            if !hits.isEmpty { ranked.append((bin.priority, hits)) }
+        }
+
+        ranked.sort { $0.pri < $1.pri }
+        for (_, vals) in ranked {
+            for v in vals where seen.insert(v).inserted {
+                results.append(v)
+                if results.count >= limit { return results }
+            }
+        }
+        return results
     }
 
     func suggestDomainTerms(prefix: String, limit: Int = 3) -> [String] {
@@ -179,6 +241,31 @@ final class WikiCorpus {
         cyValIndexOff = Int(d.u32(12))
         guard cyKeyIndexOff <= d.count, cyValIndexOff <= d.count else { return }
         cyData = d
+    }
+
+    private func loadWordNews() {
+        guard let p = resolvePath(name: "word_news", ext: "bin"),
+              let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
+              d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
+        wnKeyCount = Int(d.u32(4))
+        wnKeyIndexOff = Int(d.u32(8))
+        wnValIndexOff = Int(d.u32(12))
+        guard wnKeyIndexOff <= d.count, wnValIndexOff <= d.count else { return }
+        wnData = d
+    }
+
+    /// Second layer: query word corpus based on user preference (moedict/wiki/news)
+    func suggestWordCorpus(prefix: String, limit: Int = 5) -> [String] {
+        let corpus = YabomishPrefs.wordCorpus
+        switch corpus {
+        case "moedict":
+            return phraseCompletions(for: prefix, limit: limit)
+        case "news":
+            return queryWBMM(data: wnData, keyCount: wnKeyCount, keyIndexOff: wnKeyIndexOff,
+                             valIndexOff: wnValIndexOff, key: prefix, limit: limit)
+        default: // "wiki"
+            return suggestWordNgram(context: [prefix], limit: limit)
+        }
     }
 
     // MARK: - Trigram query

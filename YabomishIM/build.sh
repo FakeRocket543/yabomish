@@ -15,8 +15,12 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
-# Copy Info.plist
+# Copy Info.plist with build version stamp
 cp "$RES_DIR/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
+BUILD_HASH=$(cd "$SCRIPT_DIR/.." && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME=$(date +%Y%m%d.%H%M)
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion 0.2.17.${BUILD_TIME}.${BUILD_HASH}" "$APP_BUNDLE/Contents/Info.plist"
+echo "Build: 0.2.17.${BUILD_TIME}.${BUILD_HASH}"
 
 # Copy icons
 if [ -f "$RES_DIR/icon.tiff" ]; then
@@ -50,7 +54,7 @@ if [ -f "$RES_DIR/emoji_char_map.json" ]; then
     cp "$RES_DIR/emoji_char_map.json" "$APP_BUNDLE/Contents/Resources/"
 fi
 # Copy binary data files (mmap)
-for f in bigram.bin trigram.bin word_ngram.bin chengyu.bin phrases.bin ner_phrases.bin; do
+for f in bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin phrases.bin ner_phrases.bin yoji.bin; do
     if [ -f "$RES_DIR/$f" ]; then
         cp "$RES_DIR/$f" "$APP_BUNDLE/Contents/Resources/"
     fi

@@ -98,26 +98,17 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "homophoneMultiReading") }
     }
 
-    /// Bigram 聯想（送字後建議下一個字）
-    static var bigramSuggest: Bool {
-        get { defaults.object(forKey: "bigramSuggest") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "bigramSuggest") }
-    }
-
-    /// 領域感知模式：off / wiki（知識圖譜社群）/ domain（領域詞庫）
-    static var contextMode: String {
-        get {
-            if let v = defaults.string(forKey: "contextMode") { return v }
-            // Migrate from old bool
-            if defaults.object(forKey: "communityBoost") as? Bool == true { return "wiki" }
-            return "off"
+    /// Deprecated — 舊版用 bigramSuggest 控制所有聯想，已遷移。
+    static func migrateLegacyPrefs() {
+        if let old = defaults.object(forKey: "bigramSuggest") as? Bool, old {
+            if defaults.object(forKey: "charSuggest") == nil { charSuggest = true }
         }
-        set { defaults.set(newValue, forKey: "contextMode") }
+        for key in ["bigramSuggest", "communityBoost", "contextMode", "wordSuggest", "chengyuFirst"] {
+            defaults.removeObject(forKey: key)
+        }
     }
-    /// Backward compat
-    static var communityBoost: Bool { contextMode == "wiki" }
 
-    // MARK: - New engine (Phase 1 feature flag)
+    // MARK: - Suggestion system
 
     /// Use the new shared InputEngine (from iOS). Set to false to use legacy controller.
     static var useNewEngine: Bool {
@@ -131,10 +122,16 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "fuzzyMatch") }
     }
 
-    /// Word-level suggestions (phrases, chengyu, domain terms)
-    static var wordSuggest: Bool {
-        get { defaults.object(forKey: "wordSuggest") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "wordSuggest") }
+    /// 策略：general（一般優先：第二層→第三層）/ domain（專業優先：第三層→第二層）
+    static var suggestStrategy: String {
+        get { defaults.string(forKey: "suggestStrategy") ?? "general" }
+        set { defaults.set(newValue, forKey: "suggestStrategy") }
+    }
+
+    /// 詞級語料：moedict / wiki / news
+    static var wordCorpus: String {
+        get { defaults.string(forKey: "wordCorpus") ?? "wiki" }
+        set { defaults.set(newValue, forKey: "wordCorpus") }
     }
 
     /// Char-level suggestions (bigram, trigram)
@@ -151,10 +148,12 @@ struct YabomishPrefs {
         defaults.set(value, forKey: key)
     }
 
-    /// Chengyu suggestions first (before ngram)
-    static var chengyuFirst: Bool {
-        get { defaults.object(forKey: "chengyuFirst") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "chengyuFirst") }
+    /// Domain priority: smaller = higher priority (like nice). Default 0.
+    static func domainPriority(_ key: String) -> Int {
+        defaults.object(forKey: key + "_pri") as? Int ?? 0
+    }
+    static func setDomainPriority(_ key: String, _ value: Int) {
+        defaults.set(value, forKey: key + "_pri")
     }
 
     /// Debug mode: write detailed logs to ~/Library/YabomishIM/debug.log

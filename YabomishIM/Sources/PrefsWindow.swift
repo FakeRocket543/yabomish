@@ -152,34 +152,28 @@ final class PrefsWindow: NSPanel {
         zyBtn.setAccessibilityHelp("按 '; 切換注音反查模式")
         stack.addArrangedSubview(zyBtn)
 
-        let suggestBtn = NSButton(checkboxWithTitle: "聯想輸入（送字後建議下一字）", target: self, action: #selector(bigramSuggestChanged(_:)))
-        suggestBtn.state = YabomishPrefs.bigramSuggest ? .on : .off
-        suggestBtn.setAccessibilityHelp("送字後根據前字建議下一字")
-        stack.addArrangedSubview(suggestBtn)
+        // ━━━ 聯想 ━━━
+        stack.addArrangedSubview(sectionHeader("聯想"))
 
-        let contextPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        contextPopup.addItems(withTitles: ["關閉", "知識圖譜（維基社群偵測）", "領域詞庫（依已啟用的領域）"])
-        let ctxIdx = ["off": 0, "wiki": 1, "domain": 2][YabomishPrefs.contextMode] ?? 0
-        contextPopup.selectItem(at: ctxIdx)
-        contextPopup.target = self; contextPopup.action = #selector(contextModeChanged(_:))
-        contextPopup.setAccessibilityLabel("領域感知模式")
-        contextPopup.toolTip = "選擇領域感知模式"
-        stack.addArrangedSubview(row("領域感知", contextPopup))
+        let strategyPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        strategyPopup.addItems(withTitles: ["一般優先", "專業優先"])
+        strategyPopup.selectItem(at: YabomishPrefs.suggestStrategy == "domain" ? 1 : 0)
+        strategyPopup.target = self; strategyPopup.action = #selector(strategyChanged(_:))
+        strategyPopup.toolTip = "決定詞級語料和詞庫的顯示順序"
+        stack.addArrangedSubview(row("策略", strategyPopup))
 
-        let wordSuggestBtn = NSButton(checkboxWithTitle: "詞級聯想（詞組、成語、領域詞）", target: self, action: #selector(wordSuggestChanged(_:)))
-        wordSuggestBtn.state = YabomishPrefs.wordSuggest ? .on : .off
-        wordSuggestBtn.setAccessibilityHelp("聯想詞組、成語及領域詞")
-        stack.addArrangedSubview(wordSuggestBtn)
+        let corpusPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        corpusPopup.addItems(withTitles: ["萌典詞組", "維基斷詞", "台灣新聞斷詞"])
+        let corpusIdx = ["moedict": 0, "wiki": 1, "news": 2][YabomishPrefs.wordCorpus] ?? 1
+        corpusPopup.selectItem(at: corpusIdx)
+        corpusPopup.target = self; corpusPopup.action = #selector(corpusChanged(_:))
+        corpusPopup.toolTip = "選擇詞級聯想的語料來源"
+        stack.addArrangedSubview(row("詞級語料", corpusPopup))
 
         let charSuggestBtn = NSButton(checkboxWithTitle: "字級聯想（bigram、trigram）", target: self, action: #selector(charSuggestChanged(_:)))
         charSuggestBtn.state = YabomishPrefs.charSuggest ? .on : .off
         charSuggestBtn.setAccessibilityHelp("使用 bigram/trigram 聯想下一字")
         stack.addArrangedSubview(charSuggestBtn)
-
-        let chengyuFirstBtn = NSButton(checkboxWithTitle: "成語優先（聯想時成語排在 n-gram 前面）", target: self, action: #selector(chengyuFirstChanged(_:)))
-        chengyuFirstBtn.state = YabomishPrefs.chengyuFirst ? .on : .off
-        chengyuFirstBtn.setAccessibilityHelp("聯想結果中成語排在 n-gram 前面")
-        stack.addArrangedSubview(chengyuFirstBtn)
 
         // ━━━ 外觀 ━━━
         stack.addArrangedSubview(sectionHeader("外觀"))
@@ -230,7 +224,19 @@ final class PrefsWindow: NSPanel {
                     let btn = NSButton(checkboxWithTitle: d.label, target: self, action: #selector(domainToggled(_:)))
                     btn.identifier = NSUserInterfaceItemIdentifier(d.key)
                     btn.state = YabomishPrefs.domainEnabled(d.key) ? .on : .off
-                    cells.append(btn)
+
+                    let pri = YabomishPrefs.domainPriority(d.key)
+                    let stepper = NSStepper(frame: .zero)
+                    stepper.minValue = -9; stepper.maxValue = 9; stepper.increment = 1
+                    stepper.integerValue = pri
+                    stepper.identifier = NSUserInterfaceItemIdentifier(d.key + "_pri")
+                    stepper.target = self; stepper.action = #selector(domainPriorityChanged(_:))
+                    stepper.toolTip = "優先級（小 = 優先）"
+                    let priLabel = NSTextField(labelWithString: "\(pri)")
+                    priLabel.tag = 2000 + i
+                    priLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+                    let cell = hStack(btn, priLabel, stepper)
+                    cells.append(cell)
                 } else {
                     cells.append(NSView())
                 }
@@ -275,12 +281,10 @@ final class PrefsWindow: NSPanel {
         fixedFontStepper.nextKeyView = autoBtn
         autoBtn.nextKeyView = hintBtn
         hintBtn.nextKeyView = zyBtn
-        zyBtn.nextKeyView = suggestBtn
-        suggestBtn.nextKeyView = contextPopup
-        contextPopup.nextKeyView = wordSuggestBtn
-        wordSuggestBtn.nextKeyView = charSuggestBtn
-        charSuggestBtn.nextKeyView = chengyuFirstBtn
-        chengyuFirstBtn.nextKeyView = toastStepper
+        zyBtn.nextKeyView = strategyPopup
+        strategyPopup.nextKeyView = corpusPopup
+        corpusPopup.nextKeyView = charSuggestBtn
+        charSuggestBtn.nextKeyView = toastStepper
         toastStepper.nextKeyView = activateBtn
         activateBtn.nextKeyView = iconPopup
         iconPopup.nextKeyView = labelPopup
@@ -347,25 +351,17 @@ final class PrefsWindow: NSPanel {
         YabomishPrefs.zhuyinReverseLookup = sender.state == .on
     }
 
-    @objc private func bigramSuggestChanged(_ sender: NSButton) {
-        YabomishPrefs.bigramSuggest = sender.state == .on
+    @objc private func strategyChanged(_ sender: NSPopUpButton) {
+        YabomishPrefs.suggestStrategy = sender.indexOfSelectedItem == 1 ? "domain" : "general"
     }
 
-    @objc private func contextModeChanged(_ sender: NSPopUpButton) {
-        let modes = ["off", "wiki", "domain"]
-        YabomishPrefs.contextMode = modes[sender.indexOfSelectedItem]
-    }
-
-    @objc private func wordSuggestChanged(_ sender: NSButton) {
-        YabomishPrefs.wordSuggest = sender.state == .on
+    @objc private func corpusChanged(_ sender: NSPopUpButton) {
+        let corpora = ["moedict", "wiki", "news"]
+        YabomishPrefs.wordCorpus = corpora[sender.indexOfSelectedItem]
     }
 
     @objc private func charSuggestChanged(_ sender: NSButton) {
         YabomishPrefs.charSuggest = sender.state == .on
-    }
-
-    @objc private func chengyuFirstChanged(_ sender: NSButton) {
-        YabomishPrefs.chengyuFirst = sender.state == .on
     }
 
     @objc private func domainToggled(_ sender: NSButton) {
@@ -405,6 +401,17 @@ final class PrefsWindow: NSPanel {
             return nil
         }
         return contentView.flatMap { search($0) }
+    }
+
+    @objc private func domainPriorityChanged(_ sender: NSStepper) {
+        guard let key = sender.identifier?.rawValue else { return }
+        let domainKey = key.replacingOccurrences(of: "_pri", with: "")
+        YabomishPrefs.setDomainPriority(domainKey, sender.integerValue)
+        // Update label
+        if let idx = WikiCorpus.domainKeys.firstIndex(where: { $0.key == domainKey }),
+           let label = findLabel(tag: 2000 + idx) {
+            label.stringValue = "\(sender.integerValue)"
+        }
     }
 
     @objc private func domainApply() {

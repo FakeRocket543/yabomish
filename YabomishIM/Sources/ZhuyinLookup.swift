@@ -12,8 +12,12 @@ final class ZhuyinLookup {
     private var bigramSuggest: [String: [String]] = [:]
     private var trigramSuggest: [String: [String]] = [:]
     private var loaded = false
+    private let loadLock = NSLock()
 
     private init() {}
+
+    /// 背景預熱：在非主線程呼叫，提前載入所有資料
+    func warmup() { ensureLoaded() }
 
     /// Resolve data file: AppConstants.sharedDir → Bundle fallback
     private func dataPath(_ name: String, _ ext: String) -> String? {
@@ -23,6 +27,8 @@ final class ZhuyinLookup {
     }
 
     private func ensureLoaded() {
+        loadLock.lock()
+        defer { loadLock.unlock() }
         guard !loaded else { return }
         guard MemoryBudget.canAfford(MemoryBudget.zhuyinLookup) else { return }
         loaded = true

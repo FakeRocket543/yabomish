@@ -23,5 +23,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let name = Bundle.main.infoDictionary?["InputMethodConnectionName"] as? String
         Self.server = IMKServer(name: name, bundleIdentifier: Bundle.main.bundleIdentifier)
         NSLog("YabomishIM: Server started, connection=%@", name ?? "nil")
+        let ver = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        NSLog("YabomishIM: build=%@, domains=%d", ver, WikiCorpus.shared.domainBinCount)
+        YabomishPrefs.migrateLegacyPrefs()
     }
 }
