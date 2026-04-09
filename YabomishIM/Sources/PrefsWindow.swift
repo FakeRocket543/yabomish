@@ -212,6 +212,10 @@ final class PrefsWindow: NSPanel {
         stack.addArrangedSubview(sectionHeader("詞庫"))
 
         let generalDomains = WikiCorpus.generalDomainKeys
+        let priHint = NSTextField(labelWithString: "數字越小越優先（-9 最優先，9 最後）")
+        priHint.font = .systemFont(ofSize: 11)
+        priHint.textColor = .secondaryLabelColor
+        stack.addArrangedSubview(priHint)
         stack.addArrangedSubview(buildDomainGrid(generalDomains, tagOffset: 2000))
 
         // ━━━ 專業詞典 ━━━
