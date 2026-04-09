@@ -48,19 +48,17 @@ final class WikiCorpus {
     static let domainKeys: [(key: String, file: String, label: String)] = [
         ("domain_it", "terms_it", "資訊科技"), ("domain_ee", "terms_ee", "電機電子"),
         ("domain_med", "terms_med", "醫學"), ("domain_law", "terms_law", "法律"),
-        ("domain_phy", "terms_phy", "物理"), ("domain_chem", "terms_chem", "化學"),
+        ("domain_phy", "terms_phy", "物理∕計量"), ("domain_chem", "terms_chem", "化學"),
         ("domain_bio", "terms_bio", "生物"), ("domain_math", "terms_math", "數學"),
         ("domain_biz", "terms_biz", "商業金融"), ("domain_edu", "terms_edu", "教育"),
         ("domain_geo", "terms_geo", "地理"), ("domain_eng", "terms_eng", "工程"),
         ("domain_art", "terms_art", "藝術"), ("domain_mil", "terms_mil", "軍事"),
         ("domain_marine", "terms_marine", "海事"),
-        ("domain_material", "terms_material", "材料科學"),
+        ("domain_material", "terms_material", "材料∕礦物"),
         ("domain_agri", "terms_agri", "農林畜牧"),
         ("domain_media", "terms_media", "新聞傳播"),
         ("domain_social", "terms_social", "社會行政"),
         ("domain_govt", "terms_govt", "政府機關"),
-        ("domain_measure", "terms_measure", "計量"),
-        ("domain_mineral", "terms_mineral", "礦物"),
     ]
 
     private init() {
