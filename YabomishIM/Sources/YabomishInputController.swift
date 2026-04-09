@@ -1230,6 +1230,22 @@ class YabomishInputController: IMKInputController {
                 if seen.insert(ch).inserted { suggestions.append(ch) }
             }
 
+            // Layer 0: WikiCorpus — 詞組補全 + 領域詞庫 + 成語
+            if recentCommitted.count >= 1 {
+                let prefix = String(recentCommitted.suffix(min(4, recentCommitted.count)))
+                for s in WikiCorpus.shared.phraseCompletions(for: prefix) {
+                    if seen.insert(s).inserted { suggestions.append(s) }
+                }
+                for s in WikiCorpus.shared.suggestDomainTerms(prefix: prefix) {
+                    if seen.insert(s).inserted { suggestions.append(s) }
+                }
+                if prefix.count >= 2 {
+                    for s in WikiCorpus.shared.suggestChengyu(prefix: prefix) {
+                        if seen.insert(s).inserted { suggestions.append(s) }
+                    }
+                }
+            }
+
             if !suggestions.isEmpty {
                 // 領域感知：依社群上下文重排
                 if YabomishPrefs.communityBoost && PhraseLookup.shared.hasActiveContext {
