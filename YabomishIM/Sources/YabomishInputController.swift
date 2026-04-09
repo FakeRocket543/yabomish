@@ -1658,7 +1658,15 @@ extension YabomishInputController {
             engine.handleBackspace()
             return true
         case 53: // Escape
-            if engine.composing.isEmpty { return false }
+            if engine.composing.isEmpty {
+                // Dismiss suggestions if showing
+                if !engine.currentCandidates.isEmpty {
+                    engine.currentCandidates = []
+                    panel.hide()
+                    return true
+                }
+                return false
+            }
             engine.handleEscape()
             return true
         case 36: // Enter
@@ -1708,8 +1716,8 @@ extension YabomishInputController {
             return true
         }
 
-        // Digit keys — select candidate
-        if !engine.currentCandidates.isEmpty, let digit = keyCodeToDigit[keyCode] {
+        // Digit keys — select candidate (only when actively composing)
+        if !engine.currentCandidates.isEmpty && !engine.composing.isEmpty, let digit = keyCodeToDigit[keyCode] {
             if let selected = panel.selectByKey(digit) {
                 let idx = engine.currentCandidates.firstIndex(of: selected) ?? 0
                 engine.selectCandidate(at: idx)
@@ -1729,12 +1737,11 @@ extension YabomishInputController {
             return true
         }
 
-        // Digits when idle
+        // Digits when idle — dismiss suggestions and output digit
         if engine.composing.isEmpty, let digit = keyCodeToDigit[keyCode] {
-            if !engine.currentCandidates.isEmpty, let selected = panel.selectByKey(digit) {
-                let idx = engine.currentCandidates.firstIndex(of: selected) ?? 0
-                engine.selectCandidate(at: idx)
-                return true
+            if !engine.currentCandidates.isEmpty {
+                engine.currentCandidates = []
+                panel.hide()
             }
             client.insertText(String(digit), replacementRange: notFoundRange)
             return true
