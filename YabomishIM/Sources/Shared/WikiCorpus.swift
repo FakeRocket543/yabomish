@@ -53,14 +53,16 @@ final class WikiCorpus {
     private var wnValIndexOff = 0
 
     /// All domain/corpus bins available for the third layer (checkbox + priority)
-    static let domainKeys: [(key: String, file: String, label: String)] = [
-        // Built-in corpora (NER, phrases, chengyu, yoji)
+    /// Group 1: 一般詞庫
+    static let generalDomainKeys: [(key: String, file: String, label: String)] = [
         ("domain_ner", "ner_phrases", "NER 詞組"),
         ("domain_phrases", "phrases", "萌典詞組"),
         ("domain_chengyu", "chengyu", "成語"),
         ("domain_yoji", "yoji", "日式四字熟語"),
         ("domain_cn_slang", "terms_cn_slang", "中式流行語"),
-        // Professional domains
+    ]
+    /// Group 2: 專業詞典
+    static let proDomainKeys: [(key: String, file: String, label: String)] = [
         ("domain_it", "terms_it", "資訊科技"), ("domain_ee", "terms_ee", "電機電子"),
         ("domain_med", "terms_med", "醫學"), ("domain_law", "terms_law", "法律"),
         ("domain_phy", "terms_phy", "物理∕計量"), ("domain_chem", "terms_chem", "化學"),
@@ -75,6 +77,8 @@ final class WikiCorpus {
         ("domain_social", "terms_social", "社會行政"),
         ("domain_govt", "terms_govt", "政府機關"),
     ]
+    /// All keys combined
+    static let domainKeys: [(key: String, file: String, label: String)] = generalDomainKeys + proDomainKeys
 
     private init() {
         loadTrigram()

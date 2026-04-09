@@ -1209,6 +1209,11 @@ class YabomishInputController: IMKInputController {
                 }
             }
 
+            // Emoji
+            for e in WikiCorpus.shared.suggestEmoji(for: String(recentCommitted.suffix(1))) {
+                if seen.insert(e).inserted { suggestions.append(e) }
+            }
+
             if !suggestions.isEmpty {
                 currentCandidates = Array(suggestions.prefix(6))
                 showCandidatePanel(client: client)
