@@ -139,9 +139,12 @@ final class PrefsWindow: NSPanel {
         suggestBtn.state = YabomishPrefs.bigramSuggest ? .on : .off
         stack.addArrangedSubview(suggestBtn)
 
-        let communityBtn = NSButton(checkboxWithTitle: "領域感知（依上下文調整聯想排序）", target: self, action: #selector(communityBoostChanged(_:)))
-        communityBtn.state = YabomishPrefs.communityBoost ? .on : .off
-        stack.addArrangedSubview(communityBtn)
+        let contextPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        contextPopup.addItems(withTitles: ["關閉", "知識圖譜（維基社群偵測）", "領域詞庫（依已啟用的領域）"])
+        let ctxIdx = ["off": 0, "wiki": 1, "domain": 2][YabomishPrefs.contextMode] ?? 0
+        contextPopup.selectItem(at: ctxIdx)
+        contextPopup.target = self; contextPopup.action = #selector(contextModeChanged(_:))
+        stack.addArrangedSubview(row("領域感知", contextPopup))
 
         let wordSuggestBtn = NSButton(checkboxWithTitle: "詞級聯想（詞組、成語、領域詞）", target: self, action: #selector(wordSuggestChanged(_:)))
         wordSuggestBtn.state = YabomishPrefs.wordSuggest ? .on : .off
@@ -284,8 +287,9 @@ final class PrefsWindow: NSPanel {
         YabomishPrefs.bigramSuggest = sender.state == .on
     }
 
-    @objc private func communityBoostChanged(_ sender: NSButton) {
-        YabomishPrefs.communityBoost = sender.state == .on
+    @objc private func contextModeChanged(_ sender: NSPopUpButton) {
+        let modes = ["off", "wiki", "domain"]
+        YabomishPrefs.contextMode = modes[sender.indexOfSelectedItem]
     }
 
     @objc private func wordSuggestChanged(_ sender: NSButton) {

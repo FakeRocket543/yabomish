@@ -104,11 +104,18 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "bigramSuggest") }
     }
 
-    /// 領域感知（根據上下文社群調整聯想排序）
-    static var communityBoost: Bool {
-        get { defaults.object(forKey: "communityBoost") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "communityBoost") }
+    /// 領域感知模式：off / wiki（知識圖譜社群）/ domain（領域詞庫）
+    static var contextMode: String {
+        get {
+            if let v = defaults.string(forKey: "contextMode") { return v }
+            // Migrate from old bool
+            if defaults.object(forKey: "communityBoost") as? Bool == true { return "wiki" }
+            return "off"
+        }
+        set { defaults.set(newValue, forKey: "contextMode") }
     }
+    /// Backward compat
+    static var communityBoost: Bool { contextMode == "wiki" }
 
     // MARK: - New engine (Phase 1 feature flag)
 

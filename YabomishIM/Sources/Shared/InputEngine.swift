@@ -635,6 +635,9 @@ final class InputEngine {
             }
             freqTracker.saveIfNeeded()
         }
+        // Domain context tracking
+        ranker.updateDomainContext(text)
+
         prevCommitted = lastCommitted
         lastCommitted = text.count == 1 ? text : String(text.suffix(1))
 
