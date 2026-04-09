@@ -1,4 +1,5 @@
 import Cocoa
+import QuartzCore
 
 /// Custom candidate panel replacing buggy IMKCandidates.
 /// Supports two modes:
@@ -6,6 +7,36 @@ import Cocoa
 ///   - "fixed": horizontal bar above Dock, semi-transparent, draggable, right-click menu
 final class CandidatePanel: NSPanel {
     static let shared = CandidatePanel()
+
+    // MARK: - Font & attribute caches
+
+    private static var fontCache: [CGFloat: NSFont] = [:]
+    private static var monoFontCache: [CGFloat: NSFont] = [:]
+
+    private static func cachedFont(size: CGFloat) -> NSFont {
+        if let f = fontCache[size] { return f }
+        let f = NSFont.systemFont(ofSize: size)
+        fontCache[size] = f
+        return f
+    }
+
+    private static func cachedMonoFont(size: CGFloat) -> NSFont {
+        if let f = monoFontCache[size] { return f }
+        let f = NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        monoFontCache[size] = f
+        return f
+    }
+
+    private static let fullWidthDigitMap: [Character: String] = [
+        "0": "０", "1": "１", "2": "２", "3": "３", "4": "４",
+        "5": "５", "6": "６", "7": "７", "8": "８", "9": "９"
+    ]
+
+    private var cachedFixedFont: NSFont?
+    private var cachedNormalAttrs: [NSAttributedString.Key: Any]?
+    private var cachedHighlightAttrs: [NSAttributedString.Key: Any]?
+
+    private var lastA11yNotify: TimeInterval = 0
 
     // MARK: - Shared state
 
@@ -71,7 +102,7 @@ final class CandidatePanel: NSPanel {
 
         for _ in 0..<pageSize {
             let label = NSTextField(labelWithString: "")
-            label.font = NSFont.monospacedSystemFont(ofSize: YabomishPrefs.fontSize, weight: .regular)
+            label.font = Self.cachedMonoFont(size: YabomishPrefs.fontSize)
             label.isBordered = false
             label.isEditable = false
             label.wantsLayer = true
@@ -84,14 +115,14 @@ final class CandidatePanel: NSPanel {
         }
 
         pageIndicator = NSTextField(labelWithString: "")
-        pageIndicator.font = NSFont.systemFont(ofSize: 11)
+        pageIndicator.font = Self.cachedFont(size: 11)
         pageIndicator.isBordered = false
         pageIndicator.isEditable = false
         pageIndicator.isHidden = true
         stackView.addArrangedSubview(pageIndicator)
 
         // --- Fixed-mode setup ---
-        fixedLabel.font = .systemFont(ofSize: YabomishPrefs.fixedFontSize)
+        fixedLabel.font = Self.cachedFont(size: YabomishPrefs.fixedFontSize)
         fixedLabel.textColor = .labelColor
         fixedLabel.alignment = .center
         fixedLabel.isBordered = false
@@ -126,6 +157,13 @@ final class CandidatePanel: NSPanel {
         setAccessibilityLabel("選字窗")
         setAccessibilityRole(.window)
         setAccessibilityHelp("使用數字鍵 1-9 選擇候選字，空白鍵送出")
+    }
+
+    private func throttledA11yNotify() {
+        let now = CACurrentMediaTime()
+        guard now - lastA11yNotify >= 0.016 else { return }
+        lastA11yNotify = now
+        NSAccessibility.post(element: self, notification: .valueChanged)
     }
 
     private var useReducedMotion: Bool {
@@ -224,9 +262,7 @@ final class CandidatePanel: NSPanel {
     private var pageStart: Int { (highlightIndex / pageSize) * pageSize }
 
     private func keyLabel(_ c: Character) -> String {
-        let fullWidthDigits: [Character] = ["０","１","２","３","４","５","６","７","８","９"]
-        if let d = c.wholeNumberValue, d < 10 { return String(fullWidthDigits[d]) }
-        return String(c)
+        Self.fullWidthDigitMap[c] ?? String(c)
     }
 
     private func rebuildCurrentMode() {
@@ -258,7 +294,7 @@ final class CandidatePanel: NSPanel {
 
         for i in 0..<pageSize {
             let label = labels[i]
-            label.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            label.font = Self.cachedMonoFont(size: fontSize)
             if start + i < end {
                 let candIdx = start + i
                 let keyChar = i < selKeys.count ? keyLabel(selKeys[i]) : " "
@@ -292,7 +328,7 @@ final class CandidatePanel: NSPanel {
         let size = stackView.fittingSize
         let maxW: CGFloat = 360
         setContentSize(NSSize(width: min(max(size.width + 12, 80), maxW), height: size.height))
-        NSAccessibility.post(element: self, notification: .valueChanged)
+        throttledA11yNotify()
     }
 
     private func positionWindow(at origin: NSPoint) {
@@ -353,14 +389,21 @@ final class CandidatePanel: NSPanel {
         let start = pageStart
         let end = min(start + pageSize, candidates.count)
         let sep = "  "
-        let font = NSFont.systemFont(ofSize: YabomishPrefs.fixedFontSize)
+        let fontSize = YabomishPrefs.fixedFontSize
+        let font = Self.cachedFont(size: fontSize)
         fixedLabel.font = font
-        let normalAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
-        let highlightAttrs: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor.selectedMenuItemTextColor,
-            .backgroundColor: NSColor.selectedContentBackgroundColor,
-        ]
+
+        if cachedFixedFont !== font {
+            cachedFixedFont = font
+            cachedNormalAttrs = [.font: font, .foregroundColor: NSColor.labelColor]
+            cachedHighlightAttrs = [
+                .font: font,
+                .foregroundColor: NSColor.selectedMenuItemTextColor,
+                .backgroundColor: NSColor.selectedContentBackgroundColor,
+            ]
+        }
+        let normalAttrs = cachedNormalAttrs!
+        let highlightAttrs = cachedHighlightAttrs!
 
         let result = NSMutableAttributedString()
 
@@ -384,7 +427,7 @@ final class CandidatePanel: NSPanel {
         }
 
         if !modeTag.isEmpty && modeTag != "繁中" {
-            let tagFont = NSFont.systemFont(ofSize: YabomishPrefs.fixedFontSize * 0.65)
+            let tagFont = Self.cachedFont(size: YabomishPrefs.fixedFontSize * 0.65)
             let tagAttrs: [NSAttributedString.Key: Any] = [
                 .font: tagFont, .foregroundColor: NSColor.secondaryLabelColor
             ]
@@ -398,7 +441,7 @@ final class CandidatePanel: NSPanel {
         let screen = effectiveScreen
         let maxW = screen.frame.width * 0.85
         setContentSize(NSSize(width: min(size.width + 24, maxW), height: h))
-        NSAccessibility.post(element: self, notification: .valueChanged)
+        throttledA11yNotify()
     }
 
     private func repositionFixed() {
