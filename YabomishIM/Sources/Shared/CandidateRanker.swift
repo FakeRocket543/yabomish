@@ -37,7 +37,7 @@ final class CandidateRanker {
     private func domainsFor(_ char: String) -> Set<String> {
         if let cached = domainCache[char] { return cached }
         var result = Set<String>()
-        for (key, file, _) in WikiCorpus.domainKeys {
+        for (key, _, _) in WikiCorpus.domainKeys {
             guard YabomishPrefs.domainEnabled(key) else { continue }
             // Check if domain has completions starting with this char
             let hits = WikiCorpus.shared.suggestDomainTerms(prefix: char, limit: 1)
