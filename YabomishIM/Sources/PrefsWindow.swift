@@ -50,6 +50,40 @@ final class PrefsWindow: NSPanel {
             flipView.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
         ])
 
+        // ━━━ 字表（最重要，放最上面）━━━
+        let cinInstalled = FileManager.default.fileExists(atPath: AppConstants.cinPath)
+            || FileManager.default.fileExists(atPath: NSHomeDirectory() + "/Library/YabomishIM/liu.cin")
+            || FileManager.default.fileExists(atPath: AppConstants.sharedDir + "/liu.bin")
+
+        if !cinInstalled {
+            let guide = NSTextField(wrappingLabelWithString: "⚠️ 尚未匯入字表。請點擊下方「匯入字表」按鈕，選擇你的 .cin 檔案（例如 liu.cin）。匯入後即可開始使用。")
+            guide.textColor = .systemOrange
+            guide.font = .systemFont(ofSize: 13)
+            stack.addArrangedSubview(guide)
+        }
+
+        stack.addArrangedSubview(sectionHeader("字表"))
+
+        let importBtn = NSButton(title: cinInstalled ? "重新匯入字表⋯" : "匯入字表⋯", target: self, action: #selector(importCINClicked))
+        let editExtrasBtn = NSButton(title: "編輯擴充表⋯", target: self, action: #selector(openExtrasFolder))
+        stack.addArrangedSubview(row("主字表", hStack(importBtn, editExtrasBtn)))
+
+        if cinInstalled {
+            let statusLabel = NSTextField(labelWithString: "✓ 字表已安裝")
+            statusLabel.textColor = .systemGreen
+            statusLabel.font = .systemFont(ofSize: 12)
+            stack.addArrangedSubview(statusLabel)
+        }
+
+        let syncLabel = NSTextField(labelWithString: YabomishPrefs.syncFolder ?? "未設定")
+        syncLabel.tag = 103
+        syncLabel.lineBreakMode = .byTruncatingMiddle
+        syncLabel.maximumNumberOfLines = 1
+        syncLabel.preferredMaxLayoutWidth = 160
+        let chooseBtn = NSButton(title: "選擇⋯", target: self, action: #selector(chooseSyncFolder))
+        let clearBtn = NSButton(title: "清除", target: self, action: #selector(clearSyncFolder))
+        stack.addArrangedSubview(row("同步資料夾", hStack(syncLabel, chooseBtn, clearBtn)))
+
         // ━━━ 選字窗 ━━━
         stack.addArrangedSubview(sectionHeader("選字窗"))
 
@@ -136,22 +170,6 @@ final class PrefsWindow: NSPanel {
         labelPopup.selectItem(at: labelIdx)
         labelPopup.target = self; labelPopup.action = #selector(menuBarLabelChanged(_:))
         stack.addArrangedSubview(row("狀態列名稱", labelPopup))
-
-        // ━━━ 資料 ━━━
-        stack.addArrangedSubview(sectionHeader("資料"))
-
-        let importBtn = NSButton(title: "匯入字表⋯", target: self, action: #selector(importCINClicked))
-        let editExtrasBtn = NSButton(title: "編輯擴充表⋯", target: self, action: #selector(openExtrasFolder))
-        stack.addArrangedSubview(row("字表", hStack(importBtn, editExtrasBtn)))
-
-        let syncLabel = NSTextField(labelWithString: YabomishPrefs.syncFolder ?? "未設定")
-        syncLabel.tag = 103
-        syncLabel.lineBreakMode = .byTruncatingMiddle
-        syncLabel.maximumNumberOfLines = 1
-        syncLabel.preferredMaxLayoutWidth = 160
-        let chooseBtn = NSButton(title: "選擇⋯", target: self, action: #selector(chooseSyncFolder))
-        let clearBtn = NSButton(title: "清除", target: self, action: #selector(clearSyncFolder))
-        stack.addArrangedSubview(row("同步資料夾", hStack(syncLabel, chooseBtn, clearBtn)))
 
         // ━━━ 領域詞庫 ━━━
         stack.addArrangedSubview(sectionHeader("領域詞庫"))
