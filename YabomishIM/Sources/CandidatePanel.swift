@@ -116,6 +116,20 @@ final class CandidatePanel: NSPanel {
             self, selector: #selector(screenParametersChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil
         )
+
+        setupAccessibility()
+    }
+
+    // MARK: - Accessibility
+
+    private func setupAccessibility() {
+        setAccessibilityLabel("選字窗")
+        setAccessibilityRole(.window)
+        setAccessibilityHelp("使用數字鍵 1-9 選擇候選字，空白鍵送出")
+    }
+
+    private var useReducedMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
     @objc private func screenParametersChanged() {
@@ -145,14 +159,19 @@ final class CandidatePanel: NSPanel {
     func hide() {
         let gen = self.showGeneration
         if (isFixed || fallbackFixed) && isVisible {
-            NSAnimationContext.runAnimationGroup({ ctx in
-                ctx.duration = 0.12
-                animator().alphaValue = 0
-            }, completionHandler: {
-                // 只有在沒被重新 show 的情況下才關閉
-                guard self.showGeneration == gen else { return }
-                self.orderOut(nil)
-            })
+            if useReducedMotion {
+                alphaValue = 0
+                orderOut(nil)
+            } else {
+                NSAnimationContext.runAnimationGroup({ ctx in
+                    ctx.duration = 0.12
+                    animator().alphaValue = 0
+                }, completionHandler: {
+                    // 只有在沒被重新 show 的情況下才關閉
+                    guard self.showGeneration == gen else { return }
+                    self.orderOut(nil)
+                })
+            }
         } else {
             orderOut(nil)
         }
@@ -273,6 +292,7 @@ final class CandidatePanel: NSPanel {
         let size = stackView.fittingSize
         let maxW: CGFloat = 360
         setContentSize(NSSize(width: min(max(size.width + 12, 80), maxW), height: size.height))
+        NSAccessibility.post(element: self, notification: .valueChanged)
     }
 
     private func positionWindow(at origin: NSPoint) {
@@ -300,12 +320,17 @@ final class CandidatePanel: NSPanel {
         rebuildFixedLabel()
         repositionFixed()
         if !wasVisible {
-            alphaValue = 0
-            orderFront(nil)
-            NSAnimationContext.runAnimationGroup({ ctx in
-                ctx.duration = 0.12
-                self.animator().alphaValue = YabomishPrefs.fixedAlpha
-            })
+            if useReducedMotion {
+                alphaValue = YabomishPrefs.fixedAlpha
+                orderFront(nil)
+            } else {
+                alphaValue = 0
+                orderFront(nil)
+                NSAnimationContext.runAnimationGroup({ ctx in
+                    ctx.duration = 0.12
+                    self.animator().alphaValue = YabomishPrefs.fixedAlpha
+                })
+            }
         } else {
             // 取消進行中的淡出動畫，確保 alpha 正確
             NSAnimationContext.beginGrouping()
@@ -373,6 +398,7 @@ final class CandidatePanel: NSPanel {
         let screen = effectiveScreen
         let maxW = screen.frame.width * 0.85
         setContentSize(NSSize(width: min(size.width + 24, maxW), height: h))
+        NSAccessibility.post(element: self, notification: .valueChanged)
     }
 
     private func repositionFixed() {
@@ -438,6 +464,10 @@ final class CandidatePanel: NSPanel {
                 if label.frame.contains(viewLoc) {
                     let candIdx = pageStart + i
                     guard candIdx < candidates.count else { break }
+                    label.layer?.backgroundColor = NSColor.selectedContentBackgroundColor.withAlphaComponent(0.5).cgColor
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        label.layer?.backgroundColor = nil
+                    }
                     highlightIndex = candIdx
                     rebuildCurrentMode()
                     onCandidateSelected?(candidates[candIdx])

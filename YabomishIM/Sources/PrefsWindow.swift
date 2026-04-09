@@ -65,7 +65,11 @@ final class PrefsWindow: NSPanel {
         stack.addArrangedSubview(sectionHeader("字表"))
 
         let importBtn = NSButton(title: cinInstalled ? "重新匯入字表⋯" : "匯入字表⋯", target: self, action: #selector(importCINClicked))
+        importBtn.setAccessibilityLabel("匯入字表")
+        importBtn.setAccessibilityHelp("選擇 .cin 檔案匯入主字表")
         let editExtrasBtn = NSButton(title: "編輯擴充表⋯", target: self, action: #selector(openExtrasFolder))
+        editExtrasBtn.setAccessibilityLabel("編輯擴充表")
+        editExtrasBtn.setAccessibilityHelp("打開擴充表資料夾")
         stack.addArrangedSubview(row("主字表", hStack(importBtn, editExtrasBtn)))
 
         if cinInstalled {
@@ -81,7 +85,9 @@ final class PrefsWindow: NSPanel {
         syncLabel.maximumNumberOfLines = 1
         syncLabel.preferredMaxLayoutWidth = 160
         let chooseBtn = NSButton(title: "選擇⋯", target: self, action: #selector(chooseSyncFolder))
+        chooseBtn.setAccessibilityLabel("選擇同步資料夾")
         let clearBtn = NSButton(title: "清除", target: self, action: #selector(clearSyncFolder))
+        clearBtn.setAccessibilityLabel("清除同步資料夾")
         stack.addArrangedSubview(row("同步資料夾", hStack(syncLabel, chooseBtn, clearBtn)))
 
         // ━━━ 選字窗 ━━━
@@ -91,6 +97,7 @@ final class PrefsWindow: NSPanel {
         modePopup.addItems(withTitles: ["游標跟隨", "固定位置"])
         modePopup.selectItem(at: YabomishPrefs.panelPosition == "fixed" ? 1 : 0)
         modePopup.target = self; modePopup.action = #selector(modeChanged(_:))
+        modePopup.setAccessibilityLabel("選字窗模式")
         stack.addArrangedSubview(row("模式", modePopup))
 
         let alignPopup = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -98,16 +105,21 @@ final class PrefsWindow: NSPanel {
         let alignIdx = ["left": 0, "center": 1, "right": 2][YabomishPrefs.fixedAlignment] ?? 1
         alignPopup.selectItem(at: alignIdx)
         alignPopup.target = self; alignPopup.action = #selector(alignChanged(_:))
+        alignPopup.setAccessibilityLabel("固定模式對齊方式")
         stack.addArrangedSubview(row("對齊（固定模式）", alignPopup))
 
         let alphaSlider = NSSlider(value: Double(YabomishPrefs.fixedAlpha), minValue: 0.3, maxValue: 1.0, target: self, action: #selector(alphaChanged(_:)))
         alphaSlider.widthAnchor.constraint(equalToConstant: 160).isActive = true
+        alphaSlider.setAccessibilityLabel("選字窗透明度")
+        alphaSlider.toolTip = "30% ~ 100%"
         stack.addArrangedSubview(row("透明度", alphaSlider))
 
         let fontStepper = NSStepper(frame: .zero)
         fontStepper.minValue = 12; fontStepper.maxValue = 48; fontStepper.increment = 1
         fontStepper.integerValue = Int(YabomishPrefs.fontSize)
         fontStepper.target = self; fontStepper.action = #selector(fontSizeChanged(_:))
+        fontStepper.setAccessibilityLabel("游標模式字體大小")
+        fontStepper.toolTip = "12pt ~ 48pt"
         let fontLabel = NSTextField(labelWithString: "\(Int(YabomishPrefs.fontSize)) pt")
         fontLabel.tag = 100
         stack.addArrangedSubview(row("游標模式字體", hStack(fontLabel, fontStepper)))
@@ -116,6 +128,8 @@ final class PrefsWindow: NSPanel {
         fixedFontStepper.minValue = 12; fixedFontStepper.maxValue = 48; fixedFontStepper.increment = 1
         fixedFontStepper.integerValue = Int(YabomishPrefs.fixedFontSize)
         fixedFontStepper.target = self; fixedFontStepper.action = #selector(fixedFontSizeChanged(_:))
+        fixedFontStepper.setAccessibilityLabel("固定模式字體大小")
+        fixedFontStepper.toolTip = "12pt ~ 48pt"
         let fixedFontLabel = NSTextField(labelWithString: "\(Int(YabomishPrefs.fixedFontSize)) pt")
         fixedFontLabel.tag = 101
         stack.addArrangedSubview(row("固定模式字體", hStack(fixedFontLabel, fixedFontStepper)))
@@ -125,18 +139,22 @@ final class PrefsWindow: NSPanel {
 
         let autoBtn = NSButton(checkboxWithTitle: "滿碼自動送字", target: self, action: #selector(autoCommitChanged(_:)))
         autoBtn.state = YabomishPrefs.autoCommit ? .on : .off
+        autoBtn.setAccessibilityHelp("輸入滿碼時自動送出候選字")
         stack.addArrangedSubview(autoBtn)
 
         let hintBtn = NSButton(checkboxWithTitle: "拆碼提示（送字後顯示嘸蝦米碼）", target: self, action: #selector(codeHintChanged(_:)))
         hintBtn.state = YabomishPrefs.showCodeHint ? .on : .off
+        hintBtn.setAccessibilityHelp("送字後顯示該字的嘸蝦米拆碼")
         stack.addArrangedSubview(hintBtn)
 
         let zyBtn = NSButton(checkboxWithTitle: "注音反查（'; 切換）", target: self, action: #selector(zhuyinLookupChanged(_:)))
         zyBtn.state = YabomishPrefs.zhuyinReverseLookup ? .on : .off
+        zyBtn.setAccessibilityHelp("按 '; 切換注音反查模式")
         stack.addArrangedSubview(zyBtn)
 
         let suggestBtn = NSButton(checkboxWithTitle: "聯想輸入（送字後建議下一字）", target: self, action: #selector(bigramSuggestChanged(_:)))
         suggestBtn.state = YabomishPrefs.bigramSuggest ? .on : .off
+        suggestBtn.setAccessibilityHelp("送字後根據前字建議下一字")
         stack.addArrangedSubview(suggestBtn)
 
         let contextPopup = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -144,18 +162,23 @@ final class PrefsWindow: NSPanel {
         let ctxIdx = ["off": 0, "wiki": 1, "domain": 2][YabomishPrefs.contextMode] ?? 0
         contextPopup.selectItem(at: ctxIdx)
         contextPopup.target = self; contextPopup.action = #selector(contextModeChanged(_:))
+        contextPopup.setAccessibilityLabel("領域感知模式")
+        contextPopup.toolTip = "選擇領域感知模式"
         stack.addArrangedSubview(row("領域感知", contextPopup))
 
         let wordSuggestBtn = NSButton(checkboxWithTitle: "詞級聯想（詞組、成語、領域詞）", target: self, action: #selector(wordSuggestChanged(_:)))
         wordSuggestBtn.state = YabomishPrefs.wordSuggest ? .on : .off
+        wordSuggestBtn.setAccessibilityHelp("聯想詞組、成語及領域詞")
         stack.addArrangedSubview(wordSuggestBtn)
 
         let charSuggestBtn = NSButton(checkboxWithTitle: "字級聯想（bigram、trigram）", target: self, action: #selector(charSuggestChanged(_:)))
         charSuggestBtn.state = YabomishPrefs.charSuggest ? .on : .off
+        charSuggestBtn.setAccessibilityHelp("使用 bigram/trigram 聯想下一字")
         stack.addArrangedSubview(charSuggestBtn)
 
         let chengyuFirstBtn = NSButton(checkboxWithTitle: "成語優先（聯想時成語排在 n-gram 前面）", target: self, action: #selector(chengyuFirstChanged(_:)))
         chengyuFirstBtn.state = YabomishPrefs.chengyuFirst ? .on : .off
+        chengyuFirstBtn.setAccessibilityHelp("聯想結果中成語排在 n-gram 前面")
         stack.addArrangedSubview(chengyuFirstBtn)
 
         // ━━━ 外觀 ━━━
@@ -165,18 +188,22 @@ final class PrefsWindow: NSPanel {
         toastStepper.minValue = 20; toastStepper.maxValue = 72; toastStepper.increment = 4
         toastStepper.integerValue = Int(YabomishPrefs.toastFontSize)
         toastStepper.target = self; toastStepper.action = #selector(toastSizeChanged(_:))
+        toastStepper.setAccessibilityLabel("模式提示字體大小")
+        toastStepper.toolTip = "20pt ~ 72pt"
         let toastLabel = NSTextField(labelWithString: "\(Int(YabomishPrefs.toastFontSize)) pt")
         toastLabel.tag = 102
         stack.addArrangedSubview(row("模式提示大小", hStack(toastLabel, toastStepper)))
 
         let activateBtn = NSButton(checkboxWithTitle: "切入時顯示模式提示", target: self, action: #selector(activateToastChanged(_:)))
         activateBtn.state = YabomishPrefs.showActivateToast ? .on : .off
+        activateBtn.setAccessibilityHelp("切換到此輸入法時顯示模式提示")
         stack.addArrangedSubview(activateBtn)
 
         let iconPopup = NSPopUpButton(frame: .zero, pullsDown: false)
         iconPopup.addItems(withTitles: ["← 向左", "→ 向右"])
         iconPopup.selectItem(at: YabomishPrefs.iconDirection == "right" ? 1 : 0)
         iconPopup.target = self; iconPopup.action = #selector(iconDirectionChanged(_:))
+        iconPopup.setAccessibilityLabel("蝦頭方向")
         stack.addArrangedSubview(row("蝦頭方向", iconPopup))
 
         let labelPopup = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -184,6 +211,7 @@ final class PrefsWindow: NSPanel {
         let labelIdx = ["yabo": 0, "yabomish": 1][YabomishPrefs.menuBarLabel] ?? 1
         labelPopup.selectItem(at: labelIdx)
         labelPopup.target = self; labelPopup.action = #selector(menuBarLabelChanged(_:))
+        labelPopup.setAccessibilityLabel("狀態列名稱")
         stack.addArrangedSubview(row("狀態列名稱", labelPopup))
 
         // ━━━ 領域詞庫 ━━━
@@ -219,10 +247,38 @@ final class PrefsWindow: NSPanel {
 
         let debugBtn = NSButton(checkboxWithTitle: "Debug 模式（記錄操作日誌）", target: self, action: #selector(debugChanged(_:)))
         debugBtn.state = YabomishPrefs.debugMode ? .on : .off
+        debugBtn.setAccessibilityHelp("開啟後會記錄操作日誌到 debug.log")
         stack.addArrangedSubview(debugBtn)
 
         let openLogBtn = NSButton(title: "打開 debug.log⋯", target: self, action: #selector(openDebugLog))
+        openLogBtn.setAccessibilityLabel("打開除錯日誌")
         stack.addArrangedSubview(openLogBtn)
+
+        // ━━━ Tab key navigation ━━━
+        self.initialFirstResponder = importBtn
+        importBtn.nextKeyView = editExtrasBtn
+        editExtrasBtn.nextKeyView = chooseBtn
+        chooseBtn.nextKeyView = clearBtn
+        clearBtn.nextKeyView = modePopup
+        modePopup.nextKeyView = alignPopup
+        alignPopup.nextKeyView = alphaSlider
+        alphaSlider.nextKeyView = fontStepper
+        fontStepper.nextKeyView = fixedFontStepper
+        fixedFontStepper.nextKeyView = autoBtn
+        autoBtn.nextKeyView = hintBtn
+        hintBtn.nextKeyView = zyBtn
+        zyBtn.nextKeyView = suggestBtn
+        suggestBtn.nextKeyView = contextPopup
+        contextPopup.nextKeyView = wordSuggestBtn
+        wordSuggestBtn.nextKeyView = charSuggestBtn
+        charSuggestBtn.nextKeyView = chengyuFirstBtn
+        chengyuFirstBtn.nextKeyView = toastStepper
+        toastStepper.nextKeyView = activateBtn
+        activateBtn.nextKeyView = iconPopup
+        iconPopup.nextKeyView = labelPopup
+        labelPopup.nextKeyView = debugBtn
+        debugBtn.nextKeyView = openLogBtn
+        openLogBtn.nextKeyView = importBtn
     }
 
     override var canBecomeKey: Bool { true }
