@@ -1378,11 +1378,8 @@ class YabomishInputController: IMKInputController {
         _ = Self.inputSourceObserver  // 確保 observer 已註冊
         // 防重複呼叫阻塞操作（參考 vChewing 的 lastAppliedKeyboardLayout 做法）
         let targetLayout = "com.apple.keylayout.ABC"
-        if Self.lastAppliedKeyboardLayout != targetLayout {
-            if let client = sender as? IMKTextInput {
-                client.overrideKeyboard(withKeyboardNamed: targetLayout)
-            }
-            Self.lastAppliedKeyboardLayout = targetLayout
+        if let client = sender as? IMKTextInput {
+            client.overrideKeyboard(withKeyboardNamed: targetLayout)
         }
         // 首次啟動偵測空字表
         if Self.cinTable.isEmpty && !Self.hasPromptedImport {
