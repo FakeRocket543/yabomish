@@ -65,18 +65,18 @@ final class InputEngine {
 
     // MARK: - Thread-safe public accessors
 
-    var composing: String { queue.sync { _composing } }
-    var currentCandidates: [String] { queue.sync { _currentCandidates } }
-    var isEnglishMode: Bool { queue.sync { _isEnglishMode } }
-    var isZhuyinMode: Bool { queue.sync { _isZhuyinMode } }
-    var isPinyinMode: Bool { queue.sync { _isPinyinMode } }
-    var inputMode: InputMode { queue.sync { _inputMode } }
-    var selKeys: [Character] { queue.sync { cinTable.selKeys } }
-    var currentModeLabel: String { queue.sync { _isEnglishMode ? "A" : (Self.modeLabels[_inputMode] ?? "繁中") } }
-    var currentModeName: String { queue.sync { _currentModeName } }
+    var composing: String { _composing }
+    var currentCandidates: [String] { _currentCandidates }
+    var isEnglishMode: Bool { _isEnglishMode }
+    var isZhuyinMode: Bool { _isZhuyinMode }
+    var isPinyinMode: Bool { _isPinyinMode }
+    var inputMode: InputMode { _inputMode }
+    var selKeys: [Character] { cinTable.selKeys }
+    var currentModeLabel: String { _isEnglishMode ? "A" : (Self.modeLabels[_inputMode] ?? "繁中") }
+    var currentModeName: String { _currentModeName }
 
-    func clearCandidates() { queue.sync { _currentCandidates = [] } }
-    func setCandidates(_ c: [String]) { queue.sync { _currentCandidates = c } }
+    func clearCandidates() { _currentCandidates = [] }
+    func setCandidates(_ c: [String]) { _currentCandidates = c }
 
     /// Internal computed (called from within queue)
     private var _currentModeName: String {
@@ -92,11 +92,11 @@ final class InputEngine {
     // MARK: - Init
 
     func loadTable() {
-        queue.sync { cinTable.reload() }
+        cinTable.reload()
     }
 
     func scheduleBackgroundTasks() {
-        queue.sync { freqTracker.deferredMerge() }
+        freqTracker.deferredMerge()
     }
 
     // MARK: - Public API (called by KeyboardViewController)
