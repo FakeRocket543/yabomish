@@ -122,7 +122,7 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "fuzzyMatch") }
     }
 
-    /// 策略：general（一般優先：第二層→第三層）/ domain（專業優先：第三層→第二層）
+    /// 策略：general（詞級→詞庫→字級）/ domain（詞庫→詞級→字級）/ char（字級→詞級→詞庫）
     static var suggestStrategy: String {
         get { defaults.string(forKey: "suggestStrategy") ?? "general" }
         set { defaults.set(newValue, forKey: "suggestStrategy") }

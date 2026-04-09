@@ -90,6 +90,14 @@ final class FreqTracker {
         }
     }
 
+    /// Reorder suggestion candidates by bigram frequency (learned from user selections)
+    func bigramBoost(prev: String, candidates: [String]) -> [String] {
+        guard !prev.isEmpty else { return candidates }
+        let counts = queryMap(stmtQueryBigram, prev)
+        guard !counts.isEmpty else { return candidates }
+        return candidates.sorted { (counts[$0] ?? 0) > (counts[$1] ?? 0) }
+    }
+
     // MARK: - Maintenance
 
     func decay(factor: Double = 0.9) {

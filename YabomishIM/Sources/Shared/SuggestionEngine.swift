@@ -10,43 +10,43 @@ final class SuggestionEngine {
         guard !recentCommitted.isEmpty else { return [] }
         guard !skipChars.contains(String(recentCommitted.suffix(1))) else { return [] }
 
+        let strategy = YabomishPrefs.suggestStrategy
+        let prefix = recentCommitted.count >= 2
+            ? String(recentCommitted.suffix(min(4, recentCommitted.count))) : ""
+
         var suggestions: [String] = []
         var seen = Set<String>()
 
-        if recentCommitted.count >= 2 {
-            let prefix = String(recentCommitted.suffix(min(4, recentCommitted.count)))
+        let pool2 = prefix.isEmpty ? [] : WikiCorpus.shared.suggestWordCorpus(prefix: prefix)
+            .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
+            .filter { !$0.isEmpty }
 
-            // 第二層：詞級語料
-            let pool2 = WikiCorpus.shared.suggestWordCorpus(prefix: prefix)
-                .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
-                .filter { !$0.isEmpty }
+        let pool3 = prefix.isEmpty ? [] : WikiCorpus.shared.suggestAllDomains(prefix: prefix)
+            .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
+            .filter { !$0.isEmpty }
 
-            // 第三層：詞庫
-            let pool3 = WikiCorpus.shared.suggestAllDomains(prefix: prefix)
-                .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
-                .filter { !$0.isEmpty }
-
-            let ordered = YabomishPrefs.suggestStrategy == "domain" ? pool3 + pool2 : pool2 + pool3
-            for s in ordered where seen.insert(s).inserted { suggestions.append(s) }
-        }
-
-        // 第四層：字級
+        var pool4: [String] = []
         if YabomishPrefs.charSuggest {
             if recentCommitted.count >= 2 {
                 let prev2 = String(recentCommitted.suffix(2).prefix(1))
                 let prev1 = String(recentCommitted.suffix(1))
-                for ch in WikiCorpus.shared.suggestTrigram(prev2: prev2, prev1: prev1) {
-                    if seen.insert(ch).inserted { suggestions.append(ch) }
-                }
+                pool4 += WikiCorpus.shared.suggestTrigram(prev2: prev2, prev1: prev1)
             }
-            for ch in BigramSuggest.shared.suggest(after: lastText) {
-                if seen.insert(ch).inserted { suggestions.append(ch) }
-            }
+            pool4 += BigramSuggest.shared.suggest(after: lastText)
+        }
+
+        let ordered: [[String]]
+        switch strategy {
+        case "domain": ordered = [pool3, pool2, pool4]
+        case "char":   ordered = [pool4, pool2, pool3]
+        default:       ordered = [pool2, pool3, pool4]
+        }
+        for pool in ordered {
+            for s in pool where seen.insert(s).inserted { suggestions.append(s) }
         }
 
         // Emoji
-        let lastChar = String(recentCommitted.suffix(1))
-        for e in WikiCorpus.shared.suggestEmoji(for: lastChar) {
+        for e in WikiCorpus.shared.suggestEmoji(for: String(recentCommitted.suffix(1))) {
             if seen.insert(e).inserted { suggestions.append(e) }
         }
 

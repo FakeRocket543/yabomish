@@ -1181,32 +1181,45 @@ class YabomishInputController: IMKInputController {
             var seen = Set<String>()
 
             // 第二層：詞級語料（三選一）
-            if recentCommitted.count >= 2 {
-                let prefix = String(recentCommitted.suffix(min(4, recentCommitted.count)))
-                let pool2 = WikiCorpus.shared.suggestWordCorpus(prefix: prefix)
-                    .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
-                    .filter { !$0.isEmpty }
+            let strategy = YabomishPrefs.suggestStrategy
+            let prefix = recentCommitted.count >= 2
+                ? String(recentCommitted.suffix(min(4, recentCommitted.count))) : ""
 
-                // 第三層：詞庫（按 priority 排序）
-                let pool3 = WikiCorpus.shared.suggestAllDomains(prefix: prefix)
-                    .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
-                    .filter { !$0.isEmpty }
+            // 詞級語料
+            let pool2 = prefix.isEmpty ? [] : WikiCorpus.shared.suggestWordCorpus(prefix: prefix)
+                .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
+                .filter { !$0.isEmpty }
 
-                // 第一層策略決定順序
-                let ordered = YabomishPrefs.suggestStrategy == "domain" ? pool3 + pool2 : pool2 + pool3
-                for s in ordered where seen.insert(s).inserted { suggestions.append(s) }
-            }
+            // 詞庫
+            let pool3 = prefix.isEmpty ? [] : WikiCorpus.shared.suggestAllDomains(prefix: prefix)
+                .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
+                .filter { !$0.isEmpty }
 
-            // 第四層：字級聯想
+            // 字級
+            var pool4: [String] = []
             if YabomishPrefs.charSuggest {
                 if recentCommitted.count >= 2 {
-                    for ch in ZhuyinLookup.shared.suggestNextTrigram(prev2: recentCommitted) {
-                        if seen.insert(ch).inserted { suggestions.append(ch) }
-                    }
+                    pool4 += ZhuyinLookup.shared.suggestNextTrigram(prev2: recentCommitted)
                 }
-                for ch in ZhuyinLookup.shared.suggestNext(after: text) {
-                    if seen.insert(ch).inserted { suggestions.append(ch) }
-                }
+                pool4 += ZhuyinLookup.shared.suggestNext(after: text)
+            }
+
+            // 策略決定順序
+            let ordered: [[String]]
+            switch strategy {
+            case "domain": ordered = [pool3, pool2, pool4]
+            case "char":   ordered = [pool4, pool2, pool3]
+            default:       ordered = [pool2, pool3, pool4]
+            }
+            for pool in ordered {
+                for s in pool where seen.insert(s).inserted { suggestions.append(s) }
+            }
+
+            // 學習加權：用 FreqTracker bigram 記錄重排
+            if suggestions.count > 1 {
+                let prev = String(recentCommitted.suffix(1))
+                let boosted = Self.freqTracker.bigramBoost(prev: prev, candidates: suggestions)
+                if boosted != suggestions { suggestions = boosted }
             }
 
             // Emoji

@@ -156,8 +156,9 @@ final class PrefsWindow: NSPanel {
         stack.addArrangedSubview(sectionHeader("聯想"))
 
         let strategyPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        strategyPopup.addItems(withTitles: ["一般優先", "專業優先"])
-        strategyPopup.selectItem(at: YabomishPrefs.suggestStrategy == "domain" ? 1 : 0)
+        strategyPopup.addItems(withTitles: ["一般優先（詞→詞庫→字）", "專業優先（詞庫→詞→字）", "字級優先（字→詞→詞庫）"])
+        let stratIdx = ["general": 0, "domain": 1, "char": 2][YabomishPrefs.suggestStrategy] ?? 0
+        strategyPopup.selectItem(at: stratIdx)
         strategyPopup.target = self; strategyPopup.action = #selector(strategyChanged(_:))
         strategyPopup.toolTip = "決定詞級語料和詞庫的顯示順序"
         stack.addArrangedSubview(row("策略", strategyPopup))
@@ -327,7 +328,8 @@ final class PrefsWindow: NSPanel {
     }
 
     @objc private func strategyChanged(_ sender: NSPopUpButton) {
-        YabomishPrefs.suggestStrategy = sender.indexOfSelectedItem == 1 ? "domain" : "general"
+        let strategies = ["general", "domain", "char"]
+        YabomishPrefs.suggestStrategy = strategies[sender.indexOfSelectedItem]
     }
 
     @objc private func corpusChanged(_ sender: NSPopUpButton) {
