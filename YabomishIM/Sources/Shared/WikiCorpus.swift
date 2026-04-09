@@ -44,6 +44,7 @@ final class WikiCorpus {
     private var emojiMap: [String: [String]] = [:]
     private struct DomainBin { let data: Data; let keyCount: Int; let keyIndexOff: Int; let valIndexOff: Int }
     private var domainBins: [DomainBin] = []
+    var domainBinCount: Int { domainBins.count }
 
     static let domainKeys: [(key: String, file: String, label: String)] = [
         ("domain_it", "terms_it", "資訊科技"), ("domain_ee", "terms_ee", "電機電子"),

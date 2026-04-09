@@ -240,7 +240,15 @@ final class PrefsWindow: NSPanel {
         let grid = NSGridView(views: gridRows)
         grid.rowSpacing = 4
         grid.columnSpacing = 12
+        grid.identifier = NSUserInterfaceItemIdentifier("domainGrid")
         stack.addArrangedSubview(grid)
+
+        let selectAllBtn = NSButton(title: "全選", target: self, action: #selector(domainSelectAll))
+        let deselectAllBtn = NSButton(title: "全取消", target: self, action: #selector(domainDeselectAll))
+        let applyBtn = NSButton(title: "套用", target: self, action: #selector(domainApply))
+        applyBtn.bezelStyle = .rounded
+        applyBtn.keyEquivalent = "\r"
+        stack.addArrangedSubview(hStack(selectAllBtn, deselectAllBtn, applyBtn))
 
         // ━━━ 除錯 ━━━
         stack.addArrangedSubview(sectionHeader("除錯"))
@@ -363,8 +371,52 @@ final class PrefsWindow: NSPanel {
     @objc private func domainToggled(_ sender: NSButton) {
         guard let key = sender.identifier?.rawValue else { return }
         YabomishPrefs.setDomainEnabled(key, sender.state == .on)
-        WikiCorpus.shared.reloadDomains()
-        DomainMerger.merge()
+        // No reload here — user clicks "套用" when done
+    }
+
+    @objc private func domainSelectAll() {
+        guard let grid = findGridView() else { return }
+        for r in 0..<grid.numberOfRows {
+            for c in 0..<grid.numberOfColumns {
+                if let btn = grid.cell(atColumnIndex: c, rowIndex: r).contentView as? NSButton {
+                    btn.state = .on
+                    if let key = btn.identifier?.rawValue { YabomishPrefs.setDomainEnabled(key, true) }
+                }
+            }
+        }
+    }
+
+    @objc private func domainDeselectAll() {
+        guard let grid = findGridView() else { return }
+        for r in 0..<grid.numberOfRows {
+            for c in 0..<grid.numberOfColumns {
+                if let btn = grid.cell(atColumnIndex: c, rowIndex: r).contentView as? NSButton {
+                    btn.state = .off
+                    if let key = btn.identifier?.rawValue { YabomishPrefs.setDomainEnabled(key, false) }
+                }
+            }
+        }
+    }
+
+    private func findGridView() -> NSGridView? {
+        func search(_ view: NSView) -> NSGridView? {
+            if let g = view as? NSGridView, g.identifier?.rawValue == "domainGrid" { return g }
+            for sub in view.subviews { if let g = search(sub) { return g } }
+            return nil
+        }
+        return contentView.flatMap { search($0) }
+    }
+
+    @objc private func domainApply() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            WikiCorpus.shared.reloadDomains()
+            DispatchQueue.main.async {
+                let a = NSAlert()
+                a.messageText = "領域詞庫已更新"
+                a.informativeText = "已載入 \(WikiCorpus.shared.domainBinCount) 個領域詞庫。"
+                a.runModal()
+            }
+        }
     }
 
     @objc private func activateToastChanged(_ sender: NSButton) {
