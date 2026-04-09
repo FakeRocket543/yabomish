@@ -19,361 +19,391 @@ final class InputEngine {
     let cinTable = CINTable()
     let freqTracker = FreqTracker()
     private let ranker = CandidateRanker()
+    private let queue = DispatchQueue(label: "com.yabomish.engine")
 
     // MARK: - State
 
-    private(set) var composing = ""
-    var currentCandidates: [String] = []
-    private var isWildcard = false
-    private(set) var isEnglishMode = false
-    private var lastCommitted = ""
-    private var prevCommitted = ""
-    private var recentCommitted = ""
-    private var eatNextSpace = false
+    private var _composing = ""
+    private var _currentCandidates: [String] = []
+    private var _isWildcard = false
+    private var _isEnglishMode = false
+    private var _lastCommitted = ""
+    private var _prevCommitted = ""
+    private var _recentCommitted = ""
+    private var _eatNextSpace = false
 
     // Snapshot for long-press undo
-    private var snapComposing = ""
-    private var snapCandidates: [String] = []
-    private var snapIsWildcard = false
+    private var _snapComposing = ""
+    private var _snapCandidates: [String] = []
+    private var _snapIsWildcard = false
 
     // Same-sound
-    private var isSameSoundMode = false
-    private var sameSoundBase = ""
+    private var _isSameSoundMode = false
+    private var _sameSoundBase = ""
 
     // Zhuyin reverse lookup
-    private(set) var isZhuyinMode = false
-    private var zhuyinBuffer = ""
-    private var zyInitial = "", zyMedial = "", zyFinal = ""
+    private var _isZhuyinMode = false
+    private var _zhuyinBuffer = ""
+    private var _zyInitial = "", _zyMedial = "", _zyFinal = ""
 
     // Pinyin reverse lookup
-    private(set) var isPinyinMode = false
-    private var pinyinSimplified = true
-    private var pinyinBuffer = ""
+    private var _isPinyinMode = false
+    private var _pinyinSimplified = true
+    private var _pinyinBuffer = ""
 
     // ,, command
-    private var commaCommandBuffer = ""
-    private var isInCommaCommand = false
+    private var _commaCommandBuffer = ""
+    private var _isInCommaCommand = false
 
     // Input mode
     enum InputMode: String { case t, s, sp, sl, ts, st, j }
-    private(set) var inputMode: InputMode = .t
+    private var _inputMode: InputMode = .t
     static let modeLabels: [InputMode: String] = [
         .t: "繁中", .s: "簡中", .sp: "速", .sl: "慢",
         .ts: "繁→簡", .st: "簡→繁", .j: "日"
     ]
 
-    var selKeys: [Character] { cinTable.selKeys }
-    var currentModeLabel: String { isEnglishMode ? "A" : (Self.modeLabels[inputMode] ?? "繁中") }
+    // MARK: - Thread-safe public accessors
+
+    var composing: String { queue.sync { _composing } }
+    var currentCandidates: [String] { queue.sync { _currentCandidates } }
+    var isEnglishMode: Bool { queue.sync { _isEnglishMode } }
+    var isZhuyinMode: Bool { queue.sync { _isZhuyinMode } }
+    var isPinyinMode: Bool { queue.sync { _isPinyinMode } }
+    var inputMode: InputMode { queue.sync { _inputMode } }
+    var selKeys: [Character] { queue.sync { cinTable.selKeys } }
+    var currentModeLabel: String { queue.sync { _isEnglishMode ? "A" : (Self.modeLabels[_inputMode] ?? "繁中") } }
+    var currentModeName: String { queue.sync { _currentModeName } }
+
+    func clearCandidates() { queue.sync { _currentCandidates = [] } }
+    func setCandidates(_ c: [String]) { queue.sync { _currentCandidates = c } }
+
+    /// Internal computed (called from within queue)
+    private var _currentModeName: String {
+        if _isZhuyinMode { return "zh" }
+        if _isSameSoundMode { return "to" }
+        return _inputMode.rawValue
+    }
+
+    private var _currentModeLabel: String {
+        _isEnglishMode ? "A" : (Self.modeLabels[_inputMode] ?? "繁中")
+    }
 
     // MARK: - Init
 
     func loadTable() {
-        cinTable.reload()
+        queue.sync { cinTable.reload() }
     }
 
     func scheduleBackgroundTasks() {
-        freqTracker.deferredMerge()
+        queue.sync { freqTracker.deferredMerge() }
     }
 
     // MARK: - Public API (called by KeyboardViewController)
 
-    func handleLetter(_ char: String) {
-        snapComposing = composing; snapCandidates = currentCandidates; snapIsWildcard = isWildcard
-        lastWasEmptySpace = false
+    func handleLetter(_ char: String) { queue.sync {
+        _snapComposing = _composing; _snapCandidates = _currentCandidates; _snapIsWildcard = _isWildcard
+        _lastWasEmptySpace = false
         // '; → toggle zhuyin mode
-        if isSameSoundMode && composing == "'" && char == ";" {
-            isSameSoundMode = false; composing = ""
+        if _isSameSoundMode && _composing == "'" && char == ";" {
+            _isSameSoundMode = false; _composing = ""
             delegate?.engineDidClearComposing()
-            isZhuyinMode.toggle()
-            delegate?.engineDidShowToast(isZhuyinMode ? "注" : currentModeLabel)
-            if !isZhuyinMode { clearZhuyinSlots(); currentCandidates = []; notifyCandidates() }
+            _isZhuyinMode.toggle()
+            delegate?.engineDidShowToast(_isZhuyinMode ? "注" : _currentModeLabel)
+            if !_isZhuyinMode { _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates() }
             return
         }
 
         // Idle ' followed by letter → same-sound code input
-        if isSameSoundMode && composing == "'" && sameSoundBase.isEmpty {
+        if _isSameSoundMode && _composing == "'" && _sameSoundBase.isEmpty {
             if char >= "a" && char <= "z" || char == "*" {
-                composing = "'" + char
-                refreshCandidates()
-                notifyComposing(); notifyCandidates(); return
+                _composing = "'" + char
+                _refreshCandidates()
+                _notifyComposing(); _notifyCandidates(); return
             }
-            isSameSoundMode = false; composing = ""
+            _isSameSoundMode = false; _composing = ""
             delegate?.engineDidClearComposing()
             delegate?.engineDidCommit("、")
         }
 
         // ,, command: second comma
-        if composing == "," && char == "," && !isSameSoundMode {
-            isInCommaCommand = true; commaCommandBuffer = ""; composing = ",,"
-            notifyComposing(); return
+        if _composing == "," && char == "," && !_isSameSoundMode {
+            _isInCommaCommand = true; _commaCommandBuffer = ""; _composing = ",,"
+            _notifyComposing(); return
         }
 
         // ,, command: collecting
-        if isInCommaCommand {
-            commaCommandBuffer += char; composing = ",," + commaCommandBuffer
-            notifyComposing(); return
+        if _isInCommaCommand {
+            _commaCommandBuffer += char; _composing = ",," + _commaCommandBuffer
+            _notifyComposing(); return
         }
 
-        let newComposing = composing + char
-        let maxLen = isSameSoundMode ? cinTable.maxCodeLength + 1 : cinTable.maxCodeLength
+        let newComposing = _composing + char
+        let maxLen = _isSameSoundMode ? cinTable.maxCodeLength + 1 : cinTable.maxCodeLength
 
         if newComposing.count > maxLen {
-            if !currentCandidates.isEmpty {
-                commitText(currentCandidates[0])
-                composing = char; isWildcard = false
+            if !_currentCandidates.isEmpty {
+                _commitText(_currentCandidates[0])
+                _composing = char; _isWildcard = false
             } else {
-                resetComposing(); return
+                _resetComposing(); return
             }
         } else {
-            composing = newComposing
+            _composing = newComposing
         }
 
-        refreshCandidates()
+        _refreshCandidates()
 
-        if currentCandidates.isEmpty && composing.count >= cinTable.maxCodeLength && !isWildcard {
-            resetComposing(); return
+        if _currentCandidates.isEmpty && _composing.count >= cinTable.maxCodeLength && !_isWildcard {
+            _resetComposing(); return
         }
 
         if YabomishPrefs.autoCommit &&
-           currentCandidates.count == 1 && composing.count >= 2 && !canExtendCode(composing) {
-            commitText(currentCandidates[0]); eatNextSpace = true; return
+           _currentCandidates.count == 1 && _composing.count >= 2 && !_canExtendCode(_composing) {
+            _commitText(_currentCandidates[0]); _eatNextSpace = true; return
         }
 
-        notifyComposing(); notifyCandidates()
-    }
+        _notifyComposing(); _notifyCandidates()
+    } }
 
-    private var lastWasEmptySpace = false
+    private var _lastWasEmptySpace = false
 
-    func handleSpace() {
-        if composing.isEmpty { return }
-        if eatNextSpace { eatNextSpace = false; return }
+    func handleSpace() { queue.sync {
+        if _composing.isEmpty { return }
+        if _eatNextSpace { _eatNextSpace = false; return }
         // Double-space = escape (clear composing)
-        if lastWasEmptySpace && currentCandidates.isEmpty {
-            lastWasEmptySpace = false
-            resetComposing(); delegate?.engineDidClearComposing(); return
+        if _lastWasEmptySpace && _currentCandidates.isEmpty {
+            _lastWasEmptySpace = false
+            _resetComposing(); delegate?.engineDidClearComposing(); return
         }
-        lastWasEmptySpace = currentCandidates.isEmpty
-        if isSameSoundMode && composing == "'" && sameSoundBase.isEmpty {
-            isSameSoundMode = false; composing = ""
+        _lastWasEmptySpace = _currentCandidates.isEmpty
+        if _isSameSoundMode && _composing == "'" && _sameSoundBase.isEmpty {
+            _isSameSoundMode = false; _composing = ""
             delegate?.engineDidClearComposing()
             delegate?.engineDidCommit("、"); return
         }
-        if isInCommaCommand {
-            if commaCommandBuffer.isEmpty {
-                isInCommaCommand = false; resetComposing()
+        if _isInCommaCommand {
+            if _commaCommandBuffer.isEmpty {
+                _isInCommaCommand = false; _resetComposing()
                 delegate?.engineDidCommit("\u{3000}"); return
             }
-            dispatchCommaCommand(); return
+            _dispatchCommaCommand(); return
         }
-        if currentCandidates.isEmpty { return }
-        commitText(currentCandidates[0])
-    }
+        if _currentCandidates.isEmpty { return }
+        _commitText(_currentCandidates[0])
+    } }
 
-    func handleBackspace() {
-        if isInCommaCommand {
-            if commaCommandBuffer.isEmpty {
-                isInCommaCommand = false; composing = ","
-                notifyComposing()
+    func handleBackspace() { queue.sync {
+        if _isInCommaCommand {
+            if _commaCommandBuffer.isEmpty {
+                _isInCommaCommand = false; _composing = ","
+                _notifyComposing()
             } else {
-                commaCommandBuffer = String(commaCommandBuffer.dropLast())
-                composing = ",," + commaCommandBuffer; notifyComposing()
+                _commaCommandBuffer = String(_commaCommandBuffer.dropLast())
+                _composing = ",," + _commaCommandBuffer; _notifyComposing()
             }
             return
         }
-        if isZhuyinMode {
-            if currentCandidates.isEmpty && !zhuyinBuffer.isEmpty {
-                backspaceZhuyin()
-                if zhuyinBuffer.isEmpty { delegate?.engineDidClearComposing() }
-                else { delegate?.engineDidUpdateComposing(zhuyinBuffer) }
-            } else if !currentCandidates.isEmpty {
-                currentCandidates = []; notifyCandidates()
-                delegate?.engineDidUpdateComposing(zhuyinBuffer)
+        if _isZhuyinMode {
+            if _currentCandidates.isEmpty && !_zhuyinBuffer.isEmpty {
+                _backspaceZhuyin()
+                if _zhuyinBuffer.isEmpty { delegate?.engineDidClearComposing() }
+                else { delegate?.engineDidUpdateComposing(_zhuyinBuffer) }
+            } else if !_currentCandidates.isEmpty {
+                _currentCandidates = []; _notifyCandidates()
+                delegate?.engineDidUpdateComposing(_zhuyinBuffer)
             }
             return
         }
-        if composing.isEmpty { return }
-        composing = String(composing.dropLast())
-        if composing.isEmpty { resetComposing() }
+        if _composing.isEmpty { return }
+        _composing = String(_composing.dropLast())
+        if _composing.isEmpty { _resetComposing() }
         else {
-            isWildcard = composing.contains("*")
-            refreshCandidates(); notifyComposing(); notifyCandidates()
+            _isWildcard = _composing.contains("*")
+            _refreshCandidates(); _notifyComposing(); _notifyCandidates()
         }
-    }
+    } }
 
-    func handleEnter() {
-        if isInCommaCommand { dispatchCommaCommand(); return }
-        if composing.isEmpty { return }
-        commitText(composing)
-    }
+    func handleEnter() { queue.sync {
+        if _isInCommaCommand { _dispatchCommaCommand(); return }
+        if _composing.isEmpty { return }
+        _commitText(_composing)
+    } }
 
-    func handleEscape() {
-        if isInCommaCommand { isInCommaCommand = false; commaCommandBuffer = "" }
-        resetComposing()
-    }
+    func handleEscape() { queue.sync {
+        if _isInCommaCommand { _isInCommaCommand = false; _commaCommandBuffer = "" }
+        _resetComposing()
+    } }
 
-    func handleWildcard() {
-        guard !composing.isEmpty else { return }
-        composing += "*"; isWildcard = true
-        currentCandidates = cinTable.wildcardLookup(composing)
-        notifyComposing(); notifyCandidates()
-    }
+    func handleWildcard() { queue.sync {
+        guard !_composing.isEmpty else { return }
+        _composing += "*"; _isWildcard = true
+        _currentCandidates = cinTable.wildcardLookup(_composing)
+        _notifyComposing(); _notifyCandidates()
+    } }
 
     /// Undo the last handleLetter call (for long-press number)
-    func undoLastLetter() {
+    func undoLastLetter() { queue.sync {
         // If autoCommit fired, undo the commit
-        if composing != snapComposing && snapComposing.count < composing.count {
+        if _composing != _snapComposing && _snapComposing.count < _composing.count {
             // Normal case: just added a letter
-            handleBackspace()
-        } else if composing.count == 1 && snapComposing.isEmpty {
+            _handleBackspaceImpl()
+        } else if _composing.count == 1 && _snapComposing.isEmpty {
             // Added first letter
-            handleBackspace()
+            _handleBackspaceImpl()
         } else {
             // autoCommit or overflow happened — restore snapshot and undo commit
             delegate?.engineDidDeleteBack()
-            composing = snapComposing; currentCandidates = snapCandidates; isWildcard = snapIsWildcard
-            notifyComposing(); notifyCandidates()
+            _composing = _snapComposing; _currentCandidates = _snapCandidates; _isWildcard = _snapIsWildcard
+            _notifyComposing(); _notifyCandidates()
         }
-    }
+    } }
 
-    func selectCandidate(at index: Int) {
-        NSLog("YabomishKB: selectCandidate idx=%d count=%d composing='%@' zhuyin=%d", index, currentCandidates.count, composing, isZhuyinMode ? 1 : 0)
-        guard index < currentCandidates.count else { return }
-        if isZhuyinMode {
-            let full = currentCandidates[index]
+    func selectCandidate(at index: Int) { queue.sync {
+        NSLog("YabomishKB: selectCandidate idx=%d count=%d composing='%@' zhuyin=%d", index, _currentCandidates.count, _composing, _isZhuyinMode ? 1 : 0)
+        guard index < _currentCandidates.count else { return }
+        if _isZhuyinMode {
+            let full = _currentCandidates[index]
             let char = String(full.prefix(1))
             let codes = cinTable.reverseLookup(char)
-            commitText(char)
+            _commitText(char)
             if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
-            clearZhuyinSlots(); currentCandidates = []; notifyCandidates()
+            _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates()
             // Auto-exit zhuyin after committing
-            exitZhuyinMode()
-        } else if composing.isEmpty {
+            _exitZhuyinModeImpl()
+        } else if _composing.isEmpty {
             // Bigram suggestion — commit directly
-            commitText(currentCandidates[index])
+            _commitText(_currentCandidates[index])
         } else {
-            commitText(currentCandidates[index])
+            _commitText(_currentCandidates[index])
         }
-    }
+    } }
 
     /// VRSF quick-select: returns true if handled
-    func handleVRSF(_ char: String) -> Bool {
+    func handleVRSF(_ char: String) -> Bool { queue.sync {
         let map: [(String, Int)] = [("v", 1), ("r", 2), ("s", 3), ("f", 4)]
         for (letter, idx) in map {
-            if char == letter && currentCandidates.count > idx && !cinTable.hasPrefix(composing + letter) {
-                commitText(currentCandidates[idx]); return true
+            if char == letter && _currentCandidates.count > idx && !cinTable.hasPrefix(_composing + letter) {
+                _commitText(_currentCandidates[idx]); return true
             }
         }
         return false
-    }
+    } }
 
-    func selectByDigit(_ digit: Int) -> Bool {
-        guard !currentCandidates.isEmpty else { return false }
-        let keys = selKeys
+    func selectByDigit(_ digit: Int) -> Bool { queue.sync {
+        guard !_currentCandidates.isEmpty else { return false }
+        let keys = cinTable.selKeys
         guard digit < keys.count else { return false }
         // digit 0 = first candidate on current page, etc.
-        guard digit < currentCandidates.count else { return false }
-        selectCandidate(at: digit)
+        guard digit < _currentCandidates.count else { return false }
+        _selectCandidateImpl(at: digit)
         return true
-    }
+    } }
 
-    func toggleEnglishMode() {
-        isEnglishMode.toggle()
-        if !isEnglishMode { /* switching back to Chinese */ }
-        resetComposing()
-        delegate?.engineDidShowToast(currentModeLabel)
-    }
+    func toggleEnglishMode() { queue.sync {
+        _isEnglishMode.toggle()
+        if !_isEnglishMode { /* switching back to Chinese */ }
+        _resetComposing()
+        delegate?.engineDidShowToast(_currentModeLabel)
+    } }
 
     /// Single-quote key: enter same-sound mode or output 頓號
-    func handleQuote() {
-        guard !isSameSoundMode && composing.isEmpty else { return }
-        if !lastCommitted.isEmpty {
-            isSameSoundMode = true; sameSoundBase = lastCommitted
-            handleSameSound(); return
+    func handleQuote() { queue.sync {
+        guard !_isSameSoundMode && _composing.isEmpty else { return }
+        if !_lastCommitted.isEmpty {
+            _isSameSoundMode = true; _sameSoundBase = _lastCommitted
+            _handleSameSound(); return
         }
-        isSameSoundMode = true; composing = "'"
-        notifyComposing()
-    }
+        _isSameSoundMode = true; _composing = "'"
+        _notifyComposing()
+    } }
 
-    func exitZhuyinMode() {
-        guard isZhuyinMode else { return }
-        isZhuyinMode = false
-        clearZhuyinSlots(); currentCandidates = []; notifyCandidates()
-        delegate?.engineDidShowToast(currentModeLabel)
+    func exitZhuyinMode() { queue.sync {
+        _exitZhuyinModeImpl()
+    } }
+
+    private func _exitZhuyinModeImpl() {
+        guard _isZhuyinMode else { return }
+        _isZhuyinMode = false
+        _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates()
+        delegate?.engineDidShowToast(_currentModeLabel)
     }
 
     // MARK: - Pinyin lookup
 
-    func exitPinyinMode() {
-        isPinyinMode = false; pinyinBuffer = ""
-        currentCandidates = []; notifyCandidates()
+    func exitPinyinMode() { queue.sync {
+        _isPinyinMode = false; _pinyinBuffer = ""
+        _currentCandidates = []; _notifyCandidates()
         delegate?.engineDidClearComposing()
-    }
+    } }
 
-    func handlePinyinLetter(_ ch: String) {
-        guard isPinyinMode else { return }
-        pinyinBuffer += ch
-        composing = pinyinBuffer
-        notifyComposing()
-    }
+    func handlePinyinLetter(_ ch: String) { queue.sync {
+        guard _isPinyinMode else { return }
+        _pinyinBuffer += ch
+        _composing = _pinyinBuffer
+        _notifyComposing()
+    } }
 
-    func handlePinyinTone(_ tone: Int) {
-        guard isPinyinMode, !pinyinBuffer.isEmpty else { return }
-        let pinyin = pinyinBuffer + "\(tone)"
+    func handlePinyinTone(_ tone: Int) { queue.sync {
+        guard _isPinyinMode, !_pinyinBuffer.isEmpty else { return }
+        let pinyin = _pinyinBuffer + "\(tone)"
         let chars = ZhuyinLookup.shared.charsForPinyin(pinyin)
         guard !chars.isEmpty else { return }
         let display: [String]
-        if pinyinSimplified {
+        if _pinyinSimplified {
             let t2s = cinTable.t2s
             var seen = Set<String>()
             display = chars.compactMap { c in
                 let s = t2s[c] ?? c; return seen.insert(s).inserted ? s : nil
             }
         } else { display = chars }
-        currentCandidates = display.map { c in
+        _currentCandidates = display.map { c in
             let codes = cinTable.reverseLookup(c)
             return codes.isEmpty ? c : "\(c) \(codes.joined(separator: "/"))"
         }
-        composing = pinyin; notifyComposing(); notifyCandidates()
-    }
+        _composing = pinyin; _notifyComposing(); _notifyCandidates()
+    } }
 
-    func handlePinyinSpace() {
-        guard isPinyinMode else { return }
-        if !pinyinBuffer.isEmpty { handlePinyinTone(1) }
-    }
+    func handlePinyinSpace() { queue.sync {
+        guard _isPinyinMode else { return }
+        if !_pinyinBuffer.isEmpty { _handlePinyinToneImpl(1) }
+    } }
 
-    func handlePinyinBackspace() {
-        guard isPinyinMode else { return }
-        if !currentCandidates.isEmpty {
-            currentCandidates = []; notifyCandidates()
-            composing = pinyinBuffer; notifyComposing()
-        } else if !pinyinBuffer.isEmpty {
-            pinyinBuffer = String(pinyinBuffer.dropLast())
-            composing = pinyinBuffer; notifyComposing()
-            if pinyinBuffer.isEmpty { delegate?.engineDidClearComposing() }
+    func handlePinyinBackspace() { queue.sync {
+        guard _isPinyinMode else { return }
+        if !_currentCandidates.isEmpty {
+            _currentCandidates = []; _notifyCandidates()
+            _composing = _pinyinBuffer; _notifyComposing()
+        } else if !_pinyinBuffer.isEmpty {
+            _pinyinBuffer = String(_pinyinBuffer.dropLast())
+            _composing = _pinyinBuffer; _notifyComposing()
+            if _pinyinBuffer.isEmpty { delegate?.engineDidClearComposing() }
         }
-    }
+    } }
 
-    func handlePinyinEscape() {
-        guard isPinyinMode else { return }
-        if !pinyinBuffer.isEmpty || !currentCandidates.isEmpty {
-            pinyinBuffer = ""; currentCandidates = []; notifyCandidates()
+    func handlePinyinEscape() { queue.sync {
+        guard _isPinyinMode else { return }
+        if !_pinyinBuffer.isEmpty || !_currentCandidates.isEmpty {
+            _pinyinBuffer = ""; _currentCandidates = []; _notifyCandidates()
             delegate?.engineDidClearComposing()
         } else {
-            exitPinyinMode()
-            delegate?.engineDidShowToast(currentModeLabel)
+            _isPinyinMode = false; _pinyinBuffer = ""
+            _currentCandidates = []; _notifyCandidates()
+            delegate?.engineDidClearComposing()
+            delegate?.engineDidShowToast(_currentModeLabel)
         }
-    }
+    } }
 
-    func selectPinyinCandidate(at index: Int) {
-        guard isPinyinMode, index < currentCandidates.count else { return }
-        let entry = currentCandidates[index]
+    func selectPinyinCandidate(at index: Int) { queue.sync {
+        guard _isPinyinMode, index < _currentCandidates.count else { return }
+        let entry = _currentCandidates[index]
         let char = String(entry.prefix(1))
         delegate?.engineDidCommit(char)
         let codes = cinTable.reverseLookup(char)
         if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
-        pinyinBuffer = ""; currentCandidates = []; notifyCandidates()
+        _pinyinBuffer = ""; _currentCandidates = []; _notifyCandidates()
         delegate?.engineDidClearComposing()
-    }
+    } }
 
     // MARK: - Zhuyin
 
@@ -386,77 +416,77 @@ final class InputEngine {
         "ㄚ","ㄛ","ㄜ","ㄝ","ㄞ","ㄟ","ㄠ","ㄡ","ㄢ","ㄣ","ㄤ","ㄥ","ㄦ",
     ]
 
-    func handleZhuyinSymbol(_ zy: String) {
-        if Self.zyInitials.contains(zy) { zyInitial = zy }
-        else if Self.zyMedials.contains(zy) { zyMedial = zy }
-        else if Self.zyFinals.contains(zy) { zyFinal = zy }
-        zhuyinBuffer = zyInitial + zyMedial + zyFinal
-        delegate?.engineDidUpdateComposing(zhuyinBuffer)
-    }
+    func handleZhuyinSymbol(_ zy: String) { queue.sync {
+        if Self.zyInitials.contains(zy) { _zyInitial = zy }
+        else if Self.zyMedials.contains(zy) { _zyMedial = zy }
+        else if Self.zyFinals.contains(zy) { _zyFinal = zy }
+        _zhuyinBuffer = _zyInitial + _zyMedial + _zyFinal
+        delegate?.engineDidUpdateComposing(_zhuyinBuffer)
+    } }
 
-    func handleZhuyinTone(_ tone: String) {
-        guard !zhuyinBuffer.isEmpty else { return }
-        let zhuyin = tone == "˙" ? "˙" + zhuyinBuffer : zhuyinBuffer + tone
-        zhuyinLookup(zhuyin)
-    }
+    func handleZhuyinTone(_ tone: String) { queue.sync {
+        guard !_zhuyinBuffer.isEmpty else { return }
+        let zhuyin = tone == "˙" ? "˙" + _zhuyinBuffer : _zhuyinBuffer + tone
+        _zhuyinLookup(zhuyin)
+    } }
 
-    func handleZhuyinSpace() {
-        guard !zhuyinBuffer.isEmpty else { return }
-        zhuyinLookup(zhuyinBuffer)  // tone 1
-    }
+    func handleZhuyinSpace() { queue.sync {
+        guard !_zhuyinBuffer.isEmpty else { return }
+        _zhuyinLookup(_zhuyinBuffer)  // tone 1
+    } }
 
-    private func zhuyinLookup(_ zhuyin: String) {
+    private func _zhuyinLookup(_ zhuyin: String) {
         let raw = ZhuyinLookup.shared.charsForZhuyin(zhuyin)
         guard !raw.isEmpty else { return }
-        let chars = ZhuyinLookup.shared.sortByFreq(raw, prevChar: prevCommitted, curZhuyin: zhuyin)
-        currentCandidates = chars.map { char in
+        let chars = ZhuyinLookup.shared.sortByFreq(raw, prevChar: _prevCommitted, curZhuyin: zhuyin)
+        _currentCandidates = chars.map { char in
             let codes = cinTable.reverseLookup(char)
             return codes.isEmpty ? char : "\(char) \(codes.joined(separator: "/"))"
         }
         delegate?.engineDidUpdateComposing(zhuyin)
-        notifyCandidates()
+        _notifyCandidates()
     }
 
-    private func clearZhuyinSlots() {
-        zyInitial = ""; zyMedial = ""; zyFinal = ""; zhuyinBuffer = ""
+    private func _clearZhuyinSlots() {
+        _zyInitial = ""; _zyMedial = ""; _zyFinal = ""; _zhuyinBuffer = ""
     }
 
-    private func backspaceZhuyin() {
-        if !zyFinal.isEmpty { zyFinal = "" }
-        else if !zyMedial.isEmpty { zyMedial = "" }
-        else { zyInitial = "" }
-        zhuyinBuffer = zyInitial + zyMedial + zyFinal
+    private func _backspaceZhuyin() {
+        if !_zyFinal.isEmpty { _zyFinal = "" }
+        else if !_zyMedial.isEmpty { _zyMedial = "" }
+        else { _zyInitial = "" }
+        _zhuyinBuffer = _zyInitial + _zyMedial + _zyFinal
     }
 
     // MARK: - Same-Sound
 
-    private func handleSameSound() {
-        let results = ZhuyinLookup.shared.lookup(sameSoundBase)
-        NSLog("YabomishKB: handleSameSound base=%@ results=%d", sameSoundBase, results.count)
-        guard let first = results.first else { resetComposing(); return }
-        currentCandidates = ZhuyinLookup.shared.sortByFreq(first.chars)
-        composing = sameSoundBase
-        delegate?.engineDidUpdateComposing("\(sameSoundBase)[\(first.zhuyin)]")
-        notifyCandidates()
+    private func _handleSameSound() {
+        let results = ZhuyinLookup.shared.lookup(_sameSoundBase)
+        NSLog("YabomishKB: handleSameSound base=%@ results=%d", _sameSoundBase, results.count)
+        guard let first = results.first else { _resetComposing(); return }
+        _currentCandidates = ZhuyinLookup.shared.sortByFreq(first.chars)
+        _composing = _sameSoundBase
+        delegate?.engineDidUpdateComposing("\(_sameSoundBase)[\(first.zhuyin)]")
+        _notifyCandidates()
     }
 
     // MARK: - ,, Command
 
-    private func dispatchCommaCommand() {
-        let cmd = commaCommandBuffer.lowercased()
-        isInCommaCommand = false; commaCommandBuffer = ""
-        resetComposing()
+    private func _dispatchCommaCommand() {
+        let cmd = _commaCommandBuffer.lowercased()
+        _isInCommaCommand = false; _commaCommandBuffer = ""
+        _resetComposing()
 
         let modeMap: [String: InputMode] = [
             "t": .t, "s": .s, "sp": .sp, "sl": .sl, "ts": .ts, "st": .st, "j": .j
         ]
         if cmd == "rs" { freqTracker.reset(); delegate?.engineDidShowToast("字頻已重置"); return }
         if cmd == "rl" { cinTable.reload(); delegate?.engineDidShowToast("字表已重載"); return }
-        if cmd == "c" { delegate?.engineDidShowToast(currentModeLabel); return }
+        if cmd == "c" { delegate?.engineDidShowToast(_currentModeLabel); return }
         if cmd == "zh" {
-            isZhuyinMode.toggle()
-            delegate?.engineDidShowToast(isZhuyinMode ? "注" : currentModeLabel)
-            if !isZhuyinMode { clearZhuyinSlots(); currentCandidates = []; notifyCandidates() }
+            _isZhuyinMode.toggle()
+            delegate?.engineDidShowToast(_isZhuyinMode ? "注" : _currentModeLabel)
+            if !_isZhuyinMode { _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates() }
             return
         }
         if cmd == "h" {
@@ -502,105 +532,171 @@ final class InputEngine {
             return
         }
         if cmd == "pys" || cmd == "pyt" {
-            let entering = !isPinyinMode || (cmd == "pys") != pinyinSimplified
+            let entering = !_isPinyinMode || (cmd == "pys") != _pinyinSimplified
             if entering {
-                isPinyinMode = true; pinyinSimplified = (cmd == "pys")
-                isZhuyinMode = false; clearZhuyinSlots()
-                pinyinBuffer = ""; currentCandidates = []; notifyCandidates()
+                _isPinyinMode = true; _pinyinSimplified = (cmd == "pys")
+                _isZhuyinMode = false; _clearZhuyinSlots()
+                _pinyinBuffer = ""; _currentCandidates = []; _notifyCandidates()
                 delegate?.engineDidShowToast(cmd == "pys" ? "拼簡" : "拼繁")
             } else {
-                isPinyinMode = false; pinyinBuffer = ""
-                currentCandidates = []; notifyCandidates()
+                _isPinyinMode = false; _pinyinBuffer = ""
+                _currentCandidates = []; _notifyCandidates()
                 delegate?.engineDidClearComposing()
-                delegate?.engineDidShowToast(currentModeLabel)
+                delegate?.engineDidShowToast(_currentModeLabel)
             }
             return
         }
         if cmd == "to" {
-            isSameSoundMode.toggle()
-            if isSameSoundMode {
-                sameSoundBase = ""; composing = "'"
-                notifyComposing()
+            _isSameSoundMode.toggle()
+            if _isSameSoundMode {
+                _sameSoundBase = ""; _composing = "'"
+                _notifyComposing()
                 delegate?.engineDidShowToast("同音字模式：打碼送字後列同音字")
             } else {
-                sameSoundBase = ""; composing = ""
+                _sameSoundBase = ""; _composing = ""
                 delegate?.engineDidClearComposing()
-                currentCandidates = []; notifyCandidates()
-                delegate?.engineDidShowToast(currentModeLabel)
+                _currentCandidates = []; _notifyCandidates()
+                delegate?.engineDidShowToast(_currentModeLabel)
             }
             return
         }
         guard let mode = modeMap[cmd] else {
             delegate?.engineDidShowToast("未知命令 ,,\(cmd.uppercased())"); return
         }
-        inputMode = mode
+        _inputMode = mode
         delegate?.engineDidShowToast(Self.modeLabels[mode] ?? "繁中")
     }
 
     /// Switch to a named mode (used by space-swipe cycle). Returns the display label.
     @discardableResult
-    func switchToMode(_ name: String) -> String {
+    func switchToMode(_ name: String) -> String { queue.sync {
         let modeMap: [String: InputMode] = [
             "t": .t, "s": .s, "sp": .sp, "sl": .sl, "ts": .ts, "st": .st, "j": .j
         ]
         if name == "zh" {
-            if !isZhuyinMode { isZhuyinMode = true; clearZhuyinSlots() }
-            isSameSoundMode = false; sameSoundBase = ""; composing = ""
+            if !_isZhuyinMode { _isZhuyinMode = true; _clearZhuyinSlots() }
+            _isSameSoundMode = false; _sameSoundBase = ""; _composing = ""
             delegate?.engineDidShowToast("注")
             return "注"
         }
         if name == "to" {
-            if !isSameSoundMode {
-                isSameSoundMode = true; sameSoundBase = ""; composing = "'"
-                notifyComposing()
+            if !_isSameSoundMode {
+                _isSameSoundMode = true; _sameSoundBase = ""; _composing = "'"
+                _notifyComposing()
             }
-            if isZhuyinMode { exitZhuyinMode() }
+            if _isZhuyinMode { _exitZhuyinModeImpl() }
             delegate?.engineDidShowToast("同音字模式")
             return "同"
         }
         // Regular input mode
-        if isZhuyinMode { isZhuyinMode = false; clearZhuyinSlots(); currentCandidates = []; notifyCandidates() }
-        if isSameSoundMode { isSameSoundMode = false; sameSoundBase = ""; composing = "" }
+        if _isZhuyinMode { _isZhuyinMode = false; _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates() }
+        if _isSameSoundMode { _isSameSoundMode = false; _sameSoundBase = ""; _composing = "" }
         if let mode = modeMap[name] {
-            inputMode = mode
+            _inputMode = mode
             let label = Self.modeLabels[mode] ?? "繁中"
             delegate?.engineDidShowToast(label)
             return label
         }
         return ""
+    } }
+
+    // MARK: - Internal impl (called from within queue, no locking)
+
+    private func _handleBackspaceImpl() {
+        if _isInCommaCommand {
+            if _commaCommandBuffer.isEmpty {
+                _isInCommaCommand = false; _composing = ","
+                _notifyComposing()
+            } else {
+                _commaCommandBuffer = String(_commaCommandBuffer.dropLast())
+                _composing = ",," + _commaCommandBuffer; _notifyComposing()
+            }
+            return
+        }
+        if _isZhuyinMode {
+            if _currentCandidates.isEmpty && !_zhuyinBuffer.isEmpty {
+                _backspaceZhuyin()
+                if _zhuyinBuffer.isEmpty { delegate?.engineDidClearComposing() }
+                else { delegate?.engineDidUpdateComposing(_zhuyinBuffer) }
+            } else if !_currentCandidates.isEmpty {
+                _currentCandidates = []; _notifyCandidates()
+                delegate?.engineDidUpdateComposing(_zhuyinBuffer)
+            }
+            return
+        }
+        if _composing.isEmpty { return }
+        _composing = String(_composing.dropLast())
+        if _composing.isEmpty { _resetComposing() }
+        else {
+            _isWildcard = _composing.contains("*")
+            _refreshCandidates(); _notifyComposing(); _notifyCandidates()
+        }
     }
 
-    /// Current mode identifier for cycle tracking
-    var currentModeName: String {
-        if isZhuyinMode { return "zh" }
-        if isSameSoundMode { return "to" }
-        return inputMode.rawValue
+    private func _selectCandidateImpl(at index: Int) {
+        NSLog("YabomishKB: selectCandidate idx=%d count=%d composing='%@' zhuyin=%d", index, _currentCandidates.count, _composing, _isZhuyinMode ? 1 : 0)
+        guard index < _currentCandidates.count else { return }
+        if _isZhuyinMode {
+            let full = _currentCandidates[index]
+            let char = String(full.prefix(1))
+            let codes = cinTable.reverseLookup(char)
+            _commitText(char)
+            if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
+            _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates()
+            _exitZhuyinModeImpl()
+        } else if _composing.isEmpty {
+            _commitText(_currentCandidates[index])
+        } else {
+            _commitText(_currentCandidates[index])
+        }
+    }
+
+    private func _handlePinyinToneImpl(_ tone: Int) {
+        guard _isPinyinMode, !_pinyinBuffer.isEmpty else { return }
+        let pinyin = _pinyinBuffer + "\(tone)"
+        let chars = ZhuyinLookup.shared.charsForPinyin(pinyin)
+        guard !chars.isEmpty else { return }
+        let display: [String]
+        if _pinyinSimplified {
+            let t2s = cinTable.t2s
+            var seen = Set<String>()
+            display = chars.compactMap { c in
+                let s = t2s[c] ?? c; return seen.insert(s).inserted ? s : nil
+            }
+        } else { display = chars }
+        _currentCandidates = display.map { c in
+            let codes = cinTable.reverseLookup(c)
+            return codes.isEmpty ? c : "\(c) \(codes.joined(separator: "/"))"
+        }
+        _composing = pinyin; _notifyComposing(); _notifyCandidates()
     }
 
     // MARK: - Internal
 
-    private func canExtendCode(_ code: String) -> Bool {
+    private func _canExtendCode(_ code: String) -> Bool {
         !cinTable.validNextKeys(after: code).isEmpty
     }
 
     public func validNextKeys() -> Set<Character> {
-        guard !composing.isEmpty else { return [] }
-        return cinTable.validNextKeys(after: composing)
+        queue.sync {
+            guard !_composing.isEmpty else { return [] }
+            return cinTable.validNextKeys(after: _composing)
+        }
     }
 
-    private func refreshCandidates() {
-        let code = isSameSoundMode ? String(composing.dropFirst()) : composing
-        if inputMode == .j {
-            currentCandidates = cinTable.lookup(code + ",") + cinTable.lookup(code + ".")
+    private func _refreshCandidates() {
+        let code = _isSameSoundMode ? String(_composing.dropFirst()) : _composing
+        if _inputMode == .j {
+            _currentCandidates = cinTable.lookup(code + ",") + cinTable.lookup(code + ".")
             return
         }
-        let raw = isWildcard ? cinTable.wildcardLookup(code) : cinTable.lookup(code)
-        currentCandidates = ranker.rank(raw: raw, code: code, prev: lastCommitted,
-                                         mode: inputMode, cinTable: cinTable, freqTracker: freqTracker)
+        let raw = _isWildcard ? cinTable.wildcardLookup(code) : cinTable.lookup(code)
+        _currentCandidates = ranker.rank(raw: raw, code: code, prev: _lastCommitted,
+                                         mode: _inputMode, cinTable: cinTable, freqTracker: freqTracker)
 
         // Fuzzy match: if no candidates, try adjacent-key substitution
-        if currentCandidates.isEmpty && !isWildcard && code.count >= 2 && YabomishPrefs.fuzzyMatch {
-            currentCandidates = ranker.fuzzyLookup(code, cinTable: cinTable)
+        if _currentCandidates.isEmpty && !_isWildcard && code.count >= 2 && YabomishPrefs.fuzzyMatch {
+            _currentCandidates = ranker.fuzzyLookup(code, cinTable: cinTable)
         }
     }
 
@@ -608,16 +704,16 @@ final class InputEngine {
         "「": "」", "（": "）", "『": "』", "【": "】", "《": "》", "〈": "〉",
     ]
 
-    private func commitText(_ text: String) {
-        NSLog("YabomishKB: commitText='%@' composing='%@' sameSound=%d", text, composing, isSameSoundMode ? 1 : 0)
+    private func _commitText(_ text: String) {
+        NSLog("YabomishKB: commitText='%@' composing='%@' sameSound=%d", text, _composing, _isSameSoundMode ? 1 : 0)
         // Same-sound step 1 → step 2
-        if isSameSoundMode && sameSoundBase.isEmpty && text.count == 1 {
+        if _isSameSoundMode && _sameSoundBase.isEmpty && text.count == 1 {
             let results = ZhuyinLookup.shared.lookup(text)
             NSLog("YabomishKB: sameSound lookup char=%@ results=%d", text, results.count)
             if !results.isEmpty {
-                sameSoundBase = text
+                _sameSoundBase = text
                 NSLog("YabomishKB: sameSound base=%@ zhuyin=%@ chars=%d", text, results.first?.zhuyin ?? "?", results.first?.chars.count ?? 0)
-                handleSameSound(); return
+                _handleSameSound(); return
             }
         }
 
@@ -627,36 +723,36 @@ final class InputEngine {
         } else {
             delegate?.engineDidCommit(text)
         }
-        if !composing.isEmpty && !isSameSoundMode {
-            freqTracker.record(code: composing, char: text)
-            freqTracker.recordBigram(prev: lastCommitted, char: text)
-            if !prevCommitted.isEmpty {
-                freqTracker.recordTrigram(prev2: prevCommitted, prev1: lastCommitted, char: text)
+        if !_composing.isEmpty && !_isSameSoundMode {
+            freqTracker.record(code: _composing, char: text)
+            freqTracker.recordBigram(prev: _lastCommitted, char: text)
+            if !_prevCommitted.isEmpty {
+                freqTracker.recordTrigram(prev2: _prevCommitted, prev1: _lastCommitted, char: text)
             }
             freqTracker.saveIfNeeded()
         }
         // Domain context tracking
         ranker.updateDomainContext(text)
 
-        prevCommitted = lastCommitted
-        lastCommitted = text.count == 1 ? text : String(text.suffix(1))
+        _prevCommitted = _lastCommitted
+        _lastCommitted = text.count == 1 ? text : String(text.suffix(1))
 
         // Track recent committed text (for trigram + NER)
-        recentCommitted += text
-        if recentCommitted.count > 10 { recentCommitted = String(recentCommitted.suffix(10)) }
+        _recentCommitted += text
+        if _recentCommitted.count > 10 { _recentCommitted = String(_recentCommitted.suffix(10)) }
         let sentenceEnders: Set<Character> = ["。", "！", "？", ".", "!", "?", "\n", "；", ";"]
-        if let last = text.last, sentenceEnders.contains(last) { recentCommitted = "" }
+        if let last = text.last, sentenceEnders.contains(last) { _recentCommitted = "" }
 
-        composing = ""; currentCandidates = []
-        isWildcard = false
-        if isSameSoundMode {
+        _composing = ""; _currentCandidates = []
+        _isWildcard = false
+        if _isSameSoundMode {
             // Stay in same-sound mode — reset for next character
-            sameSoundBase = ""; composing = "'"
-            notifyComposing()
+            _sameSoundBase = ""; _composing = "'"
+            _notifyComposing()
         } else {
-            sameSoundBase = ""
+            _sameSoundBase = ""
         }
-        notifyCandidates()
+        _notifyCandidates()
 
         if text.count == 1 && YabomishPrefs.showCodeHint && MemoryBudget.canAfford(MemoryBudget.reverseTable) {
             let codes = cinTable.reverseLookup(text)
@@ -664,28 +760,28 @@ final class InputEngine {
         }
 
         // 聯想
-        if !isSameSoundMode && !isZhuyinMode {
-            let results = SuggestionEngine.shared.suggest(recentCommitted: recentCommitted, lastText: text)
+        if !_isSameSoundMode && !_isZhuyinMode {
+            let results = SuggestionEngine.shared.suggest(recentCommitted: _recentCommitted, lastText: text)
             if !results.isEmpty { delegate?.engineDidSuggest(results) }
         }
     }
 
-    private func resetComposing() {
-        composing = ""; currentCandidates = []; isWildcard = false
-        isSameSoundMode = false; sameSoundBase = ""; eatNextSpace = false
-        isInCommaCommand = false; commaCommandBuffer = ""
-        clearZhuyinSlots()
+    private func _resetComposing() {
+        _composing = ""; _currentCandidates = []; _isWildcard = false
+        _isSameSoundMode = false; _sameSoundBase = ""; _eatNextSpace = false
+        _isInCommaCommand = false; _commaCommandBuffer = ""
+        _clearZhuyinSlots()
         delegate?.engineDidClearComposing()
-        notifyCandidates()
+        _notifyCandidates()
     }
 
     /// Returns the shortest code hint for a candidate, or nil if it equals the current composing.
-    func shortestCodeHint(for char: String) -> String? {
+    func shortestCodeHint(for char: String) -> String? { queue.sync {
         guard let codes = cinTable.shortestCodesTable[char] else { return nil }
         let best = codes.min(by: { $0.count < $1.count }) ?? codes.first!
-        return best.count < composing.count ? best : nil
-    }
+        return best.count < _composing.count ? best : nil
+    } }
 
-    private func notifyComposing() { delegate?.engineDidUpdateComposing(composing) }
-    private func notifyCandidates() { delegate?.engineDidUpdateCandidates(currentCandidates) }
+    private func _notifyComposing() { delegate?.engineDidUpdateComposing(_composing) }
+    private func _notifyCandidates() { delegate?.engineDidUpdateCandidates(_currentCandidates) }
 }

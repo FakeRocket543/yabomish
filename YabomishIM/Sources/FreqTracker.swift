@@ -95,9 +95,18 @@ final class FreqTracker {
     // MARK: - Maintenance
 
     func decay(factor: Double = 0.9) {
-        exec("UPDATE freq SET n=CAST(n*\(factor) AS INTEGER)")
+        var stmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, "UPDATE freq SET n=CAST(n*?1 AS INTEGER)", -1, &stmt, nil) == SQLITE_OK {
+            sqlite3_bind_double(stmt, 1, factor)
+            sqlite3_step(stmt)
+            sqlite3_finalize(stmt)
+        }
         exec("DELETE FROM freq WHERE n<1")
-        exec("UPDATE bigram SET n=CAST(n*\(factor) AS INTEGER)")
+        if sqlite3_prepare_v2(db, "UPDATE bigram SET n=CAST(n*?1 AS INTEGER)", -1, &stmt, nil) == SQLITE_OK {
+            sqlite3_bind_double(stmt, 1, factor)
+            sqlite3_step(stmt)
+            sqlite3_finalize(stmt)
+        }
         exec("DELETE FROM bigram WHERE n<1")
     }
 

@@ -59,6 +59,7 @@ final class WikiCorpus {
         ("domain_media", "terms_media", "新聞傳播"),
         ("domain_social", "terms_social", "社會行政"),
         ("domain_govt", "terms_govt", "政府機關"),
+        ("domain_cn_slang", "terms_cn_slang", "中式流行語"),
     ]
 
     private init() {
@@ -93,8 +94,10 @@ final class WikiCorpus {
         let merged = AppConstants.sharedDir + "/domain_merged.bin"
         if let d = try? Data(contentsOf: URL(fileURLWithPath: merged), options: .mappedIfSafe),
            d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D {
+            let ki = Int(d.u32(8)), vi = Int(d.u32(12))
+            guard ki <= d.count, vi <= d.count else { return }
             domainBins.append(DomainBin(data: d, keyCount: Int(d.u32(4)),
-                                        keyIndexOff: Int(d.u32(8)), valIndexOff: Int(d.u32(12))))
+                                        keyIndexOff: ki, valIndexOff: vi))
             return
         }
         for (key, file, _) in Self.domainKeys {
@@ -102,8 +105,10 @@ final class WikiCorpus {
                   let p = resolvePath(name: file, ext: "bin"),
                   let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
                   d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
+            let ki = Int(d.u32(8)), vi = Int(d.u32(12))
+            guard ki <= d.count, vi <= d.count else { continue }
             domainBins.append(DomainBin(data: d, keyCount: Int(d.u32(4)),
-                                        keyIndexOff: Int(d.u32(8)), valIndexOff: Int(d.u32(12))))
+                                        keyIndexOff: ki, valIndexOff: vi))
         }
     }
 
@@ -131,6 +136,7 @@ final class WikiCorpus {
         tgOffsetsOff = tgKeysOff + tgKeyCount * 8
         tgCountsOff = tgOffsetsOff + tgKeyCount * 4
         tgValuesOff = tgCountsOff + tgKeyCount * 2
+        guard tgValuesOff <= d.count else { return }
         tgData = d
     }
 
@@ -143,6 +149,7 @@ final class WikiCorpus {
         nerOffsetsOff = nerKeysOff + nerKeyCount * 4
         nerCountsOff = nerOffsetsOff + nerKeyCount * 4
         nerPhrasesOff = nerCountsOff + nerKeyCount * 2
+        guard nerPhrasesOff <= d.count else { return }
         nerData = d
     }
 
@@ -155,6 +162,7 @@ final class WikiCorpus {
         phOffsetsOff = phKeysOff + phKeyCount * 4
         phCountsOff = phOffsetsOff + phKeyCount * 4
         phPhrasesOff = phCountsOff + phKeyCount * 2
+        guard phPhrasesOff <= d.count else { return }
         phData = d
     }
 
@@ -166,6 +174,7 @@ final class WikiCorpus {
         wbKeyCount = Int(d.u32(4))
         wbKeyIndexOff = Int(d.u32(8))
         wbValIndexOff = Int(d.u32(12))
+        guard wbKeyIndexOff <= d.count, wbValIndexOff <= d.count else { return }
         wbData = d
     }
 
@@ -176,6 +185,7 @@ final class WikiCorpus {
         cyKeyCount = Int(d.u32(4))
         cyKeyIndexOff = Int(d.u32(8))
         cyValIndexOff = Int(d.u32(12))
+        guard cyKeyIndexOff <= d.count, cyValIndexOff <= d.count else { return }
         cyData = d
     }
 
@@ -202,7 +212,9 @@ final class WikiCorpus {
         let count = min(Int(d.u16(tgCountsOff + idx * 2)), limit)
         var r: [String] = []
         for i in 0..<count {
-            if let s = Unicode.Scalar(d.u32(tgValuesOff + (valOff + i) * 4)) { r.append(String(s)) }
+            let off = tgValuesOff + (valOff + i) * 4
+            guard off + 4 <= d.count else { break }
+            if let s = Unicode.Scalar(d.u32(off)) { r.append(String(s)) }
         }
         return r
     }
@@ -285,7 +297,9 @@ final class WikiCorpus {
         let count = min(Int(d.u16(countsOff + idx * 2)), limit)
         var r: [String] = []
         for _ in 0..<count {
+            guard pos >= 0, pos < d.count else { break }
             let len = Int(d[pos]); pos += 1
+            guard pos + len * 4 <= d.count else { break }
             var s = ""
             for _ in 0..<len {
                 if let sc = Unicode.Scalar(d.u32(pos)) { s.append(Character(sc)) }
@@ -332,8 +346,10 @@ final class WikiCorpus {
         while lo <= hi {
             let mid = (lo + hi) / 2
             let entryOff = keyIndexOff + mid * 12
+            guard entryOff + 12 <= d.count else { return [] }
             let strOff = Int(d.u32(entryOff))
             let strLen = Int(d.u16(entryOff + 4))
+            guard strOff >= 0, strOff + strLen <= d.count else { return [] }
             let cmp = compareUTF8(d, off: strOff, len: strLen, with: target)
             if cmp == 0 {
                 let valStart = Int(d.u32(entryOff + 6))
@@ -341,8 +357,10 @@ final class WikiCorpus {
                 var r: [String] = []
                 for i in 0..<valCount {
                     let vOff = valIndexOff + (valStart + i) * 6
+                    guard vOff + 6 <= d.count else { break }
                     let vStrOff = Int(d.u32(vOff))
                     let vStrLen = Int(d.u16(vOff + 4))
+                    guard vStrOff >= 0, vStrOff + vStrLen <= d.count else { continue }
                     if let s = String(data: d[vStrOff..<(vStrOff + vStrLen)], encoding: .utf8) { r.append(s) }
                 }
                 return r
@@ -354,6 +372,7 @@ final class WikiCorpus {
     private func compareUTF8(_ d: Data, off: Int, len: Int, with target: [UInt8]) -> Int {
         let n = min(len, target.count)
         for i in 0..<n {
+            guard off + i < d.count else { return -1 }
             let a = d[off + i], b = target[i]
             if a != b { return a < b ? -1 : 1 }
         }
@@ -364,9 +383,11 @@ final class WikiCorpus {
 // MARK: - Data helpers
 extension Data {
     func u32(_ off: Int) -> UInt32 {
-        withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self).littleEndian }
+        guard off >= 0, off + 4 <= count else { return 0 }
+        return withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt32.self).littleEndian }
     }
     func u16(_ off: Int) -> UInt16 {
-        withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt16.self).littleEndian }
+        guard off >= 0, off + 2 <= count else { return 0 }
+        return withUnsafeBytes { $0.load(fromByteOffset: off, as: UInt16.self).littleEndian }
     }
 }

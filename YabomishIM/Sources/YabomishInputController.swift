@@ -1553,10 +1553,15 @@ class YabomishInputController: IMKInputController {
 extension YabomishInputController {
 
     /// Weak reference to the current IMKTextInput client for delegate callbacks.
+    private class WeakClientWrapper {
+        weak var client: (NSObjectProtocol & IMKTextInput)?
+        init(_ client: (NSObjectProtocol & IMKTextInput)?) { self.client = client }
+    }
+
     private static var _engineClientKey = 0
     private weak var engineClient: (NSObjectProtocol & IMKTextInput)? {
-        get { objc_getAssociatedObject(self, &Self._engineClientKey) as? (NSObjectProtocol & IMKTextInput) }
-        set { objc_setAssociatedObject(self, &Self._engineClientKey, newValue, .OBJC_ASSOCIATION_ASSIGN) }
+        get { (objc_getAssociatedObject(self, &Self._engineClientKey) as? WeakClientWrapper)?.client }
+        set { objc_setAssociatedObject(self, &Self._engineClientKey, WeakClientWrapper(newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 
     private static var _engineKey = 0
@@ -1661,7 +1666,7 @@ extension YabomishInputController {
             if engine.composing.isEmpty {
                 // Dismiss suggestions if showing
                 if !engine.currentCandidates.isEmpty {
-                    engine.currentCandidates = []
+                    engine.clearCandidates()
                     panel.hide()
                     return true
                 }
@@ -1683,7 +1688,7 @@ extension YabomishInputController {
         if panel.isVisible_ && (keyCode >= 123 && keyCode <= 126) {
             if engine.composing.isEmpty {
                 // Suggestion state: dismiss and pass through
-                engine.currentCandidates = []
+                engine.clearCandidates()
                 panel.hide()
                 return false
             }
@@ -1740,7 +1745,7 @@ extension YabomishInputController {
         // Digits when idle — dismiss suggestions and output digit
         if engine.composing.isEmpty, let digit = keyCodeToDigit[keyCode] {
             if !engine.currentCandidates.isEmpty {
-                engine.currentCandidates = []
+                engine.clearCandidates()
                 panel.hide()
             }
             client.insertText(String(digit), replacementRange: notFoundRange)
@@ -1959,7 +1964,7 @@ extension YabomishInputController: InputEngineDelegate {
     func engineDidSuggest(_ suggestions: [String]) {
         guard let client = engineClient else { return }
         if engine.composing.isEmpty && !suggestions.isEmpty {
-            engine.currentCandidates = suggestions
+            engine.setCandidates(suggestions)
             showNewEngineCandidatePanel(client: client)
         }
     }

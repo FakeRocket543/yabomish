@@ -12,16 +12,21 @@ enum DomainMerger {
                   d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
 
             let kc = Int(d.u32(4)), ki = Int(d.u32(8)), vi = Int(d.u32(12))
+            guard ki <= d.count, vi <= d.count else { continue }
             for i in 0..<kc {
                 let eo = ki + i * 12
+                guard eo + 12 <= d.count else { break }
                 let so = Int(d.u32(eo)), sl = Int(d.u16(eo + 4))
                 let vs = Int(d.u32(eo + 6)), vc = Int(d.u16(eo + 10))
+                guard so >= 0, so + sl <= d.count else { continue }
                 guard let k = String(data: d[so..<(so + sl)], encoding: .utf8) else { continue }
                 var vals = merged[k] ?? []
                 let seen = Set(vals)
                 for j in 0..<vc {
                     let vo = vi + (vs + j) * 6
+                    guard vo + 6 <= d.count else { break }
                     let vso = Int(d.u32(vo)), vsl = Int(d.u16(vo + 4))
+                    guard vso >= 0, vso + vsl <= d.count else { continue }
                     if let v = String(data: d[vso..<(vso + vsl)], encoding: .utf8), !seen.contains(v) {
                         vals.append(v)
                     }
@@ -109,8 +114,12 @@ enum DomainMerger {
         out.append(valStrings)
 
         try? FileManager.default.createDirectory(atPath: AppConstants.sharedDir, withIntermediateDirectories: true)
-        try? out.write(to: URL(fileURLWithPath: dst))
-        NSLog("DomainMerger: wrote %d keys, %d bytes", sortedKeys.count, out.count)
+        do {
+            try out.write(to: URL(fileURLWithPath: dst))
+            NSLog("DomainMerger: wrote %d keys, %d bytes", sortedKeys.count, out.count)
+        } catch {
+            NSLog("DomainMerger: write failed: %@", error.localizedDescription)
+        }
     }
 }
 

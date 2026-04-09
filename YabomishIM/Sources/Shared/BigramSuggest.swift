@@ -24,6 +24,7 @@ final class BigramSuggest {
         offsetsOffset = keysOffset + keyCount * 4
         countsOffset = offsetsOffset + keyCount * 4
         valuesOffset = countsOffset + keyCount * 2
+        guard valuesOffset <= d.count else { return }
         data = d
     }
 
@@ -40,7 +41,9 @@ final class BigramSuggest {
                 let count = min(Int(data.u16(countsOffset + mid * 2)), limit)
                 var r: [String] = []
                 for i in 0..<count {
-                    if let s = Unicode.Scalar(data.u32(valuesOffset + (valOff + i) * 4)) { r.append(String(s)) }
+                    let off = valuesOffset + (valOff + i) * 4
+                    guard off + 4 <= data.count else { break }
+                    if let s = Unicode.Scalar(data.u32(off)) { r.append(String(s)) }
                 }
                 return r
             } else if k < target { lo = mid + 1 } else { hi = mid - 1 }
