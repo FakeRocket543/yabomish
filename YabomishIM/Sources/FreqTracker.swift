@@ -12,21 +12,19 @@ final class FreqTracker {
     private var stmtQueryBigram: OpaquePointer?
 
     init() {
-        let dir: String
-        #if os(iOS)
-        dir = AppConstants.sharedDir
-        #else
-        if let sync = YabomishPrefs.syncFolder,
-           FileManager.default.fileExists(atPath: sync) {
-            dir = sync
-        } else {
-            dir = AppConstants.sharedDir
-        }
-        #endif
+        // SQLite DB always in local App Support (never in iCloud/sync folder —
+        // WAL mode is incompatible with cloud sync)
+        let dir = AppConstants.sharedDir
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         self.path = dir + "/freq.db"
         openDB()
         migrateFromJSON(dir: dir)
+        // Also check syncFolder for legacy freq.json to migrate
+        if let sync = YabomishPrefs.syncFolder,
+           sync != dir,
+           FileManager.default.fileExists(atPath: sync + "/freq.json") {
+            migrateFromJSON(dir: sync)
+        }
     }
 
     deinit {
