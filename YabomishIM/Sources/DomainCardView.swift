@@ -73,7 +73,7 @@ private final class DomainCard: NSView {
             cardBox.trailingAnchor.constraint(equalTo: trailingAnchor),
             cardBox.topAnchor.constraint(equalTo: topAnchor),
             cardBox.bottomAnchor.constraint(equalTo: bottomAnchor),
-            widthAnchor.constraint(equalToConstant: 140),
+            widthAnchor.constraint(equalToConstant: 165),
             heightAnchor.constraint(equalToConstant: 40),
             colorBar.leadingAnchor.constraint(equalTo: cardBox.leadingAnchor),
             colorBar.topAnchor.constraint(equalTo: cardBox.topAnchor, constant: 1),
@@ -182,13 +182,30 @@ final class DomainCardRow: NSView {
         cards.forEach { $0.removeFromSuperview() }
         cards.removeAll()
         let labelMap = Dictionary(uniqueKeysWithValues: groupKeys.map { ($0.key, $0.label) })
+        let fileMap = Dictionary(uniqueKeysWithValues: groupKeys.map { ($0.key, $0.file) })
         for key in orderedKeys {
-            let card = DomainCard(key: key, label: labelMap[key] ?? key,
+            let count = binEntryCount(file: fileMap[key] ?? "")
+            let countStr = count > 0 ? " (\(count))" : ""
+            let card = DomainCard(key: key, label: (labelMap[key] ?? key) + countStr,
                                   color: sectionColor,
                                   enabled: DomainOrderManager.shared.isEnabled(key))
             cards.append(card)
             stackView.addArrangedSubview(card)
         }
+    }
+
+    /// Read WBMM key count from bin header (offset 4, UInt32 LE)
+    private func binEntryCount(file: String) -> Int {
+        let shared = AppConstants.sharedDir + "/\(file).bin"
+        let path = FileManager.default.fileExists(atPath: shared) ? shared
+            : Bundle.main.path(forResource: file, ofType: "bin")
+        guard let p = path,
+              let fh = FileHandle(forReadingAtPath: p) else { return 0 }
+        defer { fh.closeFile() }
+        let header = fh.readData(ofLength: 8)
+        guard header.count >= 8,
+              header[0] == 0x57, header[1] == 0x42, header[2] == 0x4D, header[3] == 0x4D else { return 0 }
+        return Int(header[4]) | Int(header[5]) << 8 | Int(header[6]) << 16 | Int(header[7]) << 24
     }
 
     // Drop target
