@@ -75,6 +75,10 @@ import Foundation
         get { access(keyPath: \.debugMode); return ud.object(forKey: "debugMode") as? Bool ?? false }
         set { withMutation(keyPath: \.debugMode) { ud.set(newValue, forKey: "debugMode") }; postChange() }
     }
+    var useNewEngine: Bool {
+        get { access(keyPath: \.useNewEngine); return ud.object(forKey: "useNewEngine") as? Bool ?? true }
+        set { withMutation(keyPath: \.useNewEngine) { ud.set(newValue, forKey: "useNewEngine") }; postChange() }
+    }
     var autoCommit: Bool {
         get { access(keyPath: \.autoCommit); return ud.object(forKey: "autoCommit") as? Bool ?? false }
         set { withMutation(keyPath: \.autoCommit) { ud.set(newValue, forKey: "autoCommit") }; postChange() }

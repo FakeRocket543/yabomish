@@ -44,6 +44,7 @@ struct AppearanceTab: View {
                 // ── 開發 ──
                 GroupBox("開發") {
                     VStack(alignment: .leading, spacing: 10) {
+                        Toggle("新引擎（重新登入後生效）", isOn: $store.useNewEngine)
                         Toggle("Debug 模式", isOn: $store.debugMode)
                         Button("打開 debug.log…") {
                             let url = URL(fileURLWithPath: NSHomeDirectory())

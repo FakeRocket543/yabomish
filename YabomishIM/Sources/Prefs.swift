@@ -112,7 +112,7 @@ struct YabomishPrefs {
 
     /// Use the new shared InputEngine (from iOS). Set to false to use legacy controller.
     static var useNewEngine: Bool {
-        get { defaults.object(forKey: "useNewEngine") as? Bool ?? false }
+        get { defaults.object(forKey: "useNewEngine") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "useNewEngine") }
     }
 

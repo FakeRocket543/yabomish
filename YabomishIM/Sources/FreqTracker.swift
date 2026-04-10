@@ -139,12 +139,14 @@ final class FreqTracker {
     }
 
     func deferredMerge() {
-        #if os(iOS)
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3) { [weak self] in
+            #if os(iOS)
             guard MemoryBudget.canAfford(5) else { return }
             self?.mergeFromiCloud()
+            #else
+            self?.syncViaSyncFolder()
+            #endif
         }
-        #endif
     }
 
     // MARK: - Migration from JSON
@@ -197,6 +199,52 @@ final class FreqTracker {
         }
         sqlite3_finalize(stmt)
     }
+
+    // MARK: - macOS Sync via syncFolder
+
+    #if os(macOS)
+    private func syncViaSyncFolder() {
+        guard let dir = YabomishPrefs.syncFolder,
+              FileManager.default.fileExists(atPath: dir) else { return }
+        let jsonPath = dir + "/freq.json"
+        // Import remote changes
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: jsonPath)),
+           let remote = try? JSONDecoder().decode(JSONStorage.self, from: data) {
+            importJSON(remote)
+        }
+        // Export local state
+        exportToJSON(path: jsonPath)
+    }
+
+    private func exportToJSON(path: String) {
+        var freq: [String: [String: Int]] = [:]
+        var bigram: [String: [String: Int]] = [:]
+        var stmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, "SELECT code, char, n FROM freq", -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let code = String(cString: sqlite3_column_text(stmt, 0))
+                let char = String(cString: sqlite3_column_text(stmt, 1))
+                let n = Int(sqlite3_column_int(stmt, 2))
+                freq[code, default: [:]][char] = n
+            }
+        }
+        sqlite3_finalize(stmt)
+        stmt = nil
+        if sqlite3_prepare_v2(db, "SELECT prev, char, n FROM bigram", -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let prev = String(cString: sqlite3_column_text(stmt, 0))
+                let char = String(cString: sqlite3_column_text(stmt, 1))
+                let n = Int(sqlite3_column_int(stmt, 2))
+                bigram[prev, default: [:]][char] = n
+            }
+        }
+        sqlite3_finalize(stmt)
+        let storage = JSONStorage(freq: freq, bigram: bigram)
+        if let data = try? JSONEncoder().encode(storage) {
+            try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+        }
+    }
+    #endif
 
     // MARK: - iCloud Sync
 
