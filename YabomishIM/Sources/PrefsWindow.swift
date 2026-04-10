@@ -256,7 +256,9 @@ final class PrefsWindow: NSPanel {
         charSuggestBtn.nextKeyView = toastStepper
         toastStepper.nextKeyView = activateBtn
         activateBtn.nextKeyView = iconPopup
-        iconPopup.nextKeyView = debugBtn
+        iconPopup.nextKeyView = labelPopup
+        labelPopup.nextKeyView = applyBtn
+        applyBtn.nextKeyView = debugBtn
         debugBtn.nextKeyView = openLogBtn
         openLogBtn.nextKeyView = importBtn
     }

@@ -4,7 +4,7 @@ import Foundation
 enum DataDownloader {
     static let dataURL = "https://github.com/user/yabomish-data/releases/download/v0.3.0/yabomish-data-v0.3.0.zip"
     static let supportDir = NSHomeDirectory() + "/Library/Application Support/YabomishIM"
-    private static let marker = "bigram_boost.json"
+    private static let marker = "bigram.bin"
 
     static var isDataAvailable: Bool {
         FileManager.default.fileExists(atPath: supportDir + "/" + marker)
