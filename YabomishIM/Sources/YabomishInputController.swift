@@ -1190,10 +1190,17 @@ class YabomishInputController: IMKInputController {
                 .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
                 .filter { !$0.isEmpty }
 
-            // 詞庫
-            let pool3 = prefix.isEmpty ? [] : WikiCorpus.shared.suggestAllDomains(prefix: prefix)
-                .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
-                .filter { !$0.isEmpty }
+            // 詞庫（嘗試多個 prefix 長度，成語 key 通常 2 字）
+            var pool3: [String] = []
+            if recentCommitted.count >= 2 {
+                for len in stride(from: min(4, recentCommitted.count), through: 2, by: -1) {
+                    let p = String(recentCommitted.suffix(len))
+                    pool3 = WikiCorpus.shared.suggestAllDomains(prefix: p)
+                        .map { s in s.hasPrefix(p) ? String(s.dropFirst(p.count)) : s }
+                        .filter { !$0.isEmpty }
+                    if !pool3.isEmpty { break }
+                }
+            }
 
             // 字級
             var pool4: [String] = []

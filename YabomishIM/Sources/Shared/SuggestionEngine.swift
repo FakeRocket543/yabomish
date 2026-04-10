@@ -21,9 +21,16 @@ final class SuggestionEngine {
             .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
             .filter { !$0.isEmpty }
 
-        let pool3 = prefix.isEmpty ? [] : WikiCorpus.shared.suggestAllDomains(prefix: prefix)
-            .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
-            .filter { !$0.isEmpty }
+        var pool3: [String] = []
+        if recentCommitted.count >= 2 {
+            for len in stride(from: min(4, recentCommitted.count), through: 2, by: -1) {
+                let p = String(recentCommitted.suffix(len))
+                pool3 = WikiCorpus.shared.suggestAllDomains(prefix: p)
+                    .map { s in s.hasPrefix(p) ? String(s.dropFirst(p.count)) : s }
+                    .filter { !$0.isEmpty }
+                if !pool3.isEmpty { break }
+            }
+        }
 
         var pool4: [String] = []
         if YabomishPrefs.charSuggest {
