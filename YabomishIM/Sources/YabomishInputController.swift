@@ -1369,7 +1369,12 @@ class YabomishInputController: IMKInputController {
     }
 
     @objc private func openPrefs() {
-        PrefsWindow.shared.showWindow()
+        let appURL = URL(fileURLWithPath: "/Applications/YabomishPrefs.app")
+        if FileManager.default.fileExists(atPath: appURL.path) {
+            NSWorkspace.shared.openApplication(at: appURL, configuration: .init())
+        } else {
+            PrefsWindow.shared.showWindow()
+        }
     }
 
     private static var lastAppliedKeyboardLayout: String?

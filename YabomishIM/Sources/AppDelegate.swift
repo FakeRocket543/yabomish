@@ -26,5 +26,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let ver = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         NSLog("YabomishIM: build=%@, domains=%d", ver, WikiCorpus.shared.domainBinCount)
         YabomishPrefs.migrateLegacyPrefs()
+        DistributedNotificationCenter.default().addObserver(forName: NSNotification.Name("com.yabomish.prefsChanged"), object: nil, queue: .main) { _ in WikiCorpus.shared.reloadDomains() }
     }
 }
