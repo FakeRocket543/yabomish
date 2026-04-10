@@ -8,8 +8,9 @@ final class ZhuyinLookup {
     private var zhuyinToChars: [String: [String]] = [:]
     private var pinyinToChars: [String: [String]] = [:]
     private var charFreq: [String: Int] = [:]
-    private var bigramBoostData: Data?  // mmap'd BGBT binary
+    private var bigramBoostData: Data?  // mmap'd BGBT binary (core, then full)
     private var bigramBoostCount: Int = 0
+    private var bigramBoostFull = false
     private var bigramSuggest: [String: [String]] = [:]
     private var trigramSuggest: [String: [String]] = [:]
     private var loaded = false
@@ -58,20 +59,34 @@ final class ZhuyinLookup {
             pinyinToChars = p2c
         }
 
-        // bigram_boost: prefer binary, fallback JSON
-        if let bp = dataPath("bigram_boost", "bin"),
+        // bigram_boost: load core first, full in background
+        if let bp = dataPath("bigram_boost_core", "bin"),
            let bd = try? Data(contentsOf: URL(fileURLWithPath: bp), options: .mappedIfSafe),
            bd.count >= 8, bd[0] == 0x42, bd[1] == 0x47, bd[2] == 0x42, bd[3] == 0x54 {
             bigramBoostData = bd
             bigramBoostCount = Int(bd.withUnsafeBytes { $0.load(fromByteOffset: 4, as: UInt32.self).littleEndian })
-            NSLog("YabomishIM: bigram_boost.bin loaded — %d entries (mmap)", bigramBoostCount)
-        } else if let bp = dataPath("bigram_boost", "json"),
-           let bd = try? Data(contentsOf: URL(fileURLWithPath: bp)),
-           let bj = try? JSONSerialization.jsonObject(with: bd) as? [String: [String: [[Any]]]] {
-            // Legacy JSON fallback — build index in memory
-            var count = 0
-            for (_, inner) in bj { count += inner.count }
-            NSLog("YabomishIM: bigram_boost.json loaded — %d entries (legacy)", count)
+            NSLog("YabomishIM: bigram_boost_core.bin loaded — %d entries", bigramBoostCount)
+            // Load full in background
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                guard let self,
+                      let fp = self.dataPath("bigram_boost", "bin"),
+                      let fd = try? Data(contentsOf: URL(fileURLWithPath: fp), options: .mappedIfSafe),
+                      fd.count >= 8, fd[0] == 0x42, fd[1] == 0x47, fd[2] == 0x42, fd[3] == 0x54 else { return }
+                let fc = Int(fd.withUnsafeBytes { $0.load(fromByteOffset: 4, as: UInt32.self).littleEndian })
+                self.loadLock.lock()
+                self.bigramBoostData = fd
+                self.bigramBoostCount = fc
+                self.bigramBoostFull = true
+                self.loadLock.unlock()
+                NSLog("YabomishIM: bigram_boost.bin upgraded — %d entries (full)", fc)
+            }
+        } else if let bp = dataPath("bigram_boost", "bin"),
+           let bd = try? Data(contentsOf: URL(fileURLWithPath: bp), options: .mappedIfSafe),
+           bd.count >= 8, bd[0] == 0x42, bd[1] == 0x47, bd[2] == 0x42, bd[3] == 0x54 {
+            bigramBoostData = bd
+            bigramBoostCount = Int(bd.withUnsafeBytes { $0.load(fromByteOffset: 4, as: UInt32.self).littleEndian })
+            bigramBoostFull = true
+            NSLog("YabomishIM: bigram_boost.bin loaded — %d entries", bigramBoostCount)
         }
 
         if let sp = dataPath("bigram_suggest", "json"),
@@ -131,14 +146,18 @@ final class ZhuyinLookup {
 
     /// Query bigram_boost binary for (prevZy, curZy) → [(char, freq)]
     private func queryBGBT(prevZy: String, curZy: String) -> [(String, Int)] {
-        guard let d = bigramBoostData, bigramBoostCount > 0 else { return [] }
+        loadLock.lock()
+        let d = bigramBoostData
+        let count = bigramBoostCount
+        loadLock.unlock()
+        guard let d, count > 0 else { return [] }
         let pzyUTF8 = Array(prevZy.utf8)
         let czyUTF8 = Array(curZy.utf8)
         // Linear scan index (600K entries, ~12MB index, fast enough with mmap)
         // Each index entry: 20 bytes at offset 8 + i*20
         return d.withUnsafeBytes { buf -> [(String, Int)] in
             let base = buf.baseAddress!
-            for i in 0..<bigramBoostCount {
+            for i in 0..<count {
                 let idx = 8 + i * 20
                 let pOff = Int(buf.load(fromByteOffset: idx, as: UInt32.self).littleEndian)
                 let pLen = Int(buf.load(fromByteOffset: idx + 4, as: UInt16.self).littleEndian)
