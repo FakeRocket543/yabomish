@@ -13,7 +13,6 @@ final class CINTable {
 
     // MARK: - Text fallback + overlay (extras, emoji — small Dict)
     private var overlay: [String: [String]] = [:]
-    private var prefixes: Set<String> = []  // only populated in text-fallback mode
 
     // MARK: - Reverse lookup caches (lazy, released on memory pressure)
     private var _reverseTable: [String: [String]]?
@@ -70,7 +69,7 @@ final class CINTable {
     // MARK: - Load
 
     func reload() {
-        binData = nil; entryCount = 0; overlay = [:]; prefixes = []
+        binData = nil; entryCount = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
         t2s = [:]; s2t = [:]
 
@@ -81,34 +80,19 @@ final class CINTable {
         }
         // 2. If no .bin, try compiling .cin → .bin on the fly
         if entryCount == 0 {
-            // Check new path first, then legacy macOS path
-            let cinPaths = [
-                AppConstants.cinPath,
-                NSHomeDirectory() + "/Library/YabomishIM/liu.cin",
-            ]
-            for cinPath in cinPaths {
-                guard FileManager.default.fileExists(atPath: cinPath) else { continue }
+            let cinPath = AppConstants.cinPath
+            if FileManager.default.fileExists(atPath: cinPath) {
                 CINCompiler.compile(src: cinPath, dst: userBin)
                 if FileManager.default.fileExists(atPath: userBin) { loadBin(path: userBin) }
-                if entryCount > 0 { break }
                 // Compile failed, try text fallback
-                parseCINIntoOverlay(path: cinPath)
-                if !overlay.isEmpty { break }
+                if entryCount == 0 { parseCINIntoOverlay(path: cinPath) }
             }
         }
-        #if os(macOS)
-        // 3. macOS legacy: bundled .cin text fallback (no .bin)
-        if entryCount == 0 && overlay.isEmpty {
-            if let p = Bundle.main.path(forResource: "liu", ofType: "cin") {
-                parseCINIntoOverlay(path: p)
-            }
-        }
-        #endif
-        // 4. Extras
+        // 3. Extras
         loadExtras()
-        // 5. Char maps
+        // 4. Char maps
         loadCharMaps()
-        // 6. maxCodeLength
+        // 5. maxCodeLength
         maxCodeLength = 4
         if let d = binData {
             for i in 0..<entryCount {
@@ -124,7 +108,7 @@ final class CINTable {
     func load(cinPath: String) {
         let tmp = NSTemporaryDirectory() + "cin_\(UUID().uuidString).bin"
         CINCompiler.compile(src: cinPath, dst: tmp)
-        binData = nil; entryCount = 0; overlay = [:]; prefixes = []
+        binData = nil; entryCount = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
         if let d = try? Data(contentsOf: URL(fileURLWithPath: tmp)) {
             try? FileManager.default.removeItem(atPath: tmp)
@@ -146,7 +130,7 @@ final class CINTable {
 
     /// Load from a .cin text file directly (macOS legacy path, also used by reload fallback).
     func load(path: String) {
-        binData = nil; entryCount = 0; overlay = [:]; prefixes = []
+        binData = nil; entryCount = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
         // Try compile to bin first
         let tmp = NSTemporaryDirectory() + "cin_\(UUID().uuidString).bin"
@@ -322,7 +306,6 @@ final class CINTable {
             let code = parts[0].lowercased()
             let value = parts[1].trimmingCharacters(in: .whitespaces)
             self.overlay[code, default: []].append(value)
-            for i in 1...code.count { self.prefixes.insert(String(code.prefix(i))) }
         }
     }
 
@@ -354,7 +337,6 @@ final class CINTable {
                 guard parts.count == 2 else { return }
                 let code = parts[0].lowercased()
                 self.overlay[code, default: []].append(parts[1])
-                for i in 1...code.count { self.prefixes.insert(String(code.prefix(i))) }
             }
         }
     }
@@ -390,8 +372,7 @@ final class CINTable {
             let i = lowerBound(p)
             if i < entryCount && codeHasPrefix(d, at: i, p.utf8) { return true }
         }
-        // Overlay: check prefix set if populated, else scan keys
-        if !prefixes.isEmpty { return prefixes.contains(p) }
+        // Overlay: scan keys
         return overlay.keys.contains { $0.hasPrefix(p) }
     }
 

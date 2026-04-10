@@ -794,8 +794,7 @@ class YabomishInputController: IMKInputController {
     }
 
     private func zhuyinLookup(_ zhuyin: String, client: IMKTextInput) -> Bool {
-        let prevChar = lastCommitted.isEmpty ? nil : lastCommitted
-        let chars = ZhuyinLookup.shared.charsForZhuyin(zhuyin, prevChar: prevChar)
+        let chars = ZhuyinLookup.shared.charsForZhuyin(zhuyin)
         guard !chars.isEmpty else { NSSound.beep(); return true }
 
         // NER 詞組候選（多字詞排最前面）
@@ -944,7 +943,7 @@ class YabomishInputController: IMKInputController {
     // MARK: - Homophone Lookup
 
     private func handleHomophone(client: IMKTextInput) -> Bool {
-        let results = ZhuyinLookup.shared.lookup(homophoneBase, prevChar: lastCommitted.isEmpty ? nil : lastCommitted)
+        let results = ZhuyinLookup.shared.lookup(homophoneBase)
         guard let first = results.first else { NSSound.beep(); resetComposing(client: client); return true }
         currentCandidates = first.chars
         composing = homophoneBase
@@ -1116,7 +1115,7 @@ class YabomishInputController: IMKInputController {
 
         // Homophone step 1 → step 2: user picked a char via code, now show homophones
         if isHomophoneMode && homophoneBase.isEmpty && text.count == 1 {
-            let results = ZhuyinLookup.shared.lookup(text, prevChar: lastCommitted.isEmpty ? nil : lastCommitted)
+            let results = ZhuyinLookup.shared.lookup(text)
             if !results.isEmpty {
                 homophoneBase = text
                 _ = handleHomophone(client: client)
@@ -1216,10 +1215,6 @@ class YabomishInputController: IMKInputController {
                 let learned = Self.freqTracker.topBigrams(prev: prev1, limit: 3)
                 pool4 += learned
                 // Then static trigram/bigram
-                if recentCommitted.count >= 2 {
-                    pool4 += ZhuyinLookup.shared.suggestNextTrigram(prev2: recentCommitted)
-                }
-                pool4 += ZhuyinLookup.shared.suggestNext(after: text)
             }
 
             // 策略決定順序，學習加權只在同層內重排
@@ -1408,7 +1403,6 @@ class YabomishInputController: IMKInputController {
         // 背景預熱：首次切入時提前載入所有語料，避免第一次按鍵卡頓
         if fromOtherIM {
             DispatchQueue.global(qos: .userInitiated).async {
-                ZhuyinLookup.shared.warmup()
                 _ = PhraseLookup.shared
                 _ = WikiCorpus.shared
                 _ = BigramSuggest.shared
