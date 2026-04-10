@@ -2,6 +2,7 @@ import Cocoa
 
 final class PrefsWindow: NSPanel {
     static let shared = PrefsWindow()
+    private var domainCollectionController: DomainCollectionController?
 
     private init() {
         super.init(contentRect: NSRect(x: 0, y: 0, width: 420, height: 720),
@@ -201,31 +202,22 @@ final class PrefsWindow: NSPanel {
         iconPopup.setAccessibilityLabel("蝦頭方向")
         stack.addArrangedSubview(row("蝦頭方向", iconPopup))
 
-        // ━━━ 詞庫 ━━━
-        stack.addArrangedSubview(sectionHeader("詞庫"))
+        // ━━━ 詞庫（拖拉排序卡片）━━━
+        let domainHint = NSTextField(labelWithString: "拖拉卡片調整順序，越靠左越優先。勾選啟用。")
+        domainHint.font = .systemFont(ofSize: 11)
+        domainHint.textColor = .secondaryLabelColor
+        stack.addArrangedSubview(domainHint)
 
-        let generalDomains = WikiCorpus.generalDomainKeys
-        let priHint = NSTextField(labelWithString: "數字越小越優先（-9 最優先，9 最後）")
-        priHint.font = .systemFont(ofSize: 11)
-        priHint.textColor = .secondaryLabelColor
-        stack.addArrangedSubview(priHint)
-        stack.addArrangedSubview(buildDomainGrid(generalDomains, tagOffset: 2000))
+        let domainCtrl = DomainCollectionController()
+        domainCtrl.view.heightAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
+        stack.addArrangedSubview(domainCtrl.view)
 
-        let applyGenBtn = NSButton(title: "套用", target: self, action: #selector(domainApply))
-        applyGenBtn.bezelStyle = .rounded
-        stack.addArrangedSubview(hStack(applyGenBtn))
-
-        // ━━━ 專業詞典 ━━━
-        stack.addArrangedSubview(sectionHeader("專業詞典"))
-
-        let proDomains = WikiCorpus.proDomainKeys
-        stack.addArrangedSubview(buildDomainGrid(proDomains, tagOffset: 2100))
-
-        let selectAllBtn = NSButton(title: "全選", target: self, action: #selector(domainSelectAll))
-        let deselectAllBtn = NSButton(title: "全取消", target: self, action: #selector(domainDeselectAll))
-        let applyBtn = NSButton(title: "套用", target: self, action: #selector(domainApply))
+        let applyBtn = NSButton(title: "套用", target: nil, action: nil)
         applyBtn.bezelStyle = .rounded
-        stack.addArrangedSubview(hStack(selectAllBtn, deselectAllBtn, applyBtn))
+        applyBtn.target = self
+        applyBtn.action = #selector(domainCardApply)
+        stack.addArrangedSubview(hStack(applyBtn))
+        self.domainCollectionController = domainCtrl
 
         // ━━━ 除錯 ━━━
         stack.addArrangedSubview(sectionHeader("除錯"))
@@ -335,69 +327,8 @@ final class PrefsWindow: NSPanel {
         YabomishPrefs.charSuggest = sender.state == .on
     }
 
-    @objc private func domainToggled(_ sender: NSButton) {
-        guard let key = sender.identifier?.rawValue else { return }
-        YabomishPrefs.setDomainEnabled(key, sender.state == .on)
-        // No reload here — user clicks "套用" when done
-    }
-
-    @objc private func domainSelectAll() {
-        guard let grid = findGridView() else { return }
-        for r in 0..<grid.numberOfRows {
-            for c in 0..<grid.numberOfColumns {
-                if let btn = grid.cell(atColumnIndex: c, rowIndex: r).contentView as? NSButton {
-                    btn.state = .on
-                    if let key = btn.identifier?.rawValue { YabomishPrefs.setDomainEnabled(key, true) }
-                }
-            }
-        }
-    }
-
-    @objc private func domainDeselectAll() {
-        guard let grid = findGridView() else { return }
-        for r in 0..<grid.numberOfRows {
-            for c in 0..<grid.numberOfColumns {
-                if let btn = grid.cell(atColumnIndex: c, rowIndex: r).contentView as? NSButton {
-                    btn.state = .off
-                    if let key = btn.identifier?.rawValue { YabomishPrefs.setDomainEnabled(key, false) }
-                }
-            }
-        }
-    }
-
-    private func findGridView() -> NSGridView? {
-        func search(_ view: NSView) -> NSGridView? {
-            if let g = view as? NSGridView, g.identifier?.rawValue == "domainGrid" { return g }
-            for sub in view.subviews { if let g = search(sub) { return g } }
-            return nil
-        }
-        return contentView.flatMap { search($0) }
-    }
-
-    @objc private func domainPriorityChanged(_ sender: NSStepper) {
-        guard let key = sender.identifier?.rawValue else { return }
-        let domainKey = key.replacingOccurrences(of: "_pri", with: "")
-        YabomishPrefs.setDomainPriority(domainKey, sender.integerValue)
-        // Update label — check both groups
-        if let idx = WikiCorpus.generalDomainKeys.firstIndex(where: { $0.key == domainKey }),
-           let label = findLabel(tag: 2000 + idx) {
-            label.stringValue = "\(sender.integerValue)"
-        } else if let idx = WikiCorpus.proDomainKeys.firstIndex(where: { $0.key == domainKey }),
-                  let label = findLabel(tag: 2100 + idx) {
-            label.stringValue = "\(sender.integerValue)"
-        }
-    }
-
-    @objc private func domainApply() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            WikiCorpus.shared.reloadDomains()
-            DispatchQueue.main.async {
-                let a = NSAlert()
-                a.messageText = "領域詞庫已更新"
-                a.informativeText = "已載入 \(WikiCorpus.shared.domainBinCount) 個領域詞庫。"
-                a.runModal()
-            }
-        }
+    @objc private func domainCardApply() {
+        domainCollectionController?.applyChanges()
     }
 
     @objc private func activateToastChanged(_ sender: NSButton) {
@@ -508,41 +439,6 @@ final class PrefsWindow: NSPanel {
     }
 
     // MARK: - Layout helpers
-
-    private func buildDomainGrid(_ domains: [(key: String, file: String, label: String)], tagOffset: Int) -> NSView {
-        let cols = 3
-        let rows = (domains.count + cols - 1) / cols
-        var gridRows: [[NSView]] = []
-        for r in 0..<rows {
-            var cells: [NSView] = []
-            for c in 0..<cols {
-                let i = r * cols + c
-                if i < domains.count {
-                    let d = domains[i]
-                    let btn = NSButton(checkboxWithTitle: d.label, target: self, action: #selector(domainToggled(_:)))
-                    btn.identifier = NSUserInterfaceItemIdentifier(d.key)
-                    btn.state = YabomishPrefs.domainEnabled(d.key) ? .on : .off
-                    let pri = YabomishPrefs.domainPriority(d.key)
-                    let stepper = NSStepper(frame: .zero)
-                    stepper.minValue = -9; stepper.maxValue = 9; stepper.increment = 1
-                    stepper.integerValue = pri
-                    stepper.identifier = NSUserInterfaceItemIdentifier(d.key + "_pri")
-                    stepper.target = self; stepper.action = #selector(domainPriorityChanged(_:))
-                    stepper.toolTip = "優先級（小 = 優先）"
-                    let priLabel = NSTextField(labelWithString: "\(pri)")
-                    priLabel.tag = tagOffset + i
-                    priLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-                    cells.append(hStack(btn, priLabel, stepper))
-                } else {
-                    cells.append(NSView())
-                }
-            }
-            gridRows.append(cells)
-        }
-        let grid = NSGridView(views: gridRows)
-        grid.rowSpacing = 4; grid.columnSpacing = 12
-        return grid
-    }
 
     private func row(_ title: String, _ control: NSView) -> NSStackView {
         let label = NSTextField(labelWithString: title)

@@ -107,25 +107,25 @@ final class WikiCorpus {
 
     func reloadDomains() {
         domainBins.removeAll()
-        for (key, file, _) in Self.domainKeys {
-            guard YabomishPrefs.domainEnabled(key) else { continue }
-            // NER and phrases use different formats — load with their own loaders
+        nerData = nil; nerKeyCount = 0
+        phData = nil; phKeyCount = 0
+        // Use DomainOrderManager order (drag-reorder position = priority)
+        let orderedKeys = DomainOrderManager.shared.allOrderedKeys()
+        let keyToFile = Dictionary(uniqueKeysWithValues: Self.domainKeys.map { ($0.key, $0.file) })
+        for key in orderedKeys {
+            guard YabomishPrefs.domainEnabled(key),
+                  let file = keyToFile[key] else { continue }
             if key == "domain_ner" { loadNER(); continue }
             if key == "domain_phrases" { loadPhrases(); continue }
-            // All others are WBMM
             guard let p = resolvePath(name: file, ext: "bin"),
                   let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
                   d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
             let ki = Int(d.u32(8)), vi = Int(d.u32(12))
             guard ki <= d.count, vi <= d.count else { continue }
-            let pri = YabomishPrefs.domainPriority(key)
+            // priority = position in ordered list (no longer uses domainPriority pref)
             domainBins.append(DomainBin(data: d, keyCount: Int(d.u32(4)),
-                                        keyIndexOff: ki, valIndexOff: vi, priority: pri))
+                                        keyIndexOff: ki, valIndexOff: vi, priority: domainBins.count))
         }
-        domainBins.sort { $0.priority < $1.priority }
-        // Clear NER/phrases if disabled
-        if !YabomishPrefs.domainEnabled("domain_ner") { nerData = nil; nerKeyCount = 0 }
-        if !YabomishPrefs.domainEnabled("domain_phrases") { phData = nil; phKeyCount = 0 }
     }
 
     /// Query all enabled domain bins + NER/phrases, sorted by priority
