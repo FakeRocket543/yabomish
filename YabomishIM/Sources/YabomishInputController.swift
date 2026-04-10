@@ -1362,11 +1362,6 @@ class YabomishInputController: IMKInputController {
 
     override func menu() -> NSMenu! {
         let menu = NSMenu()
-        let label = YabomishPrefs.menuBarLabel == "yabo" ? "Yabo" : "Yabomish"
-        let titleItem = NSMenuItem(title: label, action: nil, keyEquivalent: "")
-        titleItem.isEnabled = false
-        menu.addItem(titleItem)
-        menu.addItem(NSMenuItem.separator())
         let prefsItem = NSMenuItem(title: "偏好設定⋯", action: #selector(openPrefs), keyEquivalent: "")
         prefsItem.target = self
         menu.addItem(prefsItem)

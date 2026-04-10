@@ -354,7 +354,16 @@ final class PrefsWindow: NSPanel {
     }
 
     @objc private func menuBarLabelChanged(_ sender: NSPopUpButton) {
-        YabomishPrefs.menuBarLabel = sender.indexOfSelectedItem == 0 ? "yabo" : "yabomish"
+        let label = sender.indexOfSelectedItem == 0 ? "yabo" : "yabomish"
+        YabomishPrefs.menuBarLabel = label
+        // Update Info.plist CFBundleName + CFBundleDisplayName
+        guard let plistPath = Bundle.main.bundlePath.appending("/Contents/Info.plist") as String?,
+              let dict = NSMutableDictionary(contentsOfFile: plistPath) else { return }
+        let displayName = label == "yabo" ? "Yabo" : "Yabomish"
+        dict["CFBundleName"] = displayName
+        dict["CFBundleDisplayName"] = displayName
+        dict.write(toFile: plistPath, atomically: true)
+        showReinstallAlert()
     }
 
     @objc private func importCINClicked() {
