@@ -90,12 +90,24 @@ final class FreqTracker {
         }
     }
 
+    /// Top N learned bigram suggestions for a given prev char
+    func topBigrams(prev: String, limit: Int = 3) -> [String] {
+        guard !prev.isEmpty else { return [] }
+        let counts = queryMap(stmtQueryBigram, prev)
+        guard !counts.isEmpty else { return [] }
+        return counts.sorted { $0.value > $1.value }.prefix(limit).map { $0.key }
+    }
+
     /// Reorder suggestion candidates by bigram frequency (learned from user selections)
+    /// Stable: only moves candidates with recorded bigram to front; rest keep original order.
     func bigramBoost(prev: String, candidates: [String]) -> [String] {
         guard !prev.isEmpty else { return candidates }
         let counts = queryMap(stmtQueryBigram, prev)
         guard !counts.isEmpty else { return candidates }
-        return candidates.sorted { (counts[$0] ?? 0) > (counts[$1] ?? 0) }
+        var boosted = candidates.filter { counts[$0] != nil }.sorted { (counts[$0] ?? 0) > (counts[$1] ?? 0) }
+        let rest = candidates.filter { counts[$0] == nil }
+        boosted.append(contentsOf: rest)
+        return boosted
     }
 
     // MARK: - Maintenance

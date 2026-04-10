@@ -1182,13 +1182,18 @@ class YabomishInputController: IMKInputController {
 
             // 第二層：詞級語料（三選一）
             let strategy = YabomishPrefs.suggestStrategy
-            let prefix = recentCommitted.count >= 2
-                ? String(recentCommitted.suffix(min(4, recentCommitted.count))) : ""
 
-            // 詞級語料
-            let pool2 = prefix.isEmpty ? [] : WikiCorpus.shared.suggestWordCorpus(prefix: prefix)
-                .map { s in s.hasPrefix(prefix) ? String(s.dropFirst(prefix.count)) : s }
-                .filter { !$0.isEmpty }
+            // 詞級語料（嘗試 4→3→2 字 prefix）
+            var pool2: [String] = []
+            if recentCommitted.count >= 2 {
+                for len in stride(from: min(4, recentCommitted.count), through: 2, by: -1) {
+                    let p = String(recentCommitted.suffix(len))
+                    pool2 = WikiCorpus.shared.suggestWordCorpus(prefix: p)
+                        .map { s in s.hasPrefix(p) ? String(s.dropFirst(p.count)) : s }
+                        .filter { !$0.isEmpty }
+                    if !pool2.isEmpty { break }
+                }
+            }
 
             // 詞庫（嘗試多個 prefix 長度，成語 key 通常 2 字）
             var pool3: [String] = []
@@ -1203,8 +1208,14 @@ class YabomishInputController: IMKInputController {
             }
 
             // 字級
+            // 字級：先查 FreqTracker 學習記錄，再 fallback 靜態語料
             var pool4: [String] = []
             if YabomishPrefs.charSuggest {
+                let prev1 = String(recentCommitted.suffix(1))
+                // FreqTracker learned bigrams first
+                let learned = Self.freqTracker.topBigrams(prev: prev1, limit: 3)
+                pool4 += learned
+                // Then static trigram/bigram
                 if recentCommitted.count >= 2 {
                     pool4 += ZhuyinLookup.shared.suggestNextTrigram(prev2: recentCommitted)
                 }
