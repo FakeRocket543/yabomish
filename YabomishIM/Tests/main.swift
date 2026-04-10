@@ -14,18 +14,6 @@ func checkEqual<T: Equatable>(_ a: T, _ b: T, _ msg: String = "", file: String =
     else { failed += 1; print("FAIL [\(file):\(line)] \(msg) — got \(a), expected \(b)") }
 }
 
-// === InputEngineDelegate protocol (copied for standalone compilation) ===
-protocol InputEngineDelegate: AnyObject {
-    func engineDidUpdateComposing(_ text: String)
-    func engineDidUpdateCandidates(_ candidates: [String])
-    func engineDidCommit(_ text: String)
-    func engineDidCommitPair(_ left: String, _ right: String)
-    func engineDidClearComposing()
-    func engineDidShowToast(_ text: String)
-    func engineDidDeleteBack()
-    func engineDidSuggest(_ suggestions: [String])
-}
-
 // === Tests ===
 
 func testHarness() {
@@ -85,12 +73,116 @@ func testMockDelegateMultipleCalls() {
     checkEqual(mock.candidateUpdates.last!.count, 1, "last candidate count")
 }
 
+// === Real InputEngine tests ===
+
+func testRealEngineInit() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    check(engine.composing.isEmpty, "composing starts empty")
+    check(engine.currentCandidates.isEmpty, "no candidates initially")
+    check(!engine.isEnglishMode, "starts in Chinese mode")
+    check(!engine.isZhuyinMode, "not in zhuyin mode")
+    check(!engine.isPinyinMode, "not in pinyin mode")
+}
+
+func testRealToggleEnglish() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    engine.toggleEnglishMode()
+    check(engine.isEnglishMode, "English after toggle")
+    checkEqual(mock.toasts.last ?? "", "A", "toast should be A")
+    engine.toggleEnglishMode()
+    check(!engine.isEnglishMode, "Chinese after second toggle")
+}
+
+func testRealComposing() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    engine.handleLetter("a")
+    check(!engine.composing.isEmpty, "composing after letter")
+    check(mock.composingUpdates.count > 0, "delegate notified")
+}
+
+func testRealBackspace() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    engine.handleLetter("a")
+    engine.handleLetter("b")
+    let len = engine.composing.count
+    engine.handleBackspace()
+    check(engine.composing.count < len, "backspace removes char")
+}
+
+func testRealEscape() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    engine.handleLetter("a")
+    engine.handleEscape()
+    check(engine.composing.isEmpty, "escape clears")
+    check(mock.clearCount > 0, "clear notified")
+}
+
+func testRealModeSwitch() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let label = engine.switchToMode("s")
+    check(!label.isEmpty, "mode switch returns label")
+    let label2 = engine.switchToMode("t")
+    check(!label2.isEmpty, "switch back returns label")
+}
+
+func testRealCommaCommand() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    engine.handleLetter(",")
+    engine.handleLetter(",")
+    check(engine.composing.hasPrefix(","), "comma command active")
+    engine.handleEscape()
+    check(engine.composing.isEmpty, "escape exits comma command")
+}
+
+func testRealEnterCommitsRaw() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    engine.handleLetter("a")
+    engine.handleLetter("b")
+    engine.handleEnter()
+    check(mock.commits.count > 0, "enter commits raw text")
+}
+
+func testRealZhuyinModeSwitch() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    engine.switchToMode("zh")
+    check(engine.isZhuyinMode, "should be in zhuyin mode")
+    engine.exitZhuyinMode()
+    check(!engine.isZhuyinMode, "should exit zhuyin mode")
+}
+
 // Run all tests
 print("Running YabomishIM tests...")
 testHarness()
 testMockDelegateRecords()
 testMockDelegateReset()
 testMockDelegateMultipleCalls()
+testRealEngineInit()
+testRealToggleEnglish()
+testRealComposing()
+testRealBackspace()
+testRealEscape()
+testRealModeSwitch()
+testRealCommaCommand()
+testRealEnterCommitsRaw()
+testRealZhuyinModeSwitch()
 
 print("\n\(passed) passed, \(failed) failed")
 exit(failed > 0 ? 1 : 0)

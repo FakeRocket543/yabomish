@@ -2,10 +2,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Standalone test compilation — no app source dependencies.
-# InputEngine has deep Cocoa transitive deps (YabomishPrefs, DomainOrderManager, etc.)
-# so we test the delegate protocol + mock in isolation for now.
-TEST_SOURCES=$(find Tests -name '*.swift')
+# UI-only files to exclude
+EXCLUDE="PrefsWindow|CandidatePanel|DomainCardView|DomainCollectionController|ModeToast|AppDelegate|DataDownloader|YabomishInputController|PhraseLookup|DebugLog"
+
+SOURCES=$(find Sources Sources/Shared -maxdepth 1 -name '*.swift' | grep -Ev "$EXCLUDE" | sort -u)
+TEST_SOURCES=$(find Tests -name '*.swift' | sort)
 
 echo "Compiling test runner..."
 swiftc \
@@ -13,8 +14,12 @@ swiftc \
     -target arm64-apple-macos14.0 \
     -sdk "$(xcrun --show-sdk-path)" \
     -framework Foundation \
+    -framework AppKit \
+    -framework Cocoa \
+    -lsqlite3 \
+    -O \
     -o /tmp/yabomish_tests \
-    $TEST_SOURCES 2>&1
+    $SOURCES $TEST_SOURCES 2>&1
 
 echo "Running tests..."
 /tmp/yabomish_tests
