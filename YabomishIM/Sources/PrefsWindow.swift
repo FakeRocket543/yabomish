@@ -5,7 +5,7 @@ final class PrefsWindow: NSPanel {
     private var domainCollectionController: DomainCollectionController?
 
     private init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 420, height: 720),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 560, height: 780),
                    styleMask: [.titled, .closable],
                    backing: .buffered, defer: true)
         self.title = "Yabomish 偏好設定"
@@ -209,7 +209,6 @@ final class PrefsWindow: NSPanel {
         stack.addArrangedSubview(domainHint)
 
         let domainCtrl = DomainCollectionController()
-        domainCtrl.view.heightAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
         stack.addArrangedSubview(domainCtrl.view)
 
         let applyBtn = NSButton(title: "套用", target: nil, action: nil)

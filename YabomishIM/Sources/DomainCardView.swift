@@ -2,24 +2,19 @@ import Cocoa
 
 // MARK: - DomainOrderManager
 
-/// Manages domain ordering and enabled state. Persists to UserDefaults.
-/// Order is stored as an array of domain keys; position = priority.
 final class DomainOrderManager {
     static let shared = DomainOrderManager()
     private let defaults = UserDefaults.standard
     private let orderKey = "domainOrder"
 
-    /// Returns ordered domain keys for a group. Position = priority (index 0 = highest).
     func orderedKeys(for group: [(key: String, file: String, label: String)]) -> [String] {
         let saved = defaults.stringArray(forKey: orderKey) ?? []
         let groupKeys = group.map { $0.key }
-        // Preserve saved order for keys in this group, append any new keys at end
         var ordered = saved.filter { groupKeys.contains($0) }
         for k in groupKeys where !ordered.contains(k) { ordered.append(k) }
         return ordered
     }
 
-    /// Returns all domain keys in saved order (across all groups).
     func allOrderedKeys() -> [String] {
         let saved = defaults.stringArray(forKey: orderKey) ?? []
         let allKeys = WikiCorpus.domainKeys.map { $0.key }
@@ -28,109 +23,218 @@ final class DomainOrderManager {
         return ordered
     }
 
-    /// Save the full ordered key list.
-    func saveOrder(_ keys: [String]) {
-        defaults.set(keys, forKey: orderKey)
-    }
-
+    func saveOrder(_ keys: [String]) { defaults.set(keys, forKey: orderKey) }
     func isEnabled(_ key: String) -> Bool { YabomishPrefs.domainEnabled(key) }
     func setEnabled(_ key: String, _ val: Bool) { YabomishPrefs.setDomainEnabled(key, val) }
 }
 
-// MARK: - DomainCardItem (NSCollectionViewItem)
+// MARK: - DomainCard (single draggable card view)
 
-final class DomainCardItem: NSCollectionViewItem {
-    static let identifier = NSUserInterfaceItemIdentifier("DomainCardItem")
+private final class DomainCard: NSView {
+    let key: String
     private let cardBox = NSBox()
-    private let colorBar = NSView()
     private let checkbox = NSButton()
-    private let label = NSTextField()
-    private var domainKey = ""
+    private let nameLabel = NSTextField()
+    private let colorBar = NSView()
+    var onToggle: ((String, Bool) -> Void)?
 
-    override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 130, height: 44))
+    init(key: String, label: String, color: NSColor, enabled: Bool) {
+        self.key = key
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
 
-        cardBox.boxType = .custom
-        cardBox.cornerRadius = 8
-        cardBox.borderWidth = 1
-        cardBox.borderColor = .separatorColor
-        cardBox.fillColor = .controlBackgroundColor
+        cardBox.boxType = .custom; cardBox.cornerRadius = 8
+        cardBox.borderWidth = 1; cardBox.borderColor = .separatorColor
         cardBox.contentViewMargins = .zero
         cardBox.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(cardBox)
+        addSubview(cardBox)
 
         colorBar.wantsLayer = true
+        colorBar.layer?.backgroundColor = color.cgColor
         colorBar.translatesAutoresizingMaskIntoConstraints = false
         cardBox.addSubview(colorBar)
 
-        checkbox.setButtonType(.switch)
-        checkbox.title = ""
-        checkbox.target = self
-        checkbox.action = #selector(toggled)
+        checkbox.setButtonType(.switch); checkbox.title = ""
+        checkbox.state = enabled ? .on : .off
+        checkbox.target = self; checkbox.action = #selector(toggled)
         checkbox.translatesAutoresizingMaskIntoConstraints = false
         cardBox.addSubview(checkbox)
 
-        label.isEditable = false
-        label.isBordered = false
-        label.drawsBackground = false
-        label.font = .systemFont(ofSize: 12)
-        label.lineBreakMode = .byTruncatingTail
-        label.translatesAutoresizingMaskIntoConstraints = false
-        cardBox.addSubview(label)
+        nameLabel.stringValue = label
+        nameLabel.isEditable = false; nameLabel.isBordered = false; nameLabel.drawsBackground = false
+        nameLabel.font = .systemFont(ofSize: 12); nameLabel.lineBreakMode = .byTruncatingTail
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+        cardBox.addSubview(nameLabel)
 
         NSLayoutConstraint.activate([
-            cardBox.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            cardBox.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            cardBox.topAnchor.constraint(equalTo: view.topAnchor),
-            cardBox.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            cardBox.leadingAnchor.constraint(equalTo: leadingAnchor),
+            cardBox.trailingAnchor.constraint(equalTo: trailingAnchor),
+            cardBox.topAnchor.constraint(equalTo: topAnchor),
+            cardBox.bottomAnchor.constraint(equalTo: bottomAnchor),
+            widthAnchor.constraint(equalToConstant: 140),
+            heightAnchor.constraint(equalToConstant: 40),
             colorBar.leadingAnchor.constraint(equalTo: cardBox.leadingAnchor),
             colorBar.topAnchor.constraint(equalTo: cardBox.topAnchor, constant: 1),
             colorBar.bottomAnchor.constraint(equalTo: cardBox.bottomAnchor, constant: -1),
             colorBar.widthAnchor.constraint(equalToConstant: 4),
             checkbox.leadingAnchor.constraint(equalTo: colorBar.trailingAnchor, constant: 6),
             checkbox.centerYAnchor.constraint(equalTo: cardBox.centerYAnchor),
-            label.leadingAnchor.constraint(equalTo: checkbox.trailingAnchor, constant: 2),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: cardBox.trailingAnchor, constant: -6),
-            label.centerYAnchor.constraint(equalTo: cardBox.centerYAnchor),
+            nameLabel.leadingAnchor.constraint(equalTo: checkbox.trailingAnchor, constant: 2),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: cardBox.trailingAnchor, constant: -6),
+            nameLabel.centerYAnchor.constraint(equalTo: cardBox.centerYAnchor),
         ])
-    }
-
-    func configure(key: String, labelText: String, color: NSColor, enabled: Bool) {
-        domainKey = key
-        label.stringValue = labelText
-        checkbox.state = enabled ? .on : .off
-        colorBar.layer?.backgroundColor = color.cgColor
         updateVisual(enabled)
+        registerForDraggedTypes([.string])
     }
+    required init?(coder: NSCoder) { fatalError() }
 
-    private func updateVisual(_ enabled: Bool) {
-        cardBox.fillColor = enabled ? .controlBackgroundColor : .windowBackgroundColor
-        cardBox.alphaValue = enabled ? 1.0 : 0.5
+    private func updateVisual(_ on: Bool) {
+        cardBox.fillColor = on ? .controlBackgroundColor : .windowBackgroundColor
+        cardBox.alphaValue = on ? 1.0 : 0.5
     }
 
     @objc private func toggled() {
         let on = checkbox.state == .on
-        DomainOrderManager.shared.setEnabled(domainKey, on)
+        DomainOrderManager.shared.setEnabled(key, on)
         updateVisual(on)
+        onToggle?(key, on)
+    }
+
+    // Drag source
+    override func mouseDown(with event: NSEvent) {
+        let loc = convert(event.locationInWindow, from: nil)
+        // If click is on checkbox area, let it handle
+        if checkbox.frame.contains(loc) { super.mouseDown(with: event); return }
+        // Start drag
+        let item = NSDraggingItem(pasteboardWriter: NSString(string: key))
+        item.setDraggingFrame(bounds, contents: snapshot())
+        beginDraggingSession(with: [item], event: event, source: self)
+    }
+
+    private func snapshot() -> NSImage {
+        let img = NSImage(size: bounds.size)
+        img.lockFocus()
+        cardBox.alphaValue = 0.7
+        displayIgnoringOpacity(bounds, in: NSGraphicsContext.current!)
+        cardBox.alphaValue = checkbox.state == .on ? 1.0 : 0.5
+        img.unlockFocus()
+        return img
     }
 }
 
-// MARK: - DomainCardSection
+extension DomainCard: NSDraggingSource {
+    func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
+        context == .withinApplication ? .move : []
+    }
+}
 
-/// A section view (header) for NSCollectionView.
-final class DomainSectionHeader: NSView, NSCollectionViewSectionHeaderView {
-    static let identifier = NSUserInterfaceItemIdentifier("DomainSectionHeader")
-    let titleLabel = NSTextField(labelWithString: "")
+// MARK: - DomainCardRow (a row of cards that supports drag reorder)
 
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        titleLabel.font = .boldSystemFont(ofSize: 13)
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(titleLabel)
+final class DomainCardRow: NSView {
+    private var cards: [DomainCard] = []
+    private let stackView = NSStackView()
+    private let sectionColor: NSColor
+    private var orderedKeys: [String]
+    private let groupKeys: [(key: String, file: String, label: String)]
+
+    init(title: String, group: [(key: String, file: String, label: String)], color: NSColor) {
+        self.groupKeys = group
+        self.sectionColor = color
+        self.orderedKeys = DomainOrderManager.shared.orderedKeys(for: group)
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+
+        let header = NSTextField(labelWithString: title)
+        header.font = .boldSystemFont(ofSize: 13)
+        header.translatesAutoresizingMaskIntoConstraints = false
+
+        stackView.orientation = .horizontal
+        stackView.spacing = 8
+        stackView.alignment = .centerY
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+
+        let wrapper = NSStackView(views: [header, stackView])
+        wrapper.orientation = .vertical
+        wrapper.alignment = .leading
+        wrapper.spacing = 6
+        wrapper.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(wrapper)
         NSLayoutConstraint.activate([
-            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
-            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            wrapper.leadingAnchor.constraint(equalTo: leadingAnchor),
+            wrapper.trailingAnchor.constraint(equalTo: trailingAnchor),
+            wrapper.topAnchor.constraint(equalTo: topAnchor),
+            wrapper.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
+
+        rebuildCards()
+        registerForDraggedTypes([.string])
     }
     required init?(coder: NSCoder) { fatalError() }
+
+    private func rebuildCards() {
+        cards.forEach { $0.removeFromSuperview() }
+        cards.removeAll()
+        let labelMap = Dictionary(uniqueKeysWithValues: groupKeys.map { ($0.key, $0.label) })
+        for key in orderedKeys {
+            let card = DomainCard(key: key, label: labelMap[key] ?? key,
+                                  color: sectionColor,
+                                  enabled: DomainOrderManager.shared.isEnabled(key))
+            cards.append(card)
+            stackView.addArrangedSubview(card)
+        }
+    }
+
+    // Drop target
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard let key = sender.draggingPasteboard.string(forType: .string),
+              orderedKeys.contains(key) else { return [] }
+        return .move
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard let key = sender.draggingPasteboard.string(forType: .string),
+              orderedKeys.contains(key) else { return [] }
+        return .move
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard let draggedKey = sender.draggingPasteboard.string(forType: .string),
+              let srcIdx = orderedKeys.firstIndex(of: draggedKey) else { return false }
+
+        let loc = convert(sender.draggingLocation, from: nil)
+        // Find insertion index based on x position
+        var dstIdx = cards.count
+        for (i, card) in cards.enumerated() {
+            let mid = card.frame.midX
+            if loc.x < mid { dstIdx = i; break }
+        }
+        if dstIdx == srcIdx || dstIdx == srcIdx + 1 { return false }
+
+        orderedKeys.remove(at: srcIdx)
+        let insertAt = dstIdx > srcIdx ? dstIdx - 1 : dstIdx
+        orderedKeys.insert(draggedKey, at: insertAt)
+
+        // Persist
+        let allOrdered = DomainOrderManager.shared.allOrderedKeys()
+        let otherKeys = allOrdered.filter { !groupKeys.map({ $0.key }).contains($0) }
+        // Rebuild full order: keep other group keys in place, replace this group's keys
+        var newOrder: [String] = []
+        var groupInserted = false
+        for k in allOrdered {
+            if groupKeys.contains(where: { $0.key == k }) {
+                if !groupInserted { newOrder.append(contentsOf: orderedKeys); groupInserted = true }
+            } else {
+                newOrder.append(k)
+            }
+        }
+        if !groupInserted { newOrder.append(contentsOf: orderedKeys) }
+        DomainOrderManager.shared.saveOrder(newOrder)
+
+        // Animate
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.25
+            rebuildCards()
+        }
+        return true
+    }
 }
