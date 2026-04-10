@@ -154,9 +154,18 @@ final class CandidatePanel: NSPanel {
     // MARK: - Accessibility
 
     private func setupAccessibility() {
-        setAccessibilityLabel("選字窗")
-        setAccessibilityRole(.window)
-        setAccessibilityHelp("使用數字鍵 1-9 選擇候選字，空白鍵送出")
+        // 視窗層級
+        self.setAccessibilityLabel("選字窗")
+        self.setAccessibilityRole(.window)
+        self.setAccessibilityHelp("使用數字鍵 1-9 選擇候選字，空白鍵送出目前字詞")
+
+        // 堆疊視圖（游標模式）
+        stackView.setAccessibilityLabel("候選字列表")
+        stackView.setAccessibilityRole(.list)
+
+        // 固定模式標籤
+        fixedLabel.setAccessibilityLabel("候選字列")
+        fixedLabel.setAccessibilityRole(.staticText)
     }
 
     private func throttledA11yNotify() {
@@ -329,6 +338,11 @@ final class CandidatePanel: NSPanel {
         let maxW: CGFloat = 360
         setContentSize(NSSize(width: min(max(size.width + 12, 80), maxW), height: size.height))
         throttledA11yNotify()
+
+        // 新增：通知 VoiceOver 狀態變更
+        if let elem = contentView as? NSVisualEffectView {
+            NSAccessibility.post(element: elem, notification: .valueChanged)
+        }
     }
 
     private func positionWindow(at origin: NSPoint) {
