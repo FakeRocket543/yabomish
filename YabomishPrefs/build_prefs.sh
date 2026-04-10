@@ -4,9 +4,10 @@ cd "$(dirname "$0")"
 
 APP="YabomishPrefs.app"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp Resources/Info.plist "$APP/Contents/"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 
 swiftc \
     -module-name YabomishPrefs \
