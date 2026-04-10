@@ -215,13 +215,12 @@ final class DomainCardRow: NSView {
         orderedKeys.insert(draggedKey, at: insertAt)
 
         // Persist
+        let groupKeySet = Set(groupKeys.map { $0.key })
         let allOrdered = DomainOrderManager.shared.allOrderedKeys()
-        let otherKeys = allOrdered.filter { !groupKeys.map({ $0.key }).contains($0) }
-        // Rebuild full order: keep other group keys in place, replace this group's keys
         var newOrder: [String] = []
         var groupInserted = false
         for k in allOrdered {
-            if groupKeys.contains(where: { $0.key == k }) {
+            if groupKeySet.contains(k) {
                 if !groupInserted { newOrder.append(contentsOf: orderedKeys); groupInserted = true }
             } else {
                 newOrder.append(k)
