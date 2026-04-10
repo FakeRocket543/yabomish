@@ -1204,7 +1204,8 @@ class YabomishInputController: IMKInputController {
                 pool4 += ZhuyinLookup.shared.suggestNext(after: text)
             }
 
-            // 策略決定順序
+            // 策略決定順序，學習加權只在同層內重排
+            let prev = String(recentCommitted.suffix(1))
             let ordered: [[String]]
             switch strategy {
             case "domain": ordered = [pool3, pool2, pool4]
@@ -1212,14 +1213,8 @@ class YabomishInputController: IMKInputController {
             default:       ordered = [pool2, pool3, pool4]
             }
             for pool in ordered {
-                for s in pool where seen.insert(s).inserted { suggestions.append(s) }
-            }
-
-            // 學習加權：用 FreqTracker bigram 記錄重排
-            if suggestions.count > 1 {
-                let prev = String(recentCommitted.suffix(1))
-                let boosted = Self.freqTracker.bigramBoost(prev: prev, candidates: suggestions)
-                if boosted != suggestions { suggestions = boosted }
+                let boosted = pool.isEmpty ? pool : Self.freqTracker.bigramBoost(prev: prev, candidates: pool)
+                for s in boosted where seen.insert(s).inserted { suggestions.append(s) }
             }
 
             // Emoji
