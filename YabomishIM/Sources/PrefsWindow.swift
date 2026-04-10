@@ -201,14 +201,6 @@ final class PrefsWindow: NSPanel {
         iconPopup.setAccessibilityLabel("蝦頭方向")
         stack.addArrangedSubview(row("蝦頭方向", iconPopup))
 
-        let labelPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        labelPopup.addItems(withTitles: ["Yabo", "Yabomish"])
-        let labelIdx = ["yabo": 0, "yabomish": 1][YabomishPrefs.menuBarLabel] ?? 1
-        labelPopup.selectItem(at: labelIdx)
-        labelPopup.target = self; labelPopup.action = #selector(menuBarLabelChanged(_:))
-        labelPopup.setAccessibilityLabel("狀態列名稱")
-        stack.addArrangedSubview(row("狀態列名稱", labelPopup))
-
         // ━━━ 詞庫 ━━━
         stack.addArrangedSubview(sectionHeader("詞庫"))
 
@@ -218,6 +210,10 @@ final class PrefsWindow: NSPanel {
         priHint.textColor = .secondaryLabelColor
         stack.addArrangedSubview(priHint)
         stack.addArrangedSubview(buildDomainGrid(generalDomains, tagOffset: 2000))
+
+        let applyGenBtn = NSButton(title: "套用", target: self, action: #selector(domainApply))
+        applyGenBtn.bezelStyle = .rounded
+        stack.addArrangedSubview(hStack(applyGenBtn))
 
         // ━━━ 專業詞典 ━━━
         stack.addArrangedSubview(sectionHeader("專業詞典"))
@@ -229,7 +225,6 @@ final class PrefsWindow: NSPanel {
         let deselectAllBtn = NSButton(title: "全取消", target: self, action: #selector(domainDeselectAll))
         let applyBtn = NSButton(title: "套用", target: self, action: #selector(domainApply))
         applyBtn.bezelStyle = .rounded
-        applyBtn.keyEquivalent = "\r"
         stack.addArrangedSubview(hStack(selectAllBtn, deselectAllBtn, applyBtn))
 
         // ━━━ 除錯 ━━━
@@ -263,8 +258,7 @@ final class PrefsWindow: NSPanel {
         charSuggestBtn.nextKeyView = toastStepper
         toastStepper.nextKeyView = activateBtn
         activateBtn.nextKeyView = iconPopup
-        iconPopup.nextKeyView = labelPopup
-        labelPopup.nextKeyView = debugBtn
+        iconPopup.nextKeyView = debugBtn
         debugBtn.nextKeyView = openLogBtn
         openLogBtn.nextKeyView = importBtn
     }
@@ -419,12 +413,6 @@ final class PrefsWindow: NSPanel {
         guard FileManager.default.fileExists(atPath: src) else { return }
         try? FileManager.default.removeItem(atPath: dst)
         try? FileManager.default.copyItem(atPath: src, toPath: dst)
-        showReinstallAlert()
-    }
-
-    @objc private func menuBarLabelChanged(_ sender: NSPopUpButton) {
-        let keys = ["yabo", "yabomish"]
-        YabomishPrefs.menuBarLabel = keys[sender.indexOfSelectedItem]
         showReinstallAlert()
     }
 
