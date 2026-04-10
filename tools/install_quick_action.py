@@ -39,6 +39,18 @@ else:
     os.system(f'osascript -e \\'display notification "已加入: {{text}}" with title "自訂字庫"\\'')
 """
 
+INFO_PLIST = {
+    "CFBundleDevelopmentRegion": "zh_TW",
+    "CFBundleIdentifier": "com.yabomishim.service.addphrase",
+    "CFBundleName": WORKFLOW_NAME,
+    "CFBundleShortVersionString": "1.0",
+    "NSServices": [{
+        "NSMenuItem": {"default": WORKFLOW_NAME},
+        "NSMessage": "runWorkflowAsService",
+        "NSSendTypes": ["public.utf8-plain-text"],
+    }],
+}
+
 DOCUMENT_PLIST = {
     "AMApplicationBuild": "523",
     "AMApplicationVersion": "2.10",
@@ -87,23 +99,19 @@ DOCUMENT_PLIST = {
     },
 }
 
-INFO_PLIST = {
-    "NSServices": [{
-        "NSMenuItem": {"default": WORKFLOW_NAME},
-        "NSMessage": "runWorkflowAsService",
-        "NSSendTypes": ["NSStringPboardType"],
-    }],
-}
-
 
 def install():
     if WORKFLOW_PATH.exists():
         shutil.rmtree(WORKFLOW_PATH)
     contents = WORKFLOW_PATH / "Contents"
-    contents.mkdir(parents=True)
+    resources = contents / "Resources"
+    resources.mkdir(parents=True)
     with open(contents / "Info.plist", "wb") as f:
         plistlib.dump(INFO_PLIST, f)
-    with open(contents / "document.wflow", "wb") as f:
+    with open(contents / "version.plist", "wb") as f:
+        plistlib.dump({"BuildVersion": "1", "CFBundleVersion": "1",
+                        "ProjectName": "Automator", "SourceVersion": "523"}, f)
+    with open(resources / "document.wflow", "wb") as f:
         plistlib.dump(DOCUMENT_PLIST, f)
     print(f"✅ 已安裝: {WORKFLOW_PATH}")
     print(f"   字庫: {PHRASES_PATH}")
