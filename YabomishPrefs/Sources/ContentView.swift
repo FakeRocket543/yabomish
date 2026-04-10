@@ -5,9 +5,10 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            SuggestionTab(store: store).tabItem { Text("聯想設定") }
-            DomainTab(store: store).tabItem { Text("詞庫") }
-            AppearanceTab(store: store).tabItem { Text("外觀") }
+            InputTab(store: store).tabItem { Label("輸入 / 選字窗", systemImage: "keyboard") }
+            SuggestionTab(store: store).tabItem { Label("聯想設定", systemImage: "text.magnifyingglass") }
+            DomainTab(store: store).tabItem { Label("詞庫", systemImage: "books.vertical") }
+            AppearanceTab(store: store).tabItem { Label("外觀", systemImage: "paintbrush") }
         }
         .frame(minWidth: 480, minHeight: 320)
     }

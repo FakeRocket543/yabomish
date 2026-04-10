@@ -17,3 +17,4 @@ YabomishIM/Resources/yabomish_ime.db
 __pycache__/
 .serena/
 install_quick_action.sh
+build_old/
