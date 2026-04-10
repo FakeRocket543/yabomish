@@ -9,25 +9,27 @@ struct DomainTab: View {
     private let columns = [GridItem(.adaptive(minimum: 145))]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("拖拉卡片調整順序，越靠左越優先。勾選啟用。")
                 .font(.callout).foregroundStyle(.secondary)
+                .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 8)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 20) {
                     section("詞庫", entries: $generalOrder, color: .blue)
                     section("專業詞典", entries: $proOrder, color: .orange)
                 }
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 20).padding(.bottom, 16)
             }
 
+            Divider()
             HStack {
                 Spacer()
                 if saved { Text("已套用 ✓").foregroundStyle(.green).transition(.opacity) }
-                Button("套用") { apply() }
+                Button("套用") { apply() }.controlSize(.large)
             }
+            .padding(.horizontal, 20).padding(.vertical, 10)
         }
-        .padding()
         .onAppear { loadOrder() }
     }
 
@@ -51,7 +53,6 @@ struct DomainTab: View {
             var arr = entries.wrappedValue
             guard let srcIdx = arr.firstIndex(where: { $0.id == draggedID }) else { return false }
             let item = arr.remove(at: srcIdx)
-            // Estimate destination index from drop x position
             let colWidth: CGFloat = 150
             let cols = max(1, Int(location.x / colWidth))
             let row = max(0, Int(location.y / 52))
@@ -78,7 +79,6 @@ struct DomainTab: View {
                 case .professional: pro.append(e)
                 }
             }
-            // Append any missing entries
             for e in DomainData.generalDomains where !gen.contains(where: { $0.id == e.id }) { gen.append(e) }
             for e in DomainData.proDomains where !pro.contains(where: { $0.id == e.id }) { pro.append(e) }
             generalOrder = gen
