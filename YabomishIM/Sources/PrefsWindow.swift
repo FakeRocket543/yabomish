@@ -202,6 +202,13 @@ final class PrefsWindow: NSPanel {
         iconPopup.setAccessibilityLabel("蝦頭方向")
         stack.addArrangedSubview(row("蝦頭方向", iconPopup))
 
+        let labelPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        labelPopup.addItems(withTitles: ["Yabo", "Yabomish"])
+        labelPopup.selectItem(at: YabomishPrefs.menuBarLabel == "yabo" ? 0 : 1)
+        labelPopup.target = self; labelPopup.action = #selector(menuBarLabelChanged(_:))
+        labelPopup.setAccessibilityLabel("狀態列顯示")
+        stack.addArrangedSubview(row("狀態列顯示", labelPopup))
+
         // ━━━ 詞庫（拖拉排序卡片）━━━
         let domainHint = NSTextField(labelWithString: "拖拉卡片調整順序，越靠左越優先。勾選啟用。")
         domainHint.font = .systemFont(ofSize: 11)
@@ -344,6 +351,10 @@ final class PrefsWindow: NSPanel {
         try? FileManager.default.removeItem(atPath: dst)
         try? FileManager.default.copyItem(atPath: src, toPath: dst)
         showReinstallAlert()
+    }
+
+    @objc private func menuBarLabelChanged(_ sender: NSPopUpButton) {
+        YabomishPrefs.menuBarLabel = sender.indexOfSelectedItem == 0 ? "yabo" : "yabomish"
     }
 
     @objc private func importCINClicked() {

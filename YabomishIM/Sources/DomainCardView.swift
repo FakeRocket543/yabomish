@@ -36,10 +36,12 @@ private final class DomainCard: NSView {
     private let checkbox = NSButton()
     private let nameLabel = NSTextField()
     private let colorBar = NSView()
+    private let barColor: NSColor
     var onToggle: ((String, Bool) -> Void)?
 
     init(key: String, label: String, color: NSColor, enabled: Bool) {
         self.key = key
+        self.barColor = color
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
 
@@ -50,7 +52,6 @@ private final class DomainCard: NSView {
         addSubview(cardBox)
 
         colorBar.wantsLayer = true
-        colorBar.layer?.backgroundColor = color.cgColor
         colorBar.translatesAutoresizingMaskIntoConstraints = false
         cardBox.addSubview(colorBar)
 
@@ -58,6 +59,7 @@ private final class DomainCard: NSView {
         checkbox.state = enabled ? .on : .off
         checkbox.target = self; checkbox.action = #selector(toggled)
         checkbox.translatesAutoresizingMaskIntoConstraints = false
+        checkbox.setAccessibilityLabel(label)
         cardBox.addSubview(checkbox)
 
         nameLabel.stringValue = label
@@ -87,6 +89,11 @@ private final class DomainCard: NSView {
         registerForDraggedTypes([.string])
     }
     required init?(coder: NSCoder) { fatalError() }
+
+    override func layout() {
+        super.layout()
+        colorBar.layer?.backgroundColor = barColor.cgColor
+    }
 
     private func updateVisual(_ on: Bool) {
         cardBox.fillColor = on ? .controlBackgroundColor : .windowBackgroundColor
