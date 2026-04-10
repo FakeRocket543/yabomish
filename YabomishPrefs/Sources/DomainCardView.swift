@@ -8,7 +8,14 @@ struct DomainCardView: View {
     var body: some View {
         HStack(spacing: 6) {
             Rectangle().fill(color).frame(width: 4)
-            Toggle(entry.label, isOn: $isEnabled).toggleStyle(.checkbox).lineLimit(1)
+            Toggle(isOn: $isEnabled) {
+                let count = DomainData.binEntryCount(file: entry.file)
+                if count > 0 {
+                    Text("\(entry.label) (\(count))").lineLimit(1)
+                } else {
+                    Text(entry.label).lineLimit(1)
+                }
+            }.toggleStyle(.checkbox)
         }
         .padding(.trailing, 8)
         .frame(width: 140, height: 44)

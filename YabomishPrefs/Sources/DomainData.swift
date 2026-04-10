@@ -44,4 +44,18 @@ enum DomainData {
     ]
 
     static let allDomains: [DomainEntry] = generalDomains + proDomains
+
+    static func binEntryCount(file: String) -> Int {
+        let paths = [
+            NSHomeDirectory() + "/Library/Application Support/YabomishIM/\(file).bin",
+            Bundle.main.path(forResource: file, ofType: "bin")
+        ].compactMap { $0 }
+        guard let path = paths.first(where: { FileManager.default.fileExists(atPath: $0) }),
+              let fh = FileHandle(forReadingAtPath: path) else { return 0 }
+        defer { try? fh.close() }
+        let header = fh.readData(ofLength: 8)
+        guard header.count >= 8,
+              header[0] == 0x57, header[1] == 0x42, header[2] == 0x4D, header[3] == 0x4D else { return 0 }
+        return Int(header[4]) | Int(header[5]) << 8 | Int(header[6]) << 16 | Int(header[7]) << 24
+    }
 }
