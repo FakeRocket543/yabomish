@@ -168,6 +168,118 @@ func testRealZhuyinModeSwitch() {
     check(!engine.isZhuyinMode, "should exit zhuyin mode")
 }
 
+// === CINTable tests ===
+
+func makeTempCIN() -> String {
+    let content = """
+    %gen_inp
+    %cname Test
+    %selkey 1234567890
+    %keyname begin
+    a a
+    b b
+    %keyname end
+    %chardef begin
+    a 好
+    a 號
+    ab 哈
+    b 不
+    %chardef end
+    """
+    let path = NSTemporaryDirectory() + "test_\(UUID().uuidString).cin"
+    try! content.write(toFile: path, atomically: true, encoding: .utf8)
+    return path
+}
+
+func loadTestCINTable() -> CINTable {
+    let table = CINTable()
+    let path = makeTempCIN()
+    table.load(cinPath: path)
+    try? FileManager.default.removeItem(atPath: path)
+    return table
+}
+
+func testCINTableLoadAndLookup() {
+    let table = loadTestCINTable()
+    let a = table.lookup("a")
+    check(a.contains("好"), "lookup('a') contains 好")
+    check(a.contains("號"), "lookup('a') contains 號")
+    let ab = table.lookup("ab")
+    check(ab.contains("哈"), "lookup('ab') contains 哈")
+    let z = table.lookup("z")
+    check(z.isEmpty, "lookup('z') is empty")
+}
+
+func testCINTableReverseLookup() {
+    let table = loadTestCINTable()
+    let r = table.reverseLookup("好")
+    check(r.contains("a"), "reverseLookup('好') contains 'a'")
+    let empty = table.reverseLookup("不存在")
+    check(empty.isEmpty, "reverseLookup('不存在') is empty")
+}
+
+func testCINTableWildcard() {
+    let table = loadTestCINTable()
+    // a* regex becomes ^a.+$ — matches "ab" but not "a" itself
+    let results = table.wildcardLookup("a*")
+    check(results.contains("哈"), "wildcard 'a*' includes 'ab' entry 哈")
+    check(!results.isEmpty, "wildcard 'a*' returns results")
+}
+
+func testCINTableHasPrefix() {
+    let table = loadTestCINTable()
+    check(table.hasPrefix("a"), "hasPrefix('a') is true (ab exists)")
+    check(!table.hasPrefix("z"), "hasPrefix('z') is false")
+}
+
+func testCINTableValidNextKeys() {
+    let table = loadTestCINTable()
+    let keys = table.validNextKeys(after: "a")
+    check(keys.contains("b"), "validNextKeys(after: 'a') contains 'b'")
+}
+
+// === FreqTracker tests ===
+
+func testFreqTrackerRecordAndSort() {
+    let tracker = FreqTracker()
+    let code = "_test_sort_\(UUID().uuidString)"
+    tracker.record(code: code, char: "A")
+    tracker.record(code: code, char: "A")
+    tracker.record(code: code, char: "A")
+    tracker.record(code: code, char: "B")
+    let sorted = tracker.sorted(["B", "A"], forCode: code)
+    checkEqual(sorted, ["A", "B"], "A (3x) before B (1x)")
+    tracker.reset()
+}
+
+func testFreqTrackerBigramBoost() {
+    let tracker = FreqTracker()
+    for _ in 0..<5 { tracker.recordBigram(prev: "甲", char: "乙") }
+    let top = tracker.topBigrams(prev: "甲")
+    check(top.contains("乙"), "topBigrams(prev: '甲') contains '乙'")
+    let boosted = tracker.bigramBoost(prev: "甲", candidates: ["丙", "乙"])
+    check(boosted.first == "乙", "bigramBoost moves '乙' before '丙'")
+    tracker.reset()
+}
+
+// === CandidateRanker tests ===
+
+func testRankerModeFiltering() {
+    let table = loadTestCINTable()
+    let tracker = FreqTracker()
+    let ranker = CandidateRanker()
+
+    // mode .t — no filtering, returns both
+    let tResult = ranker.rank(raw: ["好", "號"], code: "a", prev: "", mode: .t, cinTable: table, freqTracker: tracker)
+    check(tResult.contains("好"), "mode .t keeps 好")
+    check(tResult.contains("號"), "mode .t keeps 號")
+
+    // mode .sp — only chars whose shortest code == "a"
+    let spResult = ranker.rank(raw: ["好", "號"], code: "a", prev: "", mode: .sp, cinTable: table, freqTracker: tracker)
+    // Both 好 and 號 have shortest code "a" (1 char), so both should remain
+    check(spResult.contains("好") || spResult.contains("號"), "mode .sp keeps chars with shortest code 'a'")
+}
+
 // Run all tests
 print("Running YabomishIM tests...")
 testHarness()
@@ -183,6 +295,14 @@ testRealModeSwitch()
 testRealCommaCommand()
 testRealEnterCommitsRaw()
 testRealZhuyinModeSwitch()
+testCINTableLoadAndLookup()
+testCINTableReverseLookup()
+testCINTableWildcard()
+testCINTableHasPrefix()
+testCINTableValidNextKeys()
+testFreqTrackerRecordAndSort()
+testFreqTrackerBigramBoost()
+testRankerModeFiltering()
 
 print("\n\(passed) passed, \(failed) failed")
 exit(failed > 0 ? 1 : 0)

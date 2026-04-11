@@ -15,15 +15,15 @@ final class PhraseLookup {
         let path = FileManager.default.fileExists(atPath: userPath) ? userPath : bundlePath
 
         guard let p = path else {
-            NSLog("YabomishIM: yabomish_ime.db not found")
+            DebugLog.log("YabomishIM: yabomish_ime.db not found")
             return
         }
         guard sqlite3_open_v2(p, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
-            NSLog("YabomishIM: failed to open yabomish_ime.db")
+            DebugLog.log("YabomishIM: failed to open yabomish_ime.db")
             return
         }
         sqlite3_exec(db, "PRAGMA cache_size=-4000", nil, nil, nil) // 4MB cache
-        NSLog("YabomishIM: PhraseLookup loaded")
+        DebugLog.log("YabomishIM: PhraseLookup loaded")
     }
 
     deinit { if let db = db { sqlite3_close(db) } }

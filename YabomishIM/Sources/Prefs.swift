@@ -156,6 +156,18 @@ struct YabomishPrefs {
         defaults.set(value, forKey: key + "_pri")
     }
 
+    /// 標點配對：打「自動補」（iOS 風格）。關閉則各別輸出（macOS 傳統）。
+    static var punctuationPairing: Bool {
+        get {
+            #if os(iOS)
+            return defaults.object(forKey: "punctuationPairing") as? Bool ?? true
+            #else
+            return defaults.object(forKey: "punctuationPairing") as? Bool ?? false
+            #endif
+        }
+        set { defaults.set(newValue, forKey: "punctuationPairing") }
+    }
+
     /// Debug mode: write detailed logs to ~/Library/YabomishIM/debug.log
     static var debugMode: Bool {
         get { defaults.object(forKey: "debugMode") as? Bool ?? false }

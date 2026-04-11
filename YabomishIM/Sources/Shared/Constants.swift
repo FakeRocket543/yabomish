@@ -12,7 +12,9 @@ enum AppConstants {
     }
     #else
     static var sharedDir: String {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return NSHomeDirectory() + "/Library/Application Support/Yabomish"
+        }
         let dir = appSupport.appendingPathComponent("Yabomish")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.path

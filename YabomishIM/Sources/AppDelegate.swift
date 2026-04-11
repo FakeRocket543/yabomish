@@ -22,9 +22,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let name = Bundle.main.infoDictionary?["InputMethodConnectionName"] as? String
         Self.server = IMKServer(name: name, bundleIdentifier: Bundle.main.bundleIdentifier)
-        NSLog("YabomishIM: Server started, connection=%@", name ?? "nil")
+        DebugLog.log("YabomishIM: Server started, connection=\(name ?? "nil")")
         let ver = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
-        NSLog("YabomishIM: build=%@, domains=%d", ver, WikiCorpus.shared.domainBinCount)
+        DebugLog.log("YabomishIM: build=\(ver), domains=\(WikiCorpus.shared.domainBinCount)")
         YabomishPrefs.migrateLegacyPrefs()
         DistributedNotificationCenter.default().addObserver(forName: NSNotification.Name("com.yabomish.prefsChanged"), object: nil, queue: .main) { _ in WikiCorpus.shared.reloadDomains() }
     }

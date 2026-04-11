@@ -5,6 +5,7 @@ final class FreqTracker {
     private var db: OpaquePointer?
     private let path: String
     private var recordCount = 0
+    private let bgQueue = DispatchQueue(label: "com.yabomish.freq.bg")
 
     private var stmtUpsertFreq: OpaquePointer?
     private var stmtQueryFreq: OpaquePointer?
@@ -54,7 +55,7 @@ final class FreqTracker {
     func record(code: String, char: String) {
         bindAndStep(stmtUpsertFreq, code, char)
         recordCount += 1
-        if recordCount >= 500 { recordCount = 0; decay() }
+        if recordCount >= 500 { recordCount = 0; bgQueue.async { [weak self] in self?.decay() } }
     }
 
     func recordBigram(prev: String, char: String) {
@@ -139,7 +140,7 @@ final class FreqTracker {
     }
 
     func deferredMerge() {
-        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3) { [weak self] in
+        bgQueue.asyncAfter(deadline: .now() + 3) { [weak self] in
             #if os(iOS)
             guard MemoryBudget.canAfford(5) else { return }
             self?.mergeFromiCloud()
@@ -158,19 +159,25 @@ final class FreqTracker {
 
     private func migrateFromJSON(dir: String) {
         let jsonPath = dir + "/freq.json"
-        guard FileManager.default.fileExists(atPath: jsonPath),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: jsonPath)) else { return }
+        guard FileManager.default.fileExists(atPath: jsonPath) else { return }
+        let data: Data
+        do { data = try Data(contentsOf: URL(fileURLWithPath: jsonPath)) }
+        catch { DebugLog.log("FreqTracker migrateFromJSON read: \(error.localizedDescription)"); return }
         // Backup first
         let backup = dir + "/freq.json.bak"
         if !FileManager.default.fileExists(atPath: backup) {
             try? FileManager.default.copyItem(atPath: jsonPath, toPath: backup)
         }
-        if let s = try? JSONDecoder().decode(JSONStorage.self, from: data) {
+        do {
+            let s = try JSONDecoder().decode(JSONStorage.self, from: data)
             importJSON(s)
             try? FileManager.default.removeItem(atPath: jsonPath)
-        } else if let legacyFreq = try? JSONDecoder().decode([String: [String: Int]].self, from: data) {
-            importJSON(JSONStorage(freq: legacyFreq, bigram: nil))
-            try? FileManager.default.removeItem(atPath: jsonPath)
+        } catch {
+            do {
+                let legacyFreq = try JSONDecoder().decode([String: [String: Int]].self, from: data)
+                importJSON(JSONStorage(freq: legacyFreq, bigram: nil))
+                try? FileManager.default.removeItem(atPath: jsonPath)
+            } catch { DebugLog.log("FreqTracker migrateFromJSON decode: \(error.localizedDescription)") }
         }
     }
 
@@ -208,9 +215,12 @@ final class FreqTracker {
               FileManager.default.fileExists(atPath: dir) else { return }
         let jsonPath = dir + "/freq.json"
         // Import remote changes
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: jsonPath)),
-           let remote = try? JSONDecoder().decode(JSONStorage.self, from: data) {
-            importJSON(remote)
+        if FileManager.default.fileExists(atPath: jsonPath) {
+            do {
+                let data = try Data(contentsOf: URL(fileURLWithPath: jsonPath))
+                do { let remote = try JSONDecoder().decode(JSONStorage.self, from: data); importJSON(remote) }
+                catch { DebugLog.log("FreqTracker syncViaSyncFolder decode: \(error.localizedDescription)") }
+            } catch { DebugLog.log("FreqTracker syncViaSyncFolder read: \(error.localizedDescription)") }
         }
         // Export local state
         exportToJSON(path: jsonPath)
@@ -241,7 +251,8 @@ final class FreqTracker {
         sqlite3_finalize(stmt)
         let storage = JSONStorage(freq: freq, bigram: bigram)
         if let data = try? JSONEncoder().encode(storage) {
-            try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+            do { try data.write(to: URL(fileURLWithPath: path), options: .atomic) }
+            catch { DebugLog.log("FreqTracker exportToJSON write: \(error.localizedDescription)") }
         }
     }
     #endif
@@ -255,10 +266,12 @@ final class FreqTracker {
     }
 
     private func mergeFromiCloud() {
-        guard let url = Self.iCloudFreqURL,
-              let data = try? Data(contentsOf: url),
-              let remote = try? JSONDecoder().decode(JSONStorage.self, from: data) else { return }
-        importJSON(remote)
+        guard let url = Self.iCloudFreqURL else { return }
+        let data: Data
+        do { data = try Data(contentsOf: url) }
+        catch { DebugLog.log("FreqTracker mergeFromiCloud read: \(error.localizedDescription)"); return }
+        do { let remote = try JSONDecoder().decode(JSONStorage.self, from: data); importJSON(remote) }
+        catch { DebugLog.log("FreqTracker mergeFromiCloud decode: \(error.localizedDescription)") }
     }
     #endif
 

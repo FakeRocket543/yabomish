@@ -3,48 +3,46 @@ import Foundation
 /// Candidate ranking: freq-based sorting, mode filtering, domain context, fuzzy match.
 final class CandidateRanker {
 
+    private let wikiCorpus: WikiCorpus
+    private let prefs: IMEPreferences
+
+    init(wikiCorpus: WikiCorpus = .shared, prefs: IMEPreferences = DefaultPreferences.shared) {
+        self.wikiCorpus = wikiCorpus
+        self.prefs = prefs
+    }
+
     // MARK: - Domain context tracking (MoE-style)
 
     /// Session domain hit counts: domain_key → cumulative weight
     private var domainHits: [String: Int] = [:]
-    private var domainCache: [String: Set<String>] = [:]  // char → domain keys it belongs to
+    private var domainCache: [String: Bool] = [:]  // char → is domain-relevant
 
     /// Called after each commit to update domain context
     func updateDomainContext(_ text: String) {
-        guard YabomishPrefs.suggestStrategy == "domain" else { return }
+        guard prefs.suggestStrategy == "domain" else { return }
         for ch in text {
             let s = String(ch)
-            let domains = domainsFor(s)
-            for d in domains { domainHits[d, default: 0] += 1 }
+            if domainsFor(s) { domainHits["_all", default: 0] += 1 }
         }
     }
 
     /// Domain boost score for a candidate (0.0 ~ 1.0)
     func domainBoost(for char: String) -> Double {
         guard !domainHits.isEmpty else { return 0 }
-        let domains = domainsFor(char)
-        guard !domains.isEmpty else { return 0 }
+        guard domainsFor(char) else { return 0 }
         let total = domainHits.values.reduce(0, +)
         guard total > 0 else { return 0 }
-        var score = 0
-        for d in domains { score += domainHits[d] ?? 0 }
-        return Double(score) / Double(total)
+        return Double(domainHits["_all"] ?? 0) / Double(total)
     }
 
     func resetDomainContext() { domainHits.removeAll() }
 
-    /// Check which enabled domains contain this character
-    private func domainsFor(_ char: String) -> Set<String> {
+    /// Check if any enabled domain contains this character
+    private func domainsFor(_ char: String) -> Bool {
         if let cached = domainCache[char] { return cached }
-        var result = Set<String>()
-        for (key, _, _) in WikiCorpus.domainKeys {
-            guard YabomishPrefs.domainEnabled(key) else { continue }
-            // Check if domain has completions starting with this char
-            let hits = WikiCorpus.shared.suggestDomainTerms(prefix: char, limit: 1)
-            if !hits.isEmpty { result.insert(key) }
-        }
-        domainCache[char] = result
-        return result
+        let hit = !wikiCorpus.suggestDomainTerms(prefix: char, limit: 1).isEmpty
+        domainCache[char] = hit
+        return hit
     }
 
     // MARK: - Mode filtering + ranking
@@ -82,7 +80,7 @@ final class CandidateRanker {
         }
 
         // Domain-aware reranking (stable sort — only reorder when boost differs)
-        if YabomishPrefs.suggestStrategy == "domain" && !domainHits.isEmpty && candidates.count > 1 {
+        if prefs.suggestStrategy == "domain" && !domainHits.isEmpty && candidates.count > 1 {
             candidates.sort { domainBoost(for: $0) > domainBoost(for: $1) }
         }
 

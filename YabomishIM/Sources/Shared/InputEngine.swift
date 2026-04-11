@@ -18,8 +18,21 @@ final class InputEngine {
 
     let cinTable = CINTable()
     let freqTracker = FreqTracker()
-    private let ranker = CandidateRanker()
+    private let ranker: CandidateRanker
+    private let zhuyinLookup: ZhuyinLookup
+    private let suggestionEngine: SuggestionEngine
+    private let prefs: IMEPreferences
     private let queue = DispatchQueue(label: "com.yabomish.engine")
+
+    init(zhuyinLookup: ZhuyinLookup = .shared,
+         suggestionEngine: SuggestionEngine = .shared,
+         wikiCorpus: WikiCorpus = .shared,
+         prefs: IMEPreferences = DefaultPreferences.shared) {
+        self.zhuyinLookup = zhuyinLookup
+        self.suggestionEngine = suggestionEngine
+        self.prefs = prefs
+        self.ranker = CandidateRanker(wikiCorpus: wikiCorpus, prefs: prefs)
+    }
 
     // MARK: - State
 
@@ -158,7 +171,7 @@ final class InputEngine {
             _resetComposing(); return
         }
 
-        if YabomishPrefs.autoCommit &&
+        if prefs.autoCommit &&
            _currentCandidates.count == 1 && _composing.count >= 2 && !_canExtendCode(_composing) {
             _commitText(_currentCandidates[0]); _eatNextSpace = true; return
         }
@@ -260,7 +273,7 @@ final class InputEngine {
     } }
 
     func selectCandidate(at index: Int) { queue.sync {
-        NSLog("YabomishKB: selectCandidate idx=%d count=%d composing='%@' zhuyin=%d", index, _currentCandidates.count, _composing, _isZhuyinMode ? 1 : 0)
+        DebugLog.log("YabomishKB: selectCandidate idx=\(index) count=\(_currentCandidates.count) composing='\(_composing)' zhuyin=\(_isZhuyinMode ? 1 : 0)")
         guard index < _currentCandidates.count else { return }
         if _isZhuyinMode {
             let full = _currentCandidates[index]
@@ -347,7 +360,7 @@ final class InputEngine {
     func handlePinyinTone(_ tone: Int) { queue.sync {
         guard _isPinyinMode, !_pinyinBuffer.isEmpty else { return }
         let pinyin = _pinyinBuffer + "\(tone)"
-        let chars = ZhuyinLookup.shared.charsForPinyin(pinyin)
+        let chars = zhuyinLookup.charsForPinyin(pinyin)
         guard !chars.isEmpty else { return }
         let display: [String]
         if _pinyinSimplified {
@@ -436,9 +449,9 @@ final class InputEngine {
     } }
 
     private func _zhuyinLookup(_ zhuyin: String) {
-        let raw = ZhuyinLookup.shared.charsForZhuyin(zhuyin)
+        let raw = zhuyinLookup.charsForZhuyin(zhuyin)
         guard !raw.isEmpty else { return }
-        let chars = ZhuyinLookup.shared.sortByFreq(raw, prevChar: _prevCommitted, curZhuyin: zhuyin)
+        let chars = zhuyinLookup.sortByFreq(raw, prevChar: _prevCommitted, curZhuyin: zhuyin)
         _currentCandidates = chars.map { char in
             let codes = cinTable.reverseLookup(char)
             return codes.isEmpty ? char : "\(char) \(codes.joined(separator: "/"))"
@@ -461,10 +474,10 @@ final class InputEngine {
     // MARK: - Same-Sound
 
     private func _handleSameSound() {
-        let results = ZhuyinLookup.shared.lookup(_sameSoundBase)
-        NSLog("YabomishKB: handleSameSound base=%@ results=%d", _sameSoundBase, results.count)
+        let results = zhuyinLookup.lookup(_sameSoundBase)
+        DebugLog.log("YabomishKB: handleSameSound base=\(_sameSoundBase) results=\(results.count)")
         guard let first = results.first else { _resetComposing(); return }
-        _currentCandidates = ZhuyinLookup.shared.sortByFreq(first.chars)
+        _currentCandidates = zhuyinLookup.sortByFreq(first.chars)
         _composing = _sameSoundBase
         delegate?.engineDidUpdateComposing("\(_sameSoundBase)[\(first.zhuyin)]")
         _notifyCandidates()
@@ -634,7 +647,7 @@ final class InputEngine {
     }
 
     private func _selectCandidateImpl(at index: Int) {
-        NSLog("YabomishKB: selectCandidate idx=%d count=%d composing='%@' zhuyin=%d", index, _currentCandidates.count, _composing, _isZhuyinMode ? 1 : 0)
+        DebugLog.log("YabomishKB: selectCandidate idx=\(index) count=\(_currentCandidates.count) composing='\(_composing)' zhuyin=\(_isZhuyinMode ? 1 : 0)")
         guard index < _currentCandidates.count else { return }
         if _isZhuyinMode {
             let full = _currentCandidates[index]
@@ -654,7 +667,7 @@ final class InputEngine {
     private func _handlePinyinToneImpl(_ tone: Int) {
         guard _isPinyinMode, !_pinyinBuffer.isEmpty else { return }
         let pinyin = _pinyinBuffer + "\(tone)"
-        let chars = ZhuyinLookup.shared.charsForPinyin(pinyin)
+        let chars = zhuyinLookup.charsForPinyin(pinyin)
         guard !chars.isEmpty else { return }
         let display: [String]
         if _pinyinSimplified {
@@ -695,7 +708,7 @@ final class InputEngine {
                                          mode: _inputMode, cinTable: cinTable, freqTracker: freqTracker)
 
         // Fuzzy match: if no candidates, try adjacent-key substitution
-        if _currentCandidates.isEmpty && !_isWildcard && code.count >= 2 && YabomishPrefs.fuzzyMatch {
+        if _currentCandidates.isEmpty && !_isWildcard && code.count >= 2 && prefs.fuzzyMatch {
             _currentCandidates = ranker.fuzzyLookup(code, cinTable: cinTable)
         }
     }
@@ -705,20 +718,20 @@ final class InputEngine {
     ]
 
     private func _commitText(_ text: String) {
-        NSLog("YabomishKB: commitText='%@' composing='%@' sameSound=%d", text, _composing, _isSameSoundMode ? 1 : 0)
+        DebugLog.log("YabomishKB: commitText='\(text)' composing='\(_composing)' sameSound=\(_isSameSoundMode ? 1 : 0)")
         // Same-sound step 1 → step 2
         if _isSameSoundMode && _sameSoundBase.isEmpty && text.count == 1 {
-            let results = ZhuyinLookup.shared.lookup(text)
-            NSLog("YabomishKB: sameSound lookup char=%@ results=%d", text, results.count)
+            let results = zhuyinLookup.lookup(text)
+            DebugLog.log("YabomishKB: sameSound lookup char=\(text) results=\(results.count)")
             if !results.isEmpty {
                 _sameSoundBase = text
-                NSLog("YabomishKB: sameSound base=%@ zhuyin=%@ chars=%d", text, results.first?.zhuyin ?? "?", results.first?.chars.count ?? 0)
+                DebugLog.log("YabomishKB: sameSound base=\(text) zhuyin=\(results.first?.zhuyin ?? "?") chars=\(results.first?.chars.count ?? 0)")
                 _handleSameSound(); return
             }
         }
 
-        // Smart punctuation pairing
-        if text.count == 1, let right = Self.punctuationPairs[text] {
+        // Punctuation pairing: iOS default on, macOS default off
+        if prefs.punctuationPairing, text.count == 1, let right = Self.punctuationPairs[text] {
             delegate?.engineDidCommitPair(text, right)
         } else {
             delegate?.engineDidCommit(text)
@@ -754,14 +767,14 @@ final class InputEngine {
         }
         _notifyCandidates()
 
-        if text.count == 1 && YabomishPrefs.showCodeHint && MemoryBudget.canAfford(MemoryBudget.reverseTable) {
+        if text.count == 1 && prefs.showCodeHint && MemoryBudget.canAfford(MemoryBudget.reverseTable) {
             let codes = cinTable.reverseLookup(text)
             if !codes.isEmpty { delegate?.engineDidShowToast("\(text) → \(codes.joined(separator: " / "))") }
         }
 
         // 聯想
         if !_isSameSoundMode && !_isZhuyinMode {
-            let results = SuggestionEngine.shared.suggest(recentCommitted: _recentCommitted, lastText: text)
+            let results = suggestionEngine.suggest(recentCommitted: _recentCommitted, lastText: text)
             if !results.isEmpty { delegate?.engineDidSuggest(results) }
         }
     }
@@ -778,7 +791,7 @@ final class InputEngine {
     /// Returns the shortest code hint for a candidate, or nil if it equals the current composing.
     func shortestCodeHint(for char: String) -> String? { queue.sync {
         guard let codes = cinTable.shortestCodesTable[char] else { return nil }
-        let best = codes.min(by: { $0.count < $1.count }) ?? codes.first!
+        guard let best = codes.min(by: { $0.count < $1.count }) ?? codes.first else { return nil }
         return best.count < _composing.count ? best : nil
     } }
 

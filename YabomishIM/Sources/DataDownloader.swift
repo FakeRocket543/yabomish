@@ -13,12 +13,12 @@ enum DataDownloader {
     static func ensureData(completion: @escaping (Bool) -> Void) {
         if isDataAvailable { completion(true); return }
 
-        NSLog("YabomishIM: 語料不存在，開始下載 %@", dataURL)
+        DebugLog.log("YabomishIM: 語料不存在，開始下載 \(dataURL)")
         guard let url = URL(string: dataURL) else { completion(false); return }
 
         let task = URLSession.shared.downloadTask(with: url) { tmpURL, response, error in
             guard let tmpURL = tmpURL, error == nil else {
-                NSLog("YabomishIM: 下載失敗 — %@", error?.localizedDescription ?? "unknown")
+                DebugLog.log("YabomishIM: 下載失敗 — \(error?.localizedDescription ?? "unknown")")
                 completion(false)
                 return
             }
@@ -38,10 +38,10 @@ enum DataDownloader {
 
                 try? fm.removeItem(atPath: zipPath)
                 let ok = fm.fileExists(atPath: supportDir + "/" + marker)
-                NSLog("YabomishIM: 語料下載%@", ok ? "完成" : "失敗（解壓後找不到檔案）")
+                DebugLog.log("YabomishIM: 語料下載\(ok ? "完成" : "失敗（解壓後找不到檔案）")")
                 completion(ok)
             } catch {
-                NSLog("YabomishIM: 解壓失敗 — %@", error.localizedDescription)
+                DebugLog.log("YabomishIM: 解壓失敗 — \(error.localizedDescription)")
                 completion(false)
             }
         }

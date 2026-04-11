@@ -101,7 +101,7 @@ final class CINTable {
             }
         }
         for k in overlay.keys { if k.count > maxCodeLength { maxCodeLength = k.count } }
-        NSLog("YabomishIM: maxCodeLength = %d", maxCodeLength)
+        DebugLog.log("YabomishIM: maxCodeLength = \(maxCodeLength)")
     }
 
     /// Load from a .cin text file (compiles to temp .bin first). For tests and on-the-fly use.
@@ -110,15 +110,15 @@ final class CINTable {
         CINCompiler.compile(src: cinPath, dst: tmp)
         binData = nil; entryCount = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
-        if let d = try? Data(contentsOf: URL(fileURLWithPath: tmp)) {
+        do {
+            let d = try Data(contentsOf: URL(fileURLWithPath: tmp))
             try? FileManager.default.removeItem(atPath: tmp)
             parseBinData(d)
-        }
+        } catch { DebugLog.log("CINTable load(cinPath:) read tmp: \(error.localizedDescription)") }
         // If compile failed, fall back to text parse
         if entryCount == 0 {
             parseCINIntoOverlay(path: cinPath)
         }
-        maxCodeLength = 4
         if let d = binData {
             for i in 0..<entryCount {
                 let len = Int(d.u16(codesOff + i * 6 + 4))
@@ -135,10 +135,11 @@ final class CINTable {
         // Try compile to bin first
         let tmp = NSTemporaryDirectory() + "cin_\(UUID().uuidString).bin"
         CINCompiler.compile(src: path, dst: tmp)
-        if let d = try? Data(contentsOf: URL(fileURLWithPath: tmp)) {
+        do {
+            let d = try Data(contentsOf: URL(fileURLWithPath: tmp))
             try? FileManager.default.removeItem(atPath: tmp)
             parseBinData(d)
-        }
+        } catch { DebugLog.log("CINTable load(path:) read tmp: \(error.localizedDescription)") }
         if entryCount == 0 {
             parseCINIntoOverlay(path: path)
         }
@@ -151,14 +152,16 @@ final class CINTable {
             }
         }
         for k in overlay.keys { if k.count > maxCodeLength { maxCodeLength = k.count } }
-        NSLog("YabomishIM: Loaded %d bin entries + %d overlay entries from %@", entryCount, overlay.count, path)
+        DebugLog.log("YabomishIM: Loaded \(entryCount) bin entries + \(overlay.count) overlay entries from \(path)")
     }
 
     // MARK: - Binary loading
 
     private func loadBin(path: String) {
-        guard let d = try? Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe),
-              d.count >= 128,
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe) }
+        catch { DebugLog.log("CINTable loadBin: \(error.localizedDescription)"); return }
+        guard d.count >= 128,
               d[0] == 0x43, d[1] == 0x49, d[2] == 0x4E, d[3] == 0x4D else { return }
         parseBinHeader(d)
         binData = d
@@ -181,7 +184,7 @@ final class CINTable {
         valsOff = Int(d.u32(100))
         stringsOff = Int(d.u32(104))
         charsOff = Int(d.u32(108))
-        guard codesOff <= d.count, valsOff <= d.count, stringsOff <= d.count, charsOff <= d.count else {
+        guard codesOff >= 128, codesOff < valsOff, valsOff < stringsOff, stringsOff < charsOff, charsOff <= d.count else {
             entryCount = 0; return
         }
     }
@@ -348,9 +351,9 @@ final class CINTable {
             let shared = sharedDir + name + ".json"
             let bundled = bundlePath + name + ".json"
             let p = FileManager.default.fileExists(atPath: shared) ? shared : bundled
-            guard let data = FileManager.default.contents(atPath: p),
-                  let map = try? JSONDecoder().decode([String: String].self, from: data) else { continue }
-            self[keyPath: kp] = map
+            guard let data = FileManager.default.contents(atPath: p) else { continue }
+            do { self[keyPath: kp] = try JSONDecoder().decode([String: String].self, from: data) }
+            catch { DebugLog.log("CINTable loadCharMaps \(name): \(error.localizedDescription)") }
         }
     }
 

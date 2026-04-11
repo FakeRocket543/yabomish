@@ -4,6 +4,8 @@ import Foundation
 final class WikiCorpus {
     static let shared = WikiCorpus()
 
+    private let prefs: IMEPreferences
+
     // Trigram
     private var tgData: Data?
     private var tgKeyCount = 0
@@ -80,7 +82,8 @@ final class WikiCorpus {
     /// All keys combined
     static let domainKeys: [(key: String, file: String, label: String)] = generalDomainKeys + proDomainKeys
 
-    private init() {
+    init(prefs: IMEPreferences = DefaultPreferences.shared) {
+        self.prefs = prefs
         loadTrigram()
         loadWordBigram()
         loadWordNews()
@@ -95,9 +98,11 @@ final class WikiCorpus {
     }
 
     private func loadEmojiMap() {
-        guard let p = resolvePath(name: "emoji_char_map", ext: "json"),
-              let d = try? Data(contentsOf: URL(fileURLWithPath: p)),
-              let obj = try? JSONSerialization.jsonObject(with: d) as? [String: [String]] else { return }
+        guard let p = resolvePath(name: "emoji_char_map", ext: "json") else { return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p)) }
+        catch { DebugLog.log("WikiCorpus loadEmojiMap: \(error.localizedDescription)"); return }
+        guard let obj = try? JSONSerialization.jsonObject(with: d) as? [String: [String]] else { return }
         emojiMap = obj
     }
 
@@ -113,15 +118,17 @@ final class WikiCorpus {
         let orderedKeys = DomainOrderManager.shared.allOrderedKeys()
         let keyToFile = Dictionary(uniqueKeysWithValues: Self.domainKeys.map { ($0.key, $0.file) })
         for key in orderedKeys {
-            guard YabomishPrefs.domainEnabled(key),
+            guard prefs.domainEnabled(key),
                   let file = keyToFile[key] else { continue }
             if key == "domain_ner" { loadNER(); continue }
             if key == "domain_phrases" { loadPhrases(); continue }
-            guard let p = resolvePath(name: file, ext: "bin"),
-                  let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
-                  d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
+            guard let p = resolvePath(name: file, ext: "bin") else { continue }
+            let d: Data
+            do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+            catch { DebugLog.log("WikiCorpus reloadDomains \(file): \(error.localizedDescription)"); continue }
+            guard d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
             let ki = Int(d.u32(8)), vi = Int(d.u32(12))
-            guard ki <= d.count, vi <= d.count else { continue }
+            guard ki >= 16, ki < vi, vi <= d.count else { continue }
             // priority = position in ordered list (no longer uses domainPriority pref)
             domainBins.append(DomainBin(data: d, keyCount: Int(d.u32(4)),
                                         keyIndexOff: ki, valIndexOff: vi, priority: domainBins.count))
@@ -138,7 +145,7 @@ final class WikiCorpus {
 
         // NER phrases
         if nerData != nil && nerKeyCount > 0 {
-            let pri = YabomishPrefs.domainPriority("domain_ner")
+            let pri = prefs.domainPriority("domain_ner")
             let hits = suggestPhrases(after: String(prefix.suffix(1)), limit: 5)
                 .filter { $0.hasPrefix(prefix) }
                 .map { String($0.dropFirst(prefix.count)) }
@@ -148,7 +155,7 @@ final class WikiCorpus {
 
         // Phrase dictionary
         if phData != nil && phKeyCount > 0 {
-            let pri = YabomishPrefs.domainPriority("domain_phrases")
+            let pri = prefs.domainPriority("domain_phrases")
             let hits = phraseCompletions(for: prefix)
             if !hits.isEmpty { ranked.append((pri, hits)) }
         }
@@ -186,9 +193,11 @@ final class WikiCorpus {
     // MARK: - Load
 
     private func loadTrigram() {
-        guard let p = resolvePath(name: "trigram", ext: "bin"),
-              let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
-              d.count >= 12, d[0] == 0x54, d[1] == 0x47, d[2] == 0x4D, d[3] == 0x4D else { return }
+        guard let p = resolvePath(name: "trigram", ext: "bin") else { return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+        catch { DebugLog.log("WikiCorpus loadTrigram: \(error.localizedDescription)"); return }
+        guard d.count >= 12, d[0] == 0x54, d[1] == 0x47, d[2] == 0x4D, d[3] == 0x4D else { return }
         tgKeyCount = Int(d.u32(4))
         tgKeysOff = 8
         tgOffsetsOff = tgKeysOff + tgKeyCount * 8
@@ -199,9 +208,11 @@ final class WikiCorpus {
     }
 
     private func loadNER() {
-        guard let p = resolvePath(name: "ner_phrases", ext: "bin"),
-              let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
-              d.count >= 12, d[0] == 0x4E, d[1] == 0x52, d[2] == 0x4D, d[3] == 0x4D else { return }
+        guard let p = resolvePath(name: "ner_phrases", ext: "bin") else { return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+        catch { DebugLog.log("WikiCorpus loadNER: \(error.localizedDescription)"); return }
+        guard d.count >= 12, d[0] == 0x4E, d[1] == 0x52, d[2] == 0x4D, d[3] == 0x4D else { return }
         nerKeyCount = Int(d.u32(4))
         nerKeysOff = 8
         nerOffsetsOff = nerKeysOff + nerKeyCount * 4
@@ -212,9 +223,11 @@ final class WikiCorpus {
     }
 
     private func loadPhrases() {
-        guard let p = resolvePath(name: "phrases", ext: "bin"),
-              let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
-              d.count >= 12, d[0] == 0x50, d[1] == 0x48, d[2] == 0x4D, d[3] == 0x4D else { return }
+        guard let p = resolvePath(name: "phrases", ext: "bin") else { return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+        catch { DebugLog.log("WikiCorpus loadPhrases: \(error.localizedDescription)"); return }
+        guard d.count >= 12, d[0] == 0x50, d[1] == 0x48, d[2] == 0x4D, d[3] == 0x4D else { return }
         phKeyCount = Int(d.u32(4))
         phKeysOff = 8
         phOffsetsOff = phKeysOff + phKeyCount * 4
@@ -226,41 +239,47 @@ final class WikiCorpus {
 
     private func loadWordBigram() {
         guard let p = resolvePath(name: "word_ngram", ext: "bin")
-                    ?? resolvePath(name: "word_bigram", ext: "bin"),
-              let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
-              d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
+                    ?? resolvePath(name: "word_bigram", ext: "bin") else { return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+        catch { DebugLog.log("WikiCorpus loadWordBigram: \(error.localizedDescription)"); return }
+        guard d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
         wbKeyCount = Int(d.u32(4))
         wbKeyIndexOff = Int(d.u32(8))
         wbValIndexOff = Int(d.u32(12))
-        guard wbKeyIndexOff <= d.count, wbValIndexOff <= d.count else { return }
+        guard wbKeyIndexOff >= 16, wbKeyIndexOff < wbValIndexOff, wbValIndexOff <= d.count else { return }
         wbData = d
     }
 
     private func loadChengyu() {
-        guard let p = resolvePath(name: "chengyu", ext: "bin"),
-              let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
-              d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
+        guard let p = resolvePath(name: "chengyu", ext: "bin") else { return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+        catch { DebugLog.log("WikiCorpus loadChengyu: \(error.localizedDescription)"); return }
+        guard d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
         cyKeyCount = Int(d.u32(4))
         cyKeyIndexOff = Int(d.u32(8))
         cyValIndexOff = Int(d.u32(12))
-        guard cyKeyIndexOff <= d.count, cyValIndexOff <= d.count else { return }
+        guard cyKeyIndexOff >= 16, cyKeyIndexOff < cyValIndexOff, cyValIndexOff <= d.count else { return }
         cyData = d
     }
 
     private func loadWordNews() {
-        guard let p = resolvePath(name: "word_news", ext: "bin"),
-              let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
-              d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
+        guard let p = resolvePath(name: "word_news", ext: "bin") else { return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+        catch { DebugLog.log("WikiCorpus loadWordNews: \(error.localizedDescription)"); return }
+        guard d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
         wnKeyCount = Int(d.u32(4))
         wnKeyIndexOff = Int(d.u32(8))
         wnValIndexOff = Int(d.u32(12))
-        guard wnKeyIndexOff <= d.count, wnValIndexOff <= d.count else { return }
+        guard wnKeyIndexOff >= 16, wnKeyIndexOff < wnValIndexOff, wnValIndexOff <= d.count else { return }
         wnData = d
     }
 
     /// Second layer: query word corpus based on user preference (moedict/wiki/news)
     func suggestWordCorpus(prefix: String, limit: Int = 5) -> [String] {
-        let corpus = YabomishPrefs.wordCorpus
+        let corpus = prefs.wordCorpus
         switch corpus {
         case "moedict":
             return phraseCompletions(for: prefix, limit: limit)

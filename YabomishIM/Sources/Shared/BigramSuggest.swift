@@ -12,7 +12,7 @@ final class BigramSuggest {
     private var countsOffset = 0
     private var valuesOffset = 0
 
-    private init() {
+    init() {
         let shared = AppConstants.sharedDir + "/bigram.bin"
         let path = FileManager.default.fileExists(atPath: shared) ? shared
                  : Bundle.main.path(forResource: "bigram", ofType: "bin")

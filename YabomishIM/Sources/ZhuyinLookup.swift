@@ -9,7 +9,7 @@ final class ZhuyinLookup {
     private var pinyinToChars: [String: [String]] = [:]
     private var charFreq: [String: Int] = [:]
     private var loaded = false
-    private init() {}
+    init() {}
 
     private func dataPath(_ name: String, _ ext: String) -> String? {
         let shared = AppConstants.sharedDir + "/\(name).\(ext)"
@@ -21,25 +21,31 @@ final class ZhuyinLookup {
         guard !loaded else { return }
         guard MemoryBudget.canAfford(MemoryBudget.zhuyinLookup) else { return }
         loaded = true
-        guard let p = dataPath("zhuyin_data", "json"),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: p)),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        guard let p = dataPath("zhuyin_data", "json") else {
+            DebugLog.log("ZhuyinLookup: zhuyin_data.json not found"); return
+        }
+        let data: Data
+        do { data = try Data(contentsOf: URL(fileURLWithPath: p)) }
+        catch { DebugLog.log("ZhuyinLookup read zhuyin_data: \(error.localizedDescription)"); return }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let z2c = json["zhuyin_to_chars"] as? [String: [String]],
               let c2z = json["char_to_zhuyins"] as? [String: [String]] else {
-            NSLog("YabomishIM: zhuyin_data.json not found"); return
+            DebugLog.log("ZhuyinLookup: zhuyin_data.json parse failed"); return
         }
         zhuyinToChars = z2c; charToZhuyins = c2z
-        if let fp = dataPath("char_freq", "json"),
-           let fd = try? Data(contentsOf: URL(fileURLWithPath: fp)),
-           let freq = try? JSONSerialization.jsonObject(with: fd) as? [String: Int] {
-            charFreq = freq
+        if let fp = dataPath("char_freq", "json") {
+            do {
+                let fd = try Data(contentsOf: URL(fileURLWithPath: fp))
+                if let freq = try? JSONSerialization.jsonObject(with: fd) as? [String: Int] { charFreq = freq }
+            } catch { DebugLog.log("ZhuyinLookup read char_freq: \(error.localizedDescription)") }
         }
-        NSLog("YabomishIM: zhuyin loaded — %d readings, %d chars, %d freq", z2c.count, c2z.count, charFreq.count)
-        if let pp = dataPath("pinyin_data", "json"),
-           let pd = try? Data(contentsOf: URL(fileURLWithPath: pp)),
-           let pj = try? JSONSerialization.jsonObject(with: pd) as? [String: Any],
-           let p2c = pj["pinyin_to_chars"] as? [String: [String]] {
-            pinyinToChars = p2c
+        DebugLog.log("YabomishIM: zhuyin loaded — \(z2c.count) readings, \(c2z.count) chars, \(charFreq.count) freq")
+        if let pp = dataPath("pinyin_data", "json") {
+            do {
+                let pd = try Data(contentsOf: URL(fileURLWithPath: pp))
+                if let pj = try? JSONSerialization.jsonObject(with: pd) as? [String: Any],
+                   let p2c = pj["pinyin_to_chars"] as? [String: [String]] { pinyinToChars = p2c }
+            } catch { DebugLog.log("ZhuyinLookup read pinyin_data: \(error.localizedDescription)") }
         }
     }
 

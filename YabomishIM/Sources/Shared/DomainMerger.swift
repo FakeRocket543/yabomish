@@ -2,17 +2,17 @@ import Foundation
 
 /// Merges selected domain term bins into a single WBMM binary at App Support.
 enum DomainMerger {
-    static func merge() {
+    static func merge(prefs: IMEPreferences = DefaultPreferences.shared) {
         var merged: [String: [String]] = [:]
 
         for (key, file, _) in WikiCorpus.domainKeys {
-            guard YabomishPrefs.domainEnabled(key),
+            guard prefs.domainEnabled(key),
                   let p = Bundle.main.path(forResource: file, ofType: "bin"),
                   let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
                   d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
 
             let kc = Int(d.u32(4)), ki = Int(d.u32(8)), vi = Int(d.u32(12))
-            guard ki <= d.count, vi <= d.count else { continue }
+            guard ki >= 16, ki < vi, vi <= d.count else { continue }
             for i in 0..<kc {
                 let eo = ki + i * 12
                 guard eo + 12 <= d.count else { break }
@@ -116,9 +116,9 @@ enum DomainMerger {
         try? FileManager.default.createDirectory(atPath: AppConstants.sharedDir, withIntermediateDirectories: true)
         do {
             try out.write(to: URL(fileURLWithPath: dst))
-            NSLog("DomainMerger: wrote %d keys, %d bytes", sortedKeys.count, out.count)
+            DebugLog.log("DomainMerger: wrote \(sortedKeys.count) keys, \(out.count) bytes")
         } catch {
-            NSLog("DomainMerger: write failed: %@", error.localizedDescription)
+            DebugLog.log("DomainMerger: write failed: \(error.localizedDescription)")
         }
     }
 }

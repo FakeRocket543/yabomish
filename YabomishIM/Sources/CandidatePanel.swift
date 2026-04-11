@@ -183,47 +183,57 @@ final class CandidatePanel: NSPanel {
         if isFixed && isVisible { repositionFixed() }
     }
 
+    // MARK: - Thread safety
+
+    private func onMain(_ block: @escaping () -> Void) {
+        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
+    }
+
     // MARK: - Public API
 
     /// When true, cursor mode falls back to fixed-mode display (incompatible apps)
     var fallbackFixed = false
 
     func show(candidates: [String], selKeys: [Character], at origin: NSPoint, composing: String = "") {
-        guard !candidates.isEmpty else { hide(); return }
-        showGeneration += 1
-        self.candidates = candidates
-        self.selKeys = selKeys
-        self.highlightIndex = 0
-        self.composingText = composing
+        onMain {
+            guard !candidates.isEmpty else { self.hide(); return }
+            self.showGeneration += 1
+            self.candidates = candidates
+            self.selKeys = selKeys
+            self.highlightIndex = 0
+            self.composingText = composing
 
-        if isFixed || fallbackFixed {
-            showFixed()
-        } else {
-            showCursor(at: origin)
+            if self.isFixed || self.fallbackFixed {
+                self.showFixed()
+            } else {
+                self.showCursor(at: origin)
+            }
         }
     }
 
     func hide() {
-        let gen = self.showGeneration
-        if (isFixed || fallbackFixed) && isVisible {
-            if useReducedMotion {
-                alphaValue = 0
-                orderOut(nil)
-            } else {
-                NSAnimationContext.runAnimationGroup({ ctx in
-                    ctx.duration = 0.12
-                    animator().alphaValue = 0
-                }, completionHandler: {
-                    // 只有在沒被重新 show 的情況下才關閉
-                    guard self.showGeneration == gen else { return }
+        onMain {
+            let gen = self.showGeneration
+            if (self.isFixed || self.fallbackFixed) && self.isVisible {
+                if self.useReducedMotion {
+                    self.alphaValue = 0
                     self.orderOut(nil)
-                })
+                } else {
+                    NSAnimationContext.runAnimationGroup({ ctx in
+                        ctx.duration = 0.12
+                        self.animator().alphaValue = 0
+                    }, completionHandler: {
+                        // 只有在沒被重新 show 的情況下才關閉
+                        guard self.showGeneration == gen else { return }
+                        self.orderOut(nil)
+                    })
+                }
+            } else {
+                self.orderOut(nil)
             }
-        } else {
-            orderOut(nil)
+            self.candidates = []
+            self.composingText = ""
         }
-        candidates = []
-        composingText = ""
     }
 
     func selectByKey(_ c: Character) -> String? {
@@ -235,24 +245,32 @@ final class CandidatePanel: NSPanel {
     }
 
     func pageDown() {
-        let newStart = pageStart + pageSize
-        if newStart < candidates.count {
-            highlightIndex = newStart
-            rebuildCurrentMode()
+        onMain {
+            let newStart = self.pageStart + self.pageSize
+            if newStart < self.candidates.count {
+                self.highlightIndex = newStart
+                self.rebuildCurrentMode()
+            }
         }
     }
 
     func pageUp() {
-        highlightIndex = max(0, pageStart - pageSize)
-        rebuildCurrentMode()
+        onMain {
+            self.highlightIndex = max(0, self.pageStart - self.pageSize)
+            self.rebuildCurrentMode()
+        }
     }
 
     func moveUp() {
-        if highlightIndex > 0 { highlightIndex -= 1; rebuildCurrentMode() }
+        onMain {
+            if self.highlightIndex > 0 { self.highlightIndex -= 1; self.rebuildCurrentMode() }
+        }
     }
 
     func moveDown() {
-        if highlightIndex < candidates.count - 1 { highlightIndex += 1; rebuildCurrentMode() }
+        onMain {
+            if self.highlightIndex < self.candidates.count - 1 { self.highlightIndex += 1; self.rebuildCurrentMode() }
+        }
     }
 
     /// Navigate prev/next — caller uses this for arrow keys matching layout direction
