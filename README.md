@@ -49,7 +49,7 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 三層架構，送字後自動建議下一個字／詞：
 
 1. **詞級語料** — 可切換萌典（教育部辭典）、維基百科斷詞、新聞斷詞
-2. **詞庫** — 一般詞庫（NER 詞組、萌典詞組、成語、晶晶體、中國流行語、日本熟語）＋ 20 個專業詞典（資訊、商業、醫學、法律⋯⋯，資料來源為樂詞網 NAER＋維基百科）
+2. **詞庫** — 一般詞庫（NER 詞組、萌典詞組、成語、晶晶體、中國流行語、歇後語、台灣俗諺、客語辭典、台灣地名、學科術語、韓語漢字詞、日本熟語）＋ 20 個專業詞典（資訊、商業、醫學、法律⋯⋯，資料來源為樂詞網 NAER＋維基百科）
 3. **字級聯想** — bigram / trigram 預測下一字
 
 - 三層順序可拖拉調整（詞級優先 / 詞庫優先 / 字級優先）
@@ -233,10 +233,21 @@ tools/
 |------|------|------|
 | 注音對照表 | [威注音 VanguardLexicon](https://atomgit.com/vChewing/vChewing-VanguardLexicon) | MIT |
 | 繁簡對照表 | [OpenCC](https://github.com/BYVoid/OpenCC) | Apache 2.0 |
-| 兩岸用詞對照 | [教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
-| 維基語料 | 中文維基百科 zhwiki dump | CC BY-SA 3.0 |
-| 新聞詞頻 | 台灣新聞斷詞統計 | — |
+| 成語 | 教育部成語典 | 政府開放資料 |
+| 台灣俗諺 | [教育部台灣閩南語常用詞辭典](https://sutian.moe.edu.tw/) | 政府開放資料 |
+| 客語辭典 | [教育部臺灣客語辭典](https://hakkadict.moe.edu.tw/)（六腔） | 政府開放資料 |
+| 台灣地名 | [教育部本土語言標注臺灣地名](https://language.moe.gov.tw/) | CC-BY 3.0 TW |
+| 學科術語 | [教育部臺灣台語學科術語](https://stti.moe.edu.tw/) | CC-BY 3.0 TW |
+| 兩岸用詞對照 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
+| 專業詞典 ×20 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
+| 歇後語 | [chinese-xinhua](https://github.com/pwxcoo/chinese-xinhua) | MIT |
+| 韓語漢字詞 | [Kengdic](https://github.com/garfieldnate/kengdic) | MPL 2.0 / LGPL 2.0+ |
+| 維基語料 | 中文維基百科 zhwiki dump | CC-BY-SA 3.0 |
+| 新聞詞頻 | 台灣新聞斷詞統計 | 衍生統計 |
 | 萌典字頻 | [萌典](https://www.moedict.tw/) | CC0 |
+| Emoji | [Unicode CLDR](https://cldr.unicode.org/) | Unicode License |
+
+明碼語料及各自的授權、格式、build 指令詳見 [`yabomish_data/README.md`](yabomish_data/README.md)。
 
 ## 授權
 

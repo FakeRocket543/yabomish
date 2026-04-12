@@ -2,40 +2,48 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [Unreleased]
+## [0.3.43] — 2026-04-13
 
 ### 新增
+- **語料大擴充** — 一般詞庫從 6 個增至 13 個
+  - 歇後語 14,032 筆（chinese-xinhua, MIT）
+  - 台灣俗諺 428 筆（教育部閩南語辭典）
+  - 客語辭典 19,570 筆（教育部六腔：四縣/海陸/大埔/饒平/詔安/南四縣）
+  - 韓語漢字詞 33,414 筆（Kengdic, MPL 2.0）
+  - 台灣地名 519 筆（教育部本土語言地名, CC-BY 3.0 TW）
+  - 學科術語 4,553 筆（教育部台語學科, CC-BY 3.0 TW）
+  - 晶晶體 188 筆（自建，獨立 poolJJ，單字觸發）
+- **兩岸用詞切換** — 偏好設定新增紫色卡片，82K 詞兩岸標記，runtime 降權
 - **管理程式（YabomishPrefs.app）** — 獨立 SwiftUI 偏好設定 App
   - 五分頁：輸入、聯想與詞庫、外觀、使用方法、說明
   - 首次使用三頁引導（匯入字表 → 加入輸入方式 → 常用快捷鍵）
   - 詞庫卡片拖拉排序、啟用／停用
   - 專業詞典顯示詞數
 - **三層聯想輸入** — 詞級語料（萌典/維基/新聞）→ 詞庫 → 字級（bigram/trigram）
-  - 三種策略可切換：詞級優先 / 詞庫優先 / 字級優先
-  - 詞級語料來源可切換（萌典、維基、新聞）
-- **26 個詞庫** — 6 一般（NER 詞組、萌典詞組、成語、晶晶體、中國流行語、日本熟語）＋ 20 專業（NAER 樂詞網＋維基百科）
-- **晶晶體詞典** — 台式中英夾雜獨立聯想池
-- **Emoji 聯想** — 依前一字自動建議 emoji
-- **用詞習慣** — 臺灣用詞 / 中式用詞切換（NAER 兩岸對照表），對側用詞降權
-- **CIN 裝置端編譯** — `.cin` 匯入後在裝置上編譯為 `.bin`（版權保護，不預編譯）
-- **語料自動下載** — 首次啟動從 GitHub Release 下載語料 zip
-- **使用者自訂詞組** — `user_phrases.txt` 一行一詞
-- **模糊匹配** — 鄰鍵容錯，打錯一碼也能找到候選字
-- **標點配對** — 打「自動補」（macOS 預設關、iOS 預設開）
-- **VoiceOver 無障礙** — 候選字窗支援螢幕朗讀
-- **macOS / iOS 共用引擎** — `Shared/` 目錄，InputEngine、SuggestionEngine、CandidateRanker 等
-- **記憶體預算管理** — iOS 60MB 限制下的分配策略
-- **Trigram 學習** — 複合鍵 `prev2|prev1` 存入 bigram 表
-- **聯想建議狀態下方向鍵不攔截** — 讓使用者正常移動游標
-- **Backspace 縮短聯想上下文** — 刪字時同步更新 `_recentCommitted`
+- **yabomish_data/** — 明碼語料目錄，16 子目錄各附 SOURCE.md（來源、授權、格式、build 指令）
+- **學術論文收錄** — doct/papers/（Stupid Backoff、Smoothing、MoE 等）
 
-### 修正
-- 法文鍵盤 `/` 鍵輸出 `=` 的問題
+### 改進
+- **FreqTracker: stupid backoff + 歸一化** — 取代 raw count 加權，bigram 命中用機率，未命中 fallback unigram × 0.4
+- **FreqTracker: 批次緩衝寫入** — 每 50 筆 flush 一次 SQLite（BEGIN/COMMIT），I/O 減少約 50 倍
+- **word_ngram.bin 清洗** — 移除 46% 垃圾 key（英文/數字/wiki markup），7.4MB → 2.8MB
+- **terms_*.bin 重建** — 純 NAER + 維基 freq≥10 過濾，砍掉 90-99% 冷門實體
+- **所有 domain bin 最短 prefix 改為 2 字** — 排除單字觸發噪音（晶晶體保留單字觸發）
+- **CIN 檔案大小限制** — 100MB + 500K 行，防止惡意/損壞檔案耗盡記憶體
+- **關鍵路徑錯誤處理** — WikiCorpus/BigramSuggest/DomainMerger/ZhuyinLookup 的 try? 改 do/catch + DebugLog
+
+### UI
+- **對比度修正** — 亮色/暗色模式候選字窗可讀性改善
+- **專業詞典兩欄 chip 佈局** — 節省空間
+- **地區用詞切換** — 紫色卡片，「臺灣正體」/「简体中文」
+- **說明 tab** — 快捷鍵速查表
+- **新引擎 toggle 藏入 debug mode**
+- **預設排序重排** — 一般詞庫/專業詞典按使用頻率重排
 
 ### 變更
-- 字頻儲存從 JSON 遷移至 SQLite WAL（不相容 iCloud 同步，改用本機路徑）
+- 字頻儲存從 JSON 遷移至 SQLite WAL
 - 偏好設定 UI 從 AppKit 重構為 SwiftUI 獨立 App
-- 用詞習慣命名：「地區用詞」→「用詞習慣」，「臺灣正體/简体中文」→「臺灣用詞/中式用詞」
+- deactivateServer 時自動 flushAll() 確保字頻不遺失
 
 ---
 
