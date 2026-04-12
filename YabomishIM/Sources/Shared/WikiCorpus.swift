@@ -75,6 +75,7 @@ final class WikiCorpus {
         ("domain_xiehouyu", "terms_xiehouyu", "歇後語"),
         ("domain_kautian", "terms_kautian", "台灣俗諺"),
         ("domain_hakka", "terms_hakka", "客語辭典"),
+        ("domain_korean", "terms_korean", "韓語漢字詞"),
         ("domain_yoji", "yoji", "日本熟語"),
     ]
     /// Group 2: 專業詞典
