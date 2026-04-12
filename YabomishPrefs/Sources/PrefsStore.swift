@@ -99,6 +99,10 @@ import Foundation
         get { access(keyPath: \.fuzzyMatch); return ud.object(forKey: "fuzzyMatch") as? Bool ?? true }
         set { withMutation(keyPath: \.fuzzyMatch) { ud.set(newValue, forKey: "fuzzyMatch") }; postChange() }
     }
+    var punctuationPairing: Bool {
+        get { access(keyPath: \.punctuationPairing); return ud.object(forKey: "punctuationPairing") as? Bool ?? false }
+        set { withMutation(keyPath: \.punctuationPairing) { ud.set(newValue, forKey: "punctuationPairing") }; postChange() }
+    }
     var syncFolder: String? {
         get { access(keyPath: \.syncFolder); return ud.string(forKey: "syncFolder") }
         set { withMutation(keyPath: \.syncFolder) { ud.set(newValue, forKey: "syncFolder") }; postChange() }
