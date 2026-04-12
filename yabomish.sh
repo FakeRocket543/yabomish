@@ -4,9 +4,9 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 G='\033[32m'; Y='\033[33m'; R='\033[31m'; C='\033[36m'; B='\033[1m'; N='\033[0m'
-ok()   { echo -e "${G}[OK] $1${N}"; }
-warn() { echo -e "${Y}[!!] $1${N}"; }
-err()  { echo -e "${R}[ERR] $1${N}"; exit 1; }
+ok()   { printf "${G}[OK] %s${N}\n" "$1"; }
+warn() { printf "${Y}[!!] %s${N}\n" "$1"; }
+err()  { printf "${R}[ERR] %s${N}\n" "$1"; exit 1; }
 
 IM_SRC="$ROOT/YabomishIM/Sources"
 IM_RES="$ROOT/YabomishIM/Resources"
@@ -18,7 +18,6 @@ INSTALL_DIR="/Library/Input Methods"
 USER_DIR="$HOME/Library/YabomishIM"
 IM_BUNDLE_ID="com.yabomishim.inputmethod.YabomishIM"
 
-# ── Xcode CLI 檢查 ──
 check_xcode() {
     if ! xcode-select -p &>/dev/null; then
         warn "需要 Xcode Command Line Tools，正在安裝..."
@@ -27,9 +26,8 @@ check_xcode() {
     fi
 }
 
-# ── 編譯輸入法 ──
 build_im() {
-    echo -e "${C}▸ 編譯輸入法...${N}"
+    printf "${C}> 編譯輸入法...${N}\n"
     rm -rf "$IM_BUILD"
     mkdir -p "$IM_APP/Contents/MacOS" "$IM_APP/Contents/Resources"
 
@@ -38,7 +36,6 @@ build_im() {
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 0.2.17.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
 
-    # 資源檔
     for f in icon.tiff icon.icns icon_right.tiff icon_left.tiff \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json emoji_char_map.json \
              bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
@@ -58,9 +55,8 @@ build_im() {
     ok "YabomishIM.app (build $STAMP.$HASH)"
 }
 
-# ── 編譯偏好設定 ──
 build_prefs() {
-    echo -e "${C}▸ 編譯偏好設定...${N}"
+    printf "${C}> 編譯偏好設定...${N}\n"
     rm -rf "$PREFS_APP"
     mkdir -p "$PREFS_APP/Contents/MacOS" "$PREFS_APP/Contents/Resources"
 
@@ -78,10 +74,9 @@ build_prefs() {
     ok "YabomishPrefs.app"
 }
 
-# ── 安裝輸入法 ──
 install_im() {
     [ ! -d "$IM_APP" ] && err "請先選 1 或 2 編譯"
-    echo -e "${C}▸ 安裝輸入法...${N}"
+    printf "${C}> 安裝輸入法...${N}\n"
     killall YabomishIM 2>/dev/null || true; sleep 1
 
     sudo cp -R "$IM_APP" "$INSTALL_DIR/"
@@ -90,8 +85,9 @@ install_im() {
     # 蝦頭方向
     local DIR="$INSTALL_DIR/YabomishIM.app/Contents/Resources"
     local ICON; ICON=$(defaults read $IM_BUNDLE_ID iconDirection 2>/dev/null || echo "left")
-    local CUR="← 向左"; [ "$ICON" = "right" ] && CUR="→ 向右"
-    echo ""; echo "蝦頭方向（目前: $CUR）：  1) ← 向左  2) → 向右"
+    local CUR="<- 向左"; [ "$ICON" = "right" ] && CUR="-> 向右"
+    echo ""
+    echo "蝦頭方向（目前: $CUR）：  1) <- 向左  2) -> 向右"
     printf "選擇 [1/2，Enter 保持]: "; read -r c
     case "$c" in 1) ICON="left";; 2) ICON="right";; esac
     defaults write $IM_BUNDLE_ID iconDirection "$ICON"
@@ -101,7 +97,8 @@ install_im() {
     local PLIST="$INSTALL_DIR/YabomishIM.app/Contents/Info.plist"
     local LBL; LBL=$(defaults read $IM_BUNDLE_ID menuBarLabel 2>/dev/null || echo "yabomish")
     local LCUR="Yabomish"; [ "$LBL" = "yabo" ] && LCUR="Yabo"
-    echo ""; echo "狀態列名稱（目前: $LCUR）：  1) Yabo  2) Yabomish"
+    echo ""
+    echo "狀態列名稱（目前: $LCUR）：  1) Yabo  2) Yabomish"
     printf "選擇 [1/2，Enter 保持]: "; read -r c
     case "$c" in 1) LBL="yabo";; 2) LBL="yabomish";; esac
     defaults write $IM_BUNDLE_ID menuBarLabel "$LBL"
@@ -119,8 +116,7 @@ install_im() {
     ok "輸入法已安裝"
     [ -f "$USER_DIR/liu.cin" ] && ok "字表就緒" || warn "尚未偵測到字表，首次切換時會引導匯入"
 
-    # 自動重啟：系統會在 killall 後自動拉起輸入法程序
-    echo -e "${C}▸ 重新啟動輸入法...${N}"
+    printf "${C}> 重新啟動輸入法...${N}\n"
     killall YabomishIM 2>/dev/null || true
     sleep 2
     if pgrep -q YabomishIM; then
@@ -130,15 +126,13 @@ install_im() {
     fi
 }
 
-# ── 安裝偏好設定 ──
 install_prefs() {
     [ ! -d "$PREFS_APP" ] && err "請先選 1 或 2 編譯"
-    echo -e "${C}▸ 安裝偏好設定...${N}"
+    printf "${C}> 安裝偏好設定...${N}\n"
     cp -R "$PREFS_APP" /Applications/
-    ok "YabomishPrefs.app → /Applications/"
+    ok "YabomishPrefs.app -> /Applications/"
 }
 
-# ── 移除 ──
 do_uninstall() {
     printf "確定要移除 Yabomish？[y/N] "; read -r c
     [[ "$c" =~ ^[Yy]$ ]] || { echo "已取消。"; return; }
@@ -151,23 +145,20 @@ do_uninstall() {
     ok "移除完成，請登出再登入"
 }
 
-# ── 選單 ──
 show_menu() {
-    echo ""
-    echo -e "${B}Yabomish 管理工具${N}"
-    echo "─────────────────────────────"
-    echo -e "  ${B}1)${N} 完整安裝（編譯 + 安裝全部）"
-    echo -e "  ${B}2)${N} 只編譯（不安裝）"
-    echo -e "  ${B}3)${N} 只安裝（已編譯過）"
-    echo -e "  ${B}4)${N} 快速重裝輸入法"
-    echo -e "  ${B}5)${N} 快速重裝偏好設定"
-    echo -e "  ${B}6)${N} 移除 Yabomish"
-    echo -e "  ${B}0)${N} 離開"
-    echo "─────────────────────────────"
+    printf "\n${B}Yabomish 管理工具${N}\n"
+    echo "-----------------------------"
+    printf "  ${B}1)${N} 完整安裝（編譯 + 安裝全部）\n"
+    printf "  ${B}2)${N} 只編譯（不安裝）\n"
+    printf "  ${B}3)${N} 只安裝（已編譯過）\n"
+    printf "  ${B}4)${N} 快速重裝輸入法\n"
+    printf "  ${B}5)${N} 快速重裝偏好設定\n"
+    printf "  ${B}6)${N} 移除 Yabomish\n"
+    printf "  ${B}0)${N} 離開\n"
+    echo "-----------------------------"
     printf "選擇: "
 }
 
-# ── 主程式 ──
 check_xcode
 while true; do
     show_menu; read -r choice; echo ""
