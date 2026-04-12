@@ -100,7 +100,7 @@ def main():
 
         # Add wiki entities as prefix-expansion entries
         for entity in wiki_entities:
-            for plen in range(1, len(entity)):
+            for plen in range(2, len(entity)):
                 prefix = entity[:plen]
                 suffix = entity[plen:]
                 if prefix not in naer:

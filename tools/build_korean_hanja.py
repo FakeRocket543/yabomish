@@ -28,7 +28,7 @@ def main():
     entries = defaultdict(list)
     MAX_PER_KEY = 8
     for term in terms:
-        for plen in range(1, len(term)):
+        for plen in range(2, len(term)):
             prefix = term[:plen]
             suffix = term[plen:]
             if suffix and len(entries[prefix]) < MAX_PER_KEY:

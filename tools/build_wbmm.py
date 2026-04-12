@@ -94,7 +94,7 @@ def build_news(tsv_path: str, out_path: str):
     entries = defaultdict(list)
     MAX_PER_KEY = 5
     for word, freq in words:
-        for plen in range(1, len(word)):
+        for plen in range(2, len(word)):
             prefix = word[:plen]
             if len(entries[prefix]) < MAX_PER_KEY:
                 entries[prefix].append(word)
@@ -114,7 +114,7 @@ def build_prefix(txt_path: str, out_path: str, min_len: int = 4):
     entries = defaultdict(list)
     MAX_PER_KEY = 5
     for term in terms:
-        for plen in range(1, len(term)):
+        for plen in range(2, len(term)):
             prefix = term[:plen]
             if len(entries[prefix]) < MAX_PER_KEY:
                 entries[prefix].append(term)

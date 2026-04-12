@@ -38,14 +38,14 @@ def main():
             back = parts[1].strip()
             if front and back:
                 # front as key, back as value
-                for plen in range(1, len(front) + 1):
+                for plen in range(2, len(front) + 1):
                     prefix = front[:plen]
                     suffix = front[plen:] + '，' + back if plen < len(front) else back
                     if suffix and len(entries[prefix]) < MAX_PER_KEY:
                         entries[prefix].append(suffix)
         else:
             # Single phrase: prefix expansion
-            for plen in range(1, len(p)):
+            for plen in range(2, len(p)):
                 prefix = p[:plen]
                 suffix = p[plen:]
                 if suffix and len(entries[prefix]) < MAX_PER_KEY:

@@ -25,7 +25,7 @@ def main():
         if not riddle or not answer:
             continue
         # riddle prefix → "riddle_suffix——answer"
-        for plen in range(1, len(riddle) + 1):
+        for plen in range(2, len(riddle) + 1):
             prefix = riddle[:plen]
             suffix = riddle[plen:] + '——' + answer if plen < len(riddle) else answer
             if suffix and len(entries[prefix]) < MAX_PER_KEY:
