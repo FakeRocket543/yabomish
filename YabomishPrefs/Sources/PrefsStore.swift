@@ -3,7 +3,7 @@ import Foundation
 /// Thin @Observable wrapper over the same UserDefaults keys used by YabomishPrefs (in the IM bundle).
 /// All reads/writes go directly through UserDefaults — no stored copies, no duplicated defaults.
 @Observable final class PrefsStore {
-    @ObservationIgnored private let ud = UserDefaults.standard
+    @ObservationIgnored private let ud = UserDefaults(suiteName: "com.yabomishim.inputmethod.YabomishIM")!
 
     // MARK: - Suggestion
 
@@ -104,14 +104,22 @@ import Foundation
         set { withMutation(keyPath: \.syncFolder) { ud.set(newValue, forKey: "syncFolder") }; postChange() }
     }
 
-    // MARK: - Domain enable/disable (dynamic keys)
+    // MARK: - Domain enable/disable (dynamic keys, tracked)
+
+    var domainStates: [String: Bool] = [:] {
+        didSet { /* @Observable tracks this automatically */ }
+    }
 
     func domainEnabled(_ key: String) -> Bool {
-        ud.object(forKey: key) as? Bool ?? false
+        access(keyPath: \.domainStates)
+        return domainStates[key] ?? (ud.object(forKey: key) as? Bool ?? false)
     }
 
     func setDomainEnabled(_ key: String, _ val: Bool) {
-        ud.set(val, forKey: key)
+        withMutation(keyPath: \.domainStates) {
+            domainStates[key] = val
+            ud.set(val, forKey: key)
+        }
         postChange()
     }
 

@@ -5,23 +5,47 @@ struct DomainCardView: View {
     @Binding var isEnabled: Bool
     let color: Color
 
+    private var count: Int { DomainData.binEntryCount(file: entry.file) }
+
     var body: some View {
-        HStack(spacing: 6) {
-            Rectangle().fill(color).frame(width: 4)
-            Toggle(isOn: $isEnabled) {
-                let count = DomainData.binEntryCount(file: entry.file)
+        Button { isEnabled.toggle() } label: {
+            VStack(spacing: 6) {
+                Image(systemName: entry.icon)
+                    .font(.system(size: 22))
+                    .foregroundStyle(isEnabled ? color : .secondary)
+
+                Text(entry.label)
+                    .font(.system(size: 12, weight: .semibold))
+                    .lineLimit(1)
+
+                Text(entry.desc)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
                 if count > 0 {
-                    Text("\(entry.label) (\(count))").lineLimit(1)
-                } else {
-                    Text(entry.label).lineLimit(1)
+                    Text(formatCount(count))
+                        .font(.system(size: 9).monospacedDigit())
+                        .foregroundStyle(.tertiary)
                 }
-            }.toggleStyle(.checkbox)
+            }
+            .frame(width: 88, height: 88)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isEnabled ? color.opacity(0.12) : Color(nsColor: .windowBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isEnabled ? color.opacity(0.5) : Color(nsColor: .separatorColor), lineWidth: isEnabled ? 1.5 : 0.5)
+            )
+            .opacity(isEnabled ? 1.0 : 0.55)
         }
-        .padding(.trailing, 8)
-        .frame(width: 140, height: 44)
-        .background(RoundedRectangle(cornerRadius: 10).fill(isEnabled ? Color(nsColor: .controlBackgroundColor) : Color.gray.opacity(0.3)))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .opacity(isEnabled ? 1.0 : 0.5)
+        .buttonStyle(.plain)
         .draggable(entry.id)
+    }
+
+    private func formatCount(_ n: Int) -> String {
+        if n >= 10000 { return String(format: "%.1f 萬筆", Double(n) / 10000.0) }
+        return "\(n) 筆"
     }
 }

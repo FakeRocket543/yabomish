@@ -6,7 +6,6 @@ struct SuggestionTab: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // ── 策略 ──
                 GroupBox("聯想策略") {
                     VStack(alignment: .leading, spacing: 10) {
                         Picker("策略", selection: $store.suggestStrategy) {
@@ -23,15 +22,13 @@ struct SuggestionTab: View {
                     .padding(.vertical, 4)
                 }
 
-                // ── 字級 ──
                 GroupBox("字級聯想") {
                     Toggle("啟用 bigram、trigram 字級聯想", isOn: $store.charSuggest)
                         .padding(.vertical, 4)
                 }
-
-                Spacer()
             }
             .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

@@ -7,7 +7,6 @@ struct AppearanceTab: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // ── 字型大小 ──
                 GroupBox("字型") {
                     VStack(spacing: 10) {
                         HStack {
@@ -28,7 +27,6 @@ struct AppearanceTab: View {
                     .padding(.vertical, 4)
                 }
 
-                // ── 模式提示 ──
                 GroupBox("模式提示") {
                     VStack(alignment: .leading, spacing: 10) {
                         Stepper("模式提示大小：\(Int(store.toastFontSize)) pt", value: $store.toastFontSize, in: 20...72, step: 4)
@@ -41,7 +39,6 @@ struct AppearanceTab: View {
                     .padding(.vertical, 4)
                 }
 
-                // ── 開發 ──
                 GroupBox("開發") {
                     VStack(alignment: .leading, spacing: 10) {
                         Toggle("新引擎（重新登入後生效）", isOn: $store.useNewEngine)
@@ -54,10 +51,9 @@ struct AppearanceTab: View {
                     }
                     .padding(.vertical, 4)
                 }
-
-                Spacer()
             }
             .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

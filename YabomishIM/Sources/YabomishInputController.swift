@@ -453,6 +453,18 @@ extension YabomishInputController {
         // Shift held: temporary English / wildcard / full-width space
         if flags.contains(.shift) && !flags.contains(.command) && !flags.contains(.control) && !flags.contains(.option) {
             newEngineShiftUsed = true
+            // Shift+digit while candidates showing → output digit directly
+            if let digit = keyCodeToDigit[keyCode], !engine.currentCandidates.isEmpty {
+                if !engine.composing.isEmpty {
+                    if !engine.currentCandidates.isEmpty { engine.handleSpace() }
+                    else { engine.handleEscape() }
+                } else {
+                    engine.clearCandidates()
+                    panel.hide()
+                }
+                client.insertText(String(digit), replacementRange: notFoundRange)
+                return true
+            }
             if keyCode == 28 && !engine.composing.isEmpty {
                 engine.handleWildcard()
                 return true

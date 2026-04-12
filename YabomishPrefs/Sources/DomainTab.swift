@@ -6,36 +6,38 @@ struct DomainTab: View {
     @State private var proOrder: [DomainEntry] = []
     @State private var saved = false
 
-    private let columns = [GridItem(.adaptive(minimum: 145))]
+    private let columns = [GridItem(.adaptive(minimum: 92), spacing: 8)]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("拖拉卡片調整順序，越靠左越優先。勾選啟用。")
-                .font(.callout).foregroundStyle(.secondary)
-                .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 8)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("點擊卡片啟用／停用詞庫。拖拉調整優先順序。")
+                    .font(.callout).foregroundStyle(.secondary)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    section("詞庫", entries: $generalOrder, color: .blue)
-                    section("專業詞典", entries: $proOrder, color: .orange)
+                sectionHeader("一般詞庫", icon: "text.book.closed")
+                gridSection(entries: $generalOrder, color: .blue)
+
+                sectionHeader("專業詞典", icon: "graduationcap")
+                gridSection(entries: $proOrder, color: .orange)
+
+                HStack {
+                    Spacer()
+                    if saved { Text("已套用 ✓").foregroundStyle(.green).transition(.opacity) }
+                    Button("套用") { apply() }.controlSize(.large)
                 }
-                .padding(.horizontal, 20).padding(.bottom, 16)
             }
-
-            Divider()
-            HStack {
-                Spacer()
-                if saved { Text("已套用 ✓").foregroundStyle(.green).transition(.opacity) }
-                Button("套用") { apply() }.controlSize(.large)
-            }
-            .padding(.horizontal, 20).padding(.vertical, 10)
+            .padding(20)
         }
         .onAppear { loadOrder() }
     }
 
     @ViewBuilder
-    private func section(_ title: String, entries: Binding<[DomainEntry]>, color: Color) -> some View {
-        Text(title).font(.headline)
+    private func sectionHeader(_ title: String, icon: String) -> some View {
+        Label(title, systemImage: icon).font(.headline)
+    }
+
+    @ViewBuilder
+    private func gridSection(entries: Binding<[DomainEntry]>, color: Color) -> some View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(entries.wrappedValue) { entry in
                 DomainCardView(
@@ -53,11 +55,11 @@ struct DomainTab: View {
             var arr = entries.wrappedValue
             guard let srcIdx = arr.firstIndex(where: { $0.id == draggedID }) else { return false }
             let item = arr.remove(at: srcIdx)
-            let colWidth: CGFloat = 150
-            let cols = max(1, Int(location.x / colWidth))
-            let row = max(0, Int(location.y / 52))
-            let gridCols = max(1, Int(NSScreen.main?.frame.width ?? 600) / 150)
-            let destIdx = min(arr.count, row * gridCols + cols)
+            let cellSize: CGFloat = 100
+            let col = max(0, Int(location.x / cellSize))
+            let row = max(0, Int(location.y / cellSize))
+            let gridCols = max(1, Int((NSScreen.main?.frame.width ?? 600) / cellSize))
+            let destIdx = min(arr.count, row * gridCols + col)
             arr.insert(item, at: destIdx)
             entries.wrappedValue = arr
             return true
