@@ -73,8 +73,9 @@ struct SuggestionTab: View {
                 domainGrid(entries: $generalOrder, color: .blue)
 
                 // 5. Pro domains
+                // 5. Pro domains — compact chip layout
                 Label("專業詞典（樂詞網＋維基百科）", systemImage: "graduationcap").font(.headline)
-                domainGrid(entries: $proOrder, color: .orange)
+                proChipGrid(entries: $proOrder)
 
                 // 6. Bottom bar
                 HStack {
@@ -104,17 +105,20 @@ struct SuggestionTab: View {
                     .font(.system(size: 22))
                     .foregroundStyle(enabled ? Color.accentColor : .secondary)
                 Text(layer.label)
-                    .font(.system(size: 12, weight: .semibold)).lineLimit(1)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(enabled ? .primary : .secondary)
+                    .lineLimit(1)
                 Text(layer.desc)
-                    .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.system(size: 10))
+                    .foregroundStyle(enabled ? .secondary : .tertiary)
+                    .lineLimit(1)
             }
             .frame(maxWidth: .infinity, minHeight: 80)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(enabled ? Color.accentColor.opacity(0.12) : Color(nsColor: .windowBackgroundColor)))
+                .fill(enabled ? Color.accentColor.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(enabled ? Color.accentColor.opacity(0.5) : Color(nsColor: .separatorColor),
-                        lineWidth: enabled ? 1.5 : 0.5))
-            .opacity(enabled ? 1.0 : 0.55)
+                .stroke(enabled ? Color.accentColor.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                        lineWidth: enabled ? 1.5 : 1))
         }
         .buttonStyle(.plain)
         .draggable(layer.id)
@@ -131,17 +135,20 @@ struct SuggestionTab: View {
                     .font(.system(size: 22))
                     .foregroundStyle(selected ? .green : .secondary)
                 Text(entry.label)
-                    .font(.system(size: 12, weight: .semibold)).lineLimit(1)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(selected ? .primary : .secondary)
+                    .lineLimit(1)
                 Text(entry.desc)
-                    .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.system(size: 10))
+                    .foregroundStyle(selected ? .secondary : .tertiary)
+                    .lineLimit(1)
             }
             .frame(maxWidth: .infinity, minHeight: 80)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Color.green.opacity(0.12) : Color(nsColor: .windowBackgroundColor)))
+                .fill(selected ? Color.green.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Color.green.opacity(0.5) : Color(nsColor: .separatorColor),
-                        lineWidth: selected ? 1.5 : 0.5))
-            .opacity(selected ? 1.0 : 0.55)
+                .stroke(selected ? Color.green.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                        lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)
     }
@@ -176,6 +183,68 @@ struct SuggestionTab: View {
             entries.wrappedValue = arr
             return true
         }
+    }
+
+    // MARK: - Pro domain chips (compact layout)
+
+    private let chipColumns = [GridItem(.adaptive(minimum: 110), spacing: 6)]
+
+    @ViewBuilder
+    private func proChipGrid(entries: Binding<[DomainEntry]>) -> some View {
+        LazyVGrid(columns: chipColumns, spacing: 6) {
+            ForEach(entries.wrappedValue) { entry in
+                proChip(entry)
+            }
+        }
+        .dropDestination(for: String.self) { items, location in
+            guard let draggedID = items.first else { return false }
+            var arr = entries.wrappedValue
+            guard let srcIdx = arr.firstIndex(where: { $0.id == draggedID }) else { return false }
+            let item = arr.remove(at: srcIdx)
+            let cellW: CGFloat = 116
+            let col = max(0, Int(location.x / cellW))
+            let row = max(0, Int(location.y / 38))
+            let gridCols = max(1, Int(540 / cellW))
+            let destIdx = min(arr.count, row * gridCols + col)
+            arr.insert(item, at: destIdx)
+            entries.wrappedValue = arr
+            return true
+        }
+    }
+
+    @ViewBuilder
+    private func proChip(_ entry: DomainEntry) -> some View {
+        let on = store.domainEnabled(entry.id)
+        let count = DomainData.binEntryCount(file: entry.file)
+        Button { store.setDomainEnabled(entry.id, !on) } label: {
+            HStack(spacing: 4) {
+                Image(systemName: entry.icon)
+                    .font(.system(size: 12))
+                    .foregroundStyle(on ? .orange : .secondary)
+                Text(entry.label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(on ? .primary : .secondary)
+                if count > 0 {
+                    Text(count >= 10000 ? String(format: "%.0fw", Double(count)/10000) : "\(count)")
+                        .font(.system(size: 9).monospacedDigit())
+                        .foregroundStyle(on ? .secondary : .tertiary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(on ? Color.orange.opacity(0.18) : Color(nsColor: .controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(on ? Color.orange.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                            lineWidth: on ? 1.5 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .draggable(entry.id)
     }
 
     // MARK: - Load / Apply / Reset

@@ -61,19 +61,19 @@ struct InputTab: View {
                     .foregroundStyle(on ? Color.accentColor : .secondary)
                 Text(opt.label)
                     .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(on ? .primary : .secondary)
                     .lineLimit(1)
                 Text(opt.desc)
                     .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(on ? .secondary : .tertiary)
                     .lineLimit(1)
             }
             .frame(width: 88, height: 88)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(on ? Color.accentColor.opacity(0.12) : Color(nsColor: .windowBackgroundColor)))
+                .fill(on ? Color.accentColor.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(on ? Color.accentColor.opacity(0.5) : Color(nsColor: .separatorColor),
-                        lineWidth: on ? 1.5 : 0.5))
-            .opacity(on ? 1.0 : 0.55)
+                .stroke(on ? Color.accentColor.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                        lineWidth: on ? 1.5 : 1))
         }
         .buttonStyle(.plain)
     }
@@ -88,19 +88,19 @@ struct InputTab: View {
                     .foregroundStyle(selected ? Color.green : .secondary)
                 Text(opt.label)
                     .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(selected ? .primary : .secondary)
                     .lineLimit(1)
                 Text(opt.desc)
                     .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(selected ? .secondary : .tertiary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, minHeight: 80)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Color.green.opacity(0.12) : Color(nsColor: .windowBackgroundColor)))
+                .fill(selected ? Color.green.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Color.green.opacity(0.5) : Color(nsColor: .separatorColor),
-                        lineWidth: selected ? 1.5 : 0.5))
-            .opacity(selected ? 1.0 : 0.55)
+                .stroke(selected ? Color.green.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                        lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)
     }

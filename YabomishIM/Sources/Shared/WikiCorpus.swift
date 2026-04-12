@@ -54,31 +54,36 @@ final class WikiCorpus {
     private var wnKeyIndexOff = 0
     private var wnValIndexOff = 0
 
+    // Jingjing-ti phrase expansion (WBMM, loaded independently from domainBins)
+    private var jjData: Data?
+    private var jjKeyCount = 0
+    private var jjKeyIndexOff = 0
+    private var jjValIndexOff = 0
+
     /// All domain/corpus bins available for the third layer (checkbox + priority)
     /// Group 1: 一般詞庫
     static let generalDomainKeys: [(key: String, file: String, label: String)] = [
         ("domain_ner", "ner_phrases", "NER 詞組"),
         ("domain_phrases", "phrases", "萌典詞組"),
         ("domain_chengyu", "chengyu", "成語"),
-        ("domain_yoji", "yoji", "日本熟語"),
-        ("domain_cn_slang", "terms_cn_slang", "中國流行語"),
         ("domain_jingjing", "terms_jingjing", "晶晶體"),
+        ("domain_cn_slang", "terms_cn_slang", "中國流行語"),
+        ("domain_yoji", "yoji", "日本熟語"),
     ]
     /// Group 2: 專業詞典
     static let proDomainKeys: [(key: String, file: String, label: String)] = [
-        ("domain_it", "terms_it", "資訊科技"), ("domain_ee", "terms_ee", "電機電子"),
+        ("domain_it", "terms_it", "資訊科技"), ("domain_biz", "terms_biz", "商業金融"),
         ("domain_med", "terms_med", "醫學"), ("domain_law", "terms_law", "法律"),
-        ("domain_phy", "terms_phy", "物理∕計量"), ("domain_chem", "terms_chem", "化學"),
-        ("domain_bio", "terms_bio", "生物"), ("domain_math", "terms_math", "數學"),
-        ("domain_biz", "terms_biz", "商業金融"), ("domain_edu", "terms_edu", "教育"),
+        ("domain_edu", "terms_edu", "教育"), ("domain_media", "terms_media", "新聞傳播"),
+        ("domain_social", "terms_social", "社會行政"), ("domain_govt", "terms_govt", "政府機關"),
+        ("domain_math", "terms_math", "數學"), ("domain_phy", "terms_phy", "物理∕計量"),
+        ("domain_chem", "terms_chem", "化學"), ("domain_bio", "terms_bio", "生物"),
         ("domain_geo", "terms_geo", "地理"), ("domain_eng", "terms_eng", "工程"),
-        ("domain_art", "terms_art", "藝術"), ("domain_mil", "terms_mil", "軍事"),
-        ("domain_marine", "terms_marine", "海事"),
+        ("domain_ee", "terms_ee", "電機電子"), ("domain_art", "terms_art", "藝術"),
         ("domain_material", "terms_material", "材料∕礦物"),
         ("domain_agri", "terms_agri", "農林畜牧"),
-        ("domain_media", "terms_media", "新聞傳播"),
-        ("domain_social", "terms_social", "社會行政"),
-        ("domain_govt", "terms_govt", "政府機關"),
+        ("domain_marine", "terms_marine", "海事"),
+        ("domain_mil", "terms_mil", "軍事"),
     ]
     /// All keys combined
     static let domainKeys: [(key: String, file: String, label: String)] = generalDomainKeys + proDomainKeys
@@ -88,6 +93,7 @@ final class WikiCorpus {
         loadTrigram()
         loadWordBigram()
         loadWordNews()
+        loadJingjing()
         loadEmojiMap()
         reloadDomains()
     }
@@ -115,6 +121,7 @@ final class WikiCorpus {
         domainBins.removeAll()
         nerData = nil; nerKeyCount = 0
         phData = nil; phKeyCount = 0
+        loadJingjing()
         // Use DomainOrderManager order (drag-reorder position = priority)
         let orderedKeys = DomainOrderManager.shared.allOrderedKeys()
         let keyToFile = Dictionary(uniqueKeysWithValues: Self.domainKeys.map { ($0.key, $0.file) })
@@ -123,6 +130,7 @@ final class WikiCorpus {
                   let file = keyToFile[key] else { continue }
             if key == "domain_ner" { loadNER(); continue }
             if key == "domain_phrases" { loadPhrases(); continue }
+            if key == "domain_jingjing" { continue } // loaded independently
             guard let p = resolvePath(name: file, ext: "bin") else { continue }
             let d: Data
             do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
@@ -276,6 +284,27 @@ final class WikiCorpus {
         wnValIndexOff = Int(d.u32(12))
         guard wnKeyIndexOff >= 16, wnKeyIndexOff < wnValIndexOff, wnValIndexOff <= d.count else { return }
         wnData = d
+    }
+
+    private func loadJingjing() {
+        guard prefs.domainEnabled("domain_jingjing"),
+              let p = resolvePath(name: "terms_jingjing", ext: "bin") else { jjData = nil; return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+        catch { DebugLog.log("WikiCorpus loadJingjing: \(error.localizedDescription)"); return }
+        guard d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
+        jjKeyCount = Int(d.u32(4))
+        jjKeyIndexOff = Int(d.u32(8))
+        jjValIndexOff = Int(d.u32(12))
+        guard jjKeyIndexOff >= 16, jjKeyIndexOff < jjValIndexOff, jjValIndexOff <= d.count else { return }
+        jjData = d
+        DebugLog.log("WikiCorpus: jingjing loaded — \(jjKeyCount) keys")
+    }
+
+    /// Jingjing-ti phrase expansion: single-char prefix → suffix completions
+    func suggestJingjing(prefix: String, limit: Int = 5) -> [String] {
+        queryWBMM(data: jjData, keyCount: jjKeyCount, keyIndexOff: jjKeyIndexOff,
+                  valIndexOff: jjValIndexOff, key: prefix, limit: limit)
     }
 
     /// Second layer: query word corpus based on user preference (moedict/wiki/news)

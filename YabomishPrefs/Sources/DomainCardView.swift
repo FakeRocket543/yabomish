@@ -16,29 +16,30 @@ struct DomainCardView: View {
 
                 Text(entry.label)
                     .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(isEnabled ? .primary : .secondary)
                     .lineLimit(1)
 
                 Text(entry.desc)
                     .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isEnabled ? .secondary : .tertiary)
                     .lineLimit(1)
 
                 if count > 0 {
                     Text(formatCount(count))
                         .font(.system(size: 9).monospacedDigit())
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(isEnabled ? .secondary : .tertiary)
                 }
             }
             .frame(width: 88, height: 88)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isEnabled ? color.opacity(0.12) : Color(nsColor: .windowBackgroundColor))
+                    .fill(isEnabled ? color.opacity(0.18) : Color(nsColor: .controlBackgroundColor))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isEnabled ? color.opacity(0.5) : Color(nsColor: .separatorColor), lineWidth: isEnabled ? 1.5 : 0.5)
+                    .stroke(isEnabled ? color.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                            lineWidth: isEnabled ? 1.5 : 1)
             )
-            .opacity(isEnabled ? 1.0 : 0.55)
         }
         .buttonStyle(.plain)
         .draggable(entry.id)
