@@ -23,8 +23,8 @@ private let panelOptions: [InputOption] = [
 ]
 
 private let regionOptions: [InputOption] = [
-    .init(id: "tw", label: "臺灣正體", icon: "flag", desc: "臺灣用詞優先"),
-    .init(id: "cn", label: "简体中文", icon: "globe.asia.australia", desc: "中国用词优先"),
+    .init(id: "tw", label: "臺灣用詞", icon: "flag", desc: "臺灣慣用詞優先"),
+    .init(id: "cn", label: "中式用詞", icon: "globe.asia.australia", desc: "中式慣用詞優先"),
 ]
 
 struct InputTab: View {
@@ -38,7 +38,7 @@ struct InputTab: View {
                 Text("點擊卡片啟用／停用功能。")
                     .font(.callout).foregroundStyle(.secondary)
 
-                Label("地區用詞", systemImage: "map").font(.headline)
+                Label("用詞習慣", systemImage: "map").font(.headline)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     ForEach(regionOptions) { opt in
                         regionCard(opt)
