@@ -82,10 +82,11 @@ struct SuggestionTab: View {
                 Label("一般詞庫", systemImage: "books.vertical").font(.headline)
                 domainGrid(entries: $generalOrder, color: mazuCyan)
 
-                // 5. Pro domains
-                // 5. Pro domains — compact chip layout
-                Label("專業詞典（樂詞網＋維基百科）", systemImage: "graduationcap").font(.headline)
-                proChipGrid(entries: $proOrder)
+                // 5. Pro domains — compact chip layout, collapsed by default
+                DisclosureGroup("專業詞典（樂詞網＋維基百科）") {
+                    proChipGrid(entries: $proOrder)
+                }
+                .font(.headline)
 
                 // 6. Bottom bar
                 HStack {
