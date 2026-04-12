@@ -62,6 +62,7 @@ final class WikiCorpus {
         ("domain_chengyu", "chengyu", "成語"),
         ("domain_yoji", "yoji", "日本熟語"),
         ("domain_cn_slang", "terms_cn_slang", "中國流行語"),
+        ("domain_jingjing", "terms_jingjing", "晶晶體"),
     ]
     /// Group 2: 專業詞典
     static let proDomainKeys: [(key: String, file: String, label: String)] = [
