@@ -23,6 +23,8 @@ enum DomainData {
         .init(id: "domain_xiehouyu", file: "terms_xiehouyu", label: "歇後語", icon: "theatermasks", desc: "中華新華字典", group: .general),
         .init(id: "domain_kautian", file: "terms_kautian", label: "台灣俗諺", icon: "quote.bubble", desc: "教育部閩南語辭典", group: .general),
         .init(id: "domain_hakka", file: "terms_hakka", label: "客語辭典", icon: "person.2", desc: "教育部六腔客語", group: .general),
+        .init(id: "domain_placename", file: "terms_placename", label: "台灣地名", icon: "mappin.and.ellipse", desc: "台鐵/捷運站名", group: .general),
+        .init(id: "domain_ttg", file: "terms_ttg", label: "學科術語", icon: "graduationcap", desc: "教育部台語學科", group: .general),
         .init(id: "domain_korean", file: "terms_korean", label: "韓語漢字詞", icon: "k.circle", desc: "Kengdic 漢字詞", group: .general),
         .init(id: "domain_yoji", file: "yoji", label: "日本熟語", icon: "leaf", desc: "日式四字詞", group: .general),
     ]

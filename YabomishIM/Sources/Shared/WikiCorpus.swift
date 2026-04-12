@@ -75,6 +75,8 @@ final class WikiCorpus {
         ("domain_xiehouyu", "terms_xiehouyu", "歇後語"),
         ("domain_kautian", "terms_kautian", "台灣俗諺"),
         ("domain_hakka", "terms_hakka", "客語辭典"),
+        ("domain_placename", "terms_placename", "台灣地名"),
+        ("domain_ttg", "terms_ttg", "學科術語"),
         ("domain_korean", "terms_korean", "韓語漢字詞"),
         ("domain_yoji", "yoji", "日本熟語"),
     ]
