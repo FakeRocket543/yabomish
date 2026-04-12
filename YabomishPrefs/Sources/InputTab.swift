@@ -1,5 +1,14 @@
 import SwiftUI
 
+// MARK: - 媽祖廟五色（大甲鎮瀾宮龍柱配色）
+// 暗色模式：fill opacity 0.20, stroke opacity 0.75
+// 亮色模式：fill opacity 0.12, stroke opacity 0.55
+private let mazuCyan   = Color(red: 143/255, green: 172/255, blue: 191/255) // #8FADBF 青灰 — 輸入功能
+private let mazuGold   = Color(red: 242/255, green: 211/255, blue: 121/255) // #F2D479 金黃 — 選字窗
+private let mazuOrange = Color(red: 242/255, green: 141/255, blue:  53/255) // #F28D35 橘   — 用詞習慣
+private let mazuDeep   = Color(red: 242/255, green: 122/255, blue:  53/255) // #F27B35 深橘 — 聯想層
+private let mazuRed    = Color(red: 242/255, green:  64/255, blue:  48/255) // #F24130 朱紅 — 詞級語料
+
 private struct InputOption: Identifiable {
     let id: String
     let label: String
@@ -23,8 +32,8 @@ private let panelOptions: [InputOption] = [
 ]
 
 private let regionOptions: [InputOption] = [
-    .init(id: "tw", label: "臺灣用詞", icon: "flag", desc: "臺灣慣用詞優先"),
-    .init(id: "cn", label: "中式用詞", icon: "globe.asia.australia", desc: "中式慣用詞優先"),
+    .init(id: "tw", label: "臺灣用詞", icon: "漢", desc: "臺灣慣用詞優先"),
+    .init(id: "cn", label: "中式用詞", icon: "汉", desc: "中式慣用詞優先"),
 ]
 
 struct InputTab: View {
@@ -70,7 +79,7 @@ struct InputTab: View {
             VStack(spacing: 5) {
                 Image(systemName: opt.icon)
                     .font(.system(size: 26))
-                    .foregroundStyle(on ? Color.accentColor : .secondary)
+                    .foregroundStyle(on ? mazuCyan : .secondary)
                 Text(opt.label)
                     .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
@@ -81,9 +90,9 @@ struct InputTab: View {
             }
             .frame(width: 100, height: 100)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(on ? Color.accentColor.opacity(0.18) : .primary.opacity(0.05)))
+                .fill(on ? mazuCyan.opacity(0.18) : .primary.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(on ? Color.accentColor.opacity(0.7) : .primary.opacity(0.15),
+                .stroke(on ? mazuCyan.opacity(0.7) : .primary.opacity(0.15),
                         lineWidth: on ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -96,7 +105,7 @@ struct InputTab: View {
             VStack(spacing: 5) {
                 Image(systemName: opt.icon)
                     .font(.system(size: 26))
-                    .foregroundStyle(selected ? Color.green : .secondary)
+                    .foregroundStyle(selected ? mazuGold : .secondary)
                 Text(opt.label)
                     .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
@@ -107,9 +116,9 @@ struct InputTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Color.green.opacity(0.18) : .primary.opacity(0.05)))
+                .fill(selected ? mazuGold.opacity(0.18) : .primary.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Color.green.opacity(0.7) : .primary.opacity(0.15),
+                .stroke(selected ? mazuGold.opacity(0.7) : .primary.opacity(0.15),
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -120,9 +129,9 @@ struct InputTab: View {
         let selected = store.regionVariant == opt.id
         Button { store.regionVariant = opt.id } label: {
             VStack(spacing: 5) {
-                Image(systemName: opt.icon)
-                    .font(.system(size: 26))
-                    .foregroundStyle(selected ? .purple : .secondary)
+                Text(opt.icon)
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundStyle(selected ? mazuOrange : .secondary)
                 Text(opt.label)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(selected ? .primary : .secondary)
@@ -134,9 +143,9 @@ struct InputTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Color.purple.opacity(0.18) : .primary.opacity(0.05)))
+                .fill(selected ? mazuOrange.opacity(0.18) : .primary.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Color.purple.opacity(0.7) : .primary.opacity(0.15),
+                .stroke(selected ? mazuOrange.opacity(0.7) : .primary.opacity(0.15),
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)

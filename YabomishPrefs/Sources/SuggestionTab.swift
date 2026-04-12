@@ -1,5 +1,12 @@
 import SwiftUI
 
+// MARK: - 媽祖廟五色（與 InputTab 共用）
+private let mazuCyan   = Color(red: 143/255, green: 172/255, blue: 191/255)
+private let mazuGold   = Color(red: 242/255, green: 211/255, blue: 121/255)
+private let mazuOrange = Color(red: 242/255, green: 141/255, blue:  53/255)
+private let mazuDeep   = Color(red: 242/255, green: 122/255, blue:  53/255)
+private let mazuRed    = Color(red: 242/255, green:  64/255, blue:  48/255)
+
 private struct SuggestLayer: Identifiable {
     let id: String
     let label: String
@@ -31,7 +38,6 @@ struct SuggestionTab: View {
     @State private var layerOrder: [SuggestLayer] = []
     @State private var generalOrder: [DomainEntry] = []
     @State private var proOrder: [DomainEntry] = []
-    @State private var saved = false
     @State private var showResetConfirm = false
 
     private let threeColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
@@ -60,6 +66,7 @@ struct SuggestionTab: View {
                     let item = layerOrder.remove(at: srcIdx)
                     let col = max(0, min(2, Int(location.x / 160)))
                     layerOrder.insert(item, at: min(layerOrder.count, col))
+                    saveStrategy()
                     return true
                 }
 
@@ -73,7 +80,7 @@ struct SuggestionTab: View {
 
                 // 4. General domains
                 Label("一般詞庫", systemImage: "books.vertical").font(.headline)
-                domainGrid(entries: $generalOrder, color: .blue)
+                domainGrid(entries: $generalOrder, color: mazuCyan)
 
                 // 5. Pro domains
                 // 5. Pro domains — compact chip layout
@@ -84,8 +91,6 @@ struct SuggestionTab: View {
                 HStack {
                     Button("重置") { showResetConfirm = true }
                     Spacer()
-                    if saved { Text("已套用 ✓").foregroundStyle(.green).transition(.opacity) }
-                    Button("套用") { apply() }.controlSize(.large)
                 }
             }
             .padding(20)
@@ -106,7 +111,7 @@ struct SuggestionTab: View {
             VStack(spacing: 5) {
                 Image(systemName: layer.icon)
                     .font(.system(size: 26))
-                    .foregroundStyle(enabled ? Color.accentColor : .secondary)
+                    .foregroundStyle(enabled ? mazuDeep : .secondary)
                 Text(layer.label)
                     .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
@@ -117,9 +122,9 @@ struct SuggestionTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(enabled ? Color.accentColor.opacity(0.18) : .primary.opacity(0.05)))
+                .fill(enabled ? mazuDeep.opacity(0.18) : .primary.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(enabled ? Color.accentColor.opacity(0.7) : .primary.opacity(0.15),
+                .stroke(enabled ? mazuDeep.opacity(0.7) : .primary.opacity(0.15),
                         lineWidth: enabled ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -135,7 +140,7 @@ struct SuggestionTab: View {
             VStack(spacing: 5) {
                 Image(systemName: entry.icon)
                     .font(.system(size: 26))
-                    .foregroundStyle(selected ? .green : .secondary)
+                    .foregroundStyle(selected ? mazuRed : .secondary)
                 Text(entry.label)
                     .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
@@ -146,9 +151,9 @@ struct SuggestionTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Color.green.opacity(0.18) : .primary.opacity(0.05)))
+                .fill(selected ? mazuRed.opacity(0.18) : .primary.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Color.green.opacity(0.7) : .primary.opacity(0.15),
+                .stroke(selected ? mazuRed.opacity(0.7) : .primary.opacity(0.15),
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -182,6 +187,7 @@ struct SuggestionTab: View {
             let destIdx = min(arr.count, row * gridCols + col)
             arr.insert(item, at: destIdx)
             entries.wrappedValue = arr
+            saveDomainOrder()
             return true
         }
     }
@@ -207,6 +213,7 @@ struct SuggestionTab: View {
             let destIdx = min(arr.count, row * 2 + col)
             arr.insert(item, at: destIdx)
             entries.wrappedValue = arr
+            saveDomainOrder()
             return true
         }
     }
@@ -220,7 +227,7 @@ struct SuggestionTab: View {
                 Image(systemName: entry.icon)
                     .font(.system(size: 13))
                     .frame(width: 18)
-                    .foregroundStyle(on ? .orange : .secondary)
+                    .foregroundStyle(on ? mazuOrange : .secondary)
                 Text(entry.label)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(on ? .primary : .secondary)
@@ -235,11 +242,11 @@ struct SuggestionTab: View {
             .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(on ? Color.orange.opacity(0.18) : .primary.opacity(0.05))
+                    .fill(on ? mazuOrange.opacity(0.18) : .primary.opacity(0.05))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(on ? Color.orange.opacity(0.7) : .primary.opacity(0.15),
+                    .stroke(on ? mazuOrange.opacity(0.7) : .primary.opacity(0.15),
                             lineWidth: on ? 1.5 : 1)
             )
         }
@@ -288,19 +295,15 @@ struct SuggestionTab: View {
         }
     }
 
-    private func apply() {
-        // Save layer strategy
+    private func saveStrategy() {
         let ids = layerOrder.map(\.id)
         if ids.first == "domain" { store.suggestStrategy = "domain" }
         else if ids.first == "char" { store.suggestStrategy = "char" }
         else { store.suggestStrategy = "general" }
+    }
 
-        // Save domain order
+    private func saveDomainOrder() {
         store.domainOrder = (generalOrder + proOrder).map(\.id)
-
-        store.postChange()
-        withAnimation { saved = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation { saved = false } }
     }
 
     private func resetDefaults() {
