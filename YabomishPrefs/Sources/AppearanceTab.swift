@@ -41,8 +41,10 @@ struct AppearanceTab: View {
 
                 GroupBox("開發") {
                     VStack(alignment: .leading, spacing: 10) {
-                        Toggle("新引擎（重新登入後生效）", isOn: $store.useNewEngine)
                         Toggle("Debug 模式", isOn: $store.debugMode)
+                        if store.debugMode {
+                            Toggle("新引擎（重新登入後生效）", isOn: $store.useNewEngine)
+                        }
                         Button("打開 debug.log…") {
                             let url = URL(fileURLWithPath: NSHomeDirectory())
                                 .appendingPathComponent("Library/YabomishIM/debug.log")

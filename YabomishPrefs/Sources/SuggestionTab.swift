@@ -35,7 +35,7 @@ struct SuggestionTab: View {
     @State private var showResetConfirm = false
 
     private let threeColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
-    private let domainColumns = [GridItem(.adaptive(minimum: 92), spacing: 8)]
+    private let domainColumns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
     var body: some View {
         ScrollView {
@@ -100,20 +100,19 @@ struct SuggestionTab: View {
     private func layerCard(_ layer: SuggestLayer) -> some View {
         let enabled = layer.id == "char" ? store.charSuggest : true
         Button { if layer.id == "char" { store.charSuggest.toggle() } } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 Image(systemName: layer.icon)
-                    .font(.system(size: 22))
+                    .font(.system(size: 26))
                     .foregroundStyle(enabled ? Color.accentColor : .secondary)
                 Text(layer.label)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(enabled ? .primary : .secondary)
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
                 Text(layer.desc)
-                    .font(.system(size: 10))
-                    .foregroundStyle(enabled ? .secondary : .tertiary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, minHeight: 80)
+            .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
                 .fill(enabled ? Color.accentColor.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
             .overlay(RoundedRectangle(cornerRadius: 10)
@@ -130,20 +129,19 @@ struct SuggestionTab: View {
     private func corpusCard(_ entry: CorpusEntry) -> some View {
         let selected = store.wordCorpus == entry.id
         Button { store.wordCorpus = entry.id } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 Image(systemName: entry.icon)
-                    .font(.system(size: 22))
+                    .font(.system(size: 26))
                     .foregroundStyle(selected ? .green : .secondary)
                 Text(entry.label)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(selected ? .primary : .secondary)
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
                 Text(entry.desc)
-                    .font(.system(size: 10))
-                    .foregroundStyle(selected ? .secondary : .tertiary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, minHeight: 80)
+            .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
                 .fill(selected ? Color.green.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
             .overlay(RoundedRectangle(cornerRadius: 10)

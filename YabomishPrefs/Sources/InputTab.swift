@@ -25,7 +25,7 @@ private let panelOptions: [InputOption] = [
 struct InputTab: View {
     @Bindable var store: PrefsStore
 
-    private let columns = [GridItem(.adaptive(minimum: 92), spacing: 8)]
+    private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
     var body: some View {
         ScrollView {
@@ -55,20 +55,19 @@ struct InputTab: View {
     private func toggleCard(_ opt: InputOption) -> some View {
         let on = binding(for: opt.id).wrappedValue
         Button { binding(for: opt.id).wrappedValue.toggle() } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 Image(systemName: opt.icon)
-                    .font(.system(size: 22))
+                    .font(.system(size: 26))
                     .foregroundStyle(on ? Color.accentColor : .secondary)
                 Text(opt.label)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(on ? .primary : .secondary)
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
                 Text(opt.desc)
-                    .font(.system(size: 10))
-                    .foregroundStyle(on ? .secondary : .tertiary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .frame(width: 88, height: 88)
+            .frame(width: 100, height: 100)
             .background(RoundedRectangle(cornerRadius: 10)
                 .fill(on ? Color.accentColor.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
             .overlay(RoundedRectangle(cornerRadius: 10)
@@ -82,20 +81,19 @@ struct InputTab: View {
     private func panelCard(_ opt: InputOption) -> some View {
         let selected = store.panelPosition == opt.id
         Button { store.panelPosition = opt.id } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 Image(systemName: opt.icon)
-                    .font(.system(size: 22))
+                    .font(.system(size: 26))
                     .foregroundStyle(selected ? Color.green : .secondary)
                 Text(opt.label)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(selected ? .primary : .secondary)
+                    .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
                 Text(opt.desc)
-                    .font(.system(size: 10))
-                    .foregroundStyle(selected ? .secondary : .tertiary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, minHeight: 80)
+            .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
                 .fill(selected ? Color.green.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
             .overlay(RoundedRectangle(cornerRadius: 10)
