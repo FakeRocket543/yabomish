@@ -20,6 +20,8 @@ enum DomainData {
         .init(id: "domain_chengyu", file: "chengyu", label: "成語", icon: "text.quote", desc: "四字成語典故", group: .general),
         .init(id: "domain_jingjing", file: "terms_jingjing", label: "晶晶體", icon: "globe.americas", desc: "台式中英夾雜", group: .general),
         .init(id: "domain_cn_slang", file: "terms_cn_slang", label: "中國流行語", icon: "bubble.left", desc: "中式網路用語", group: .general),
+        .init(id: "domain_kautian", file: "terms_kautian", label: "台灣俗諺", icon: "quote.bubble", desc: "教育部閩南語辭典", group: .general),
+        .init(id: "domain_hakka", file: "terms_hakka", label: "客語辭典", icon: "person.2", desc: "教育部六腔客語", group: .general),
         .init(id: "domain_yoji", file: "yoji", label: "日本熟語", icon: "leaf", desc: "日式四字詞", group: .general),
     ]
 
