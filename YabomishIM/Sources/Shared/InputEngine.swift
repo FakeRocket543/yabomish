@@ -228,7 +228,12 @@ final class InputEngine {
             }
             return
         }
-        if _composing.isEmpty { return }
+        if _composing.isEmpty {
+            if !_recentCommitted.isEmpty { _recentCommitted = String(_recentCommitted.dropLast()) }
+            if !_currentCandidates.isEmpty { _currentCandidates = []; _notifyCandidates() }
+            delegate?.engineDidDeleteBack()
+            return
+        }
         _composing = String(_composing.dropLast())
         if _composing.isEmpty { _resetComposing() }
         else {
