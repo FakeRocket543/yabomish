@@ -72,6 +72,7 @@ final class WikiCorpus {
         ("domain_chengyu", "chengyu", "成語"),
         ("domain_jingjing", "terms_jingjing", "晶晶體"),
         ("domain_cn_slang", "terms_cn_slang", "中國流行語"),
+        ("domain_xiehouyu", "terms_xiehouyu", "歇後語"),
         ("domain_kautian", "terms_kautian", "台灣俗諺"),
         ("domain_hakka", "terms_hakka", "客語辭典"),
         ("domain_yoji", "yoji", "日本熟語"),
