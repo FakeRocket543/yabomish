@@ -123,6 +123,13 @@ import Foundation
         postChange()
     }
 
+    // MARK: - Onboarding
+
+    var hasSeenWelcome: Bool {
+        get { access(keyPath: \.hasSeenWelcome); return ud.object(forKey: "hasSeenWelcome") as? Bool ?? false }
+        set { withMutation(keyPath: \.hasSeenWelcome) { ud.set(newValue, forKey: "hasSeenWelcome") } }
+    }
+
     func postChange() {
         DistributedNotificationCenter.default().post(name: .init("com.yabomish.prefsChanged"), object: nil)
     }

@@ -60,8 +60,8 @@ final class WikiCorpus {
         ("domain_ner", "ner_phrases", "NER 詞組"),
         ("domain_phrases", "phrases", "萌典詞組"),
         ("domain_chengyu", "chengyu", "成語"),
-        ("domain_yoji", "yoji", "日式四字熟語"),
-        ("domain_cn_slang", "terms_cn_slang", "中式流行語"),
+        ("domain_yoji", "yoji", "日本熟語"),
+        ("domain_cn_slang", "terms_cn_slang", "中國流行語"),
     ]
     /// Group 2: 專業詞典
     static let proDomainKeys: [(key: String, file: String, label: String)] = [

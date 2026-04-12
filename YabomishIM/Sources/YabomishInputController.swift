@@ -481,7 +481,7 @@ extension YabomishInputController {
                 if !engine.currentCandidates.isEmpty { engine.handleSpace() }
                 else { engine.handleEscape() }
             }
-            if let ch = keyCodeToChar[keyCode] {
+            if let ch = keyCodeToChar[keyCode], ch.isLetter {
                 let s = flags.contains(.capsLock) ? String(ch).uppercased() : String(ch)
                 client.insertText(s, replacementRange: notFoundRange)
                 return true

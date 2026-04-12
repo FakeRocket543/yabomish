@@ -18,8 +18,8 @@ enum DomainData {
         .init(id: "domain_ner", file: "ner_phrases", label: "NER 詞組", icon: "person.text.rectangle", desc: "人名地名機構", group: .general),
         .init(id: "domain_phrases", file: "phrases", label: "萌典詞組", icon: "character.book.closed", desc: "教育部辭典", group: .general),
         .init(id: "domain_chengyu", file: "chengyu", label: "成語", icon: "text.quote", desc: "四字成語典故", group: .general),
-        .init(id: "domain_yoji", file: "yoji", label: "四字熟語", icon: "leaf", desc: "日式四字詞", group: .general),
-        .init(id: "domain_cn_slang", file: "terms_cn_slang", label: "流行語", icon: "bubble.left", desc: "中式網路用語", group: .general),
+        .init(id: "domain_yoji", file: "yoji", label: "日本熟語", icon: "leaf", desc: "日式四字詞", group: .general),
+        .init(id: "domain_cn_slang", file: "terms_cn_slang", label: "中國流行語", icon: "bubble.left", desc: "中式網路用語", group: .general),
     ]
 
     static let proDomains: [DomainEntry] = [
@@ -49,7 +49,8 @@ enum DomainData {
 
     static func binEntryCount(file: String) -> Int {
         let paths = [
-            NSHomeDirectory() + "/Library/Application Support/YabomishIM/\(file).bin",
+            "/Library/Input Methods/YabomishIM.app/Contents/Resources/\(file).bin",
+            NSHomeDirectory() + "/Library/YabomishIM/\(file).bin",
             Bundle.main.path(forResource: file, ofType: "bin")
         ].compactMap { $0 }
         guard let path = paths.first(where: { FileManager.default.fileExists(atPath: $0) }),

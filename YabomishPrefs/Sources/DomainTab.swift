@@ -18,6 +18,7 @@ struct DomainTab: View {
                 gridSection(entries: $generalOrder, color: .blue)
 
                 sectionHeader("專業詞典", icon: "graduationcap")
+                Text("來源：教育部樂詞網 + 維基百科條目").font(.caption).foregroundStyle(.secondary)
                 gridSection(entries: $proOrder, color: .orange)
 
                 HStack {
