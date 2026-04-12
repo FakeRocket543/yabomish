@@ -140,6 +140,12 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "wordCorpus") }
     }
 
+    /// 地區用詞：tw / cn
+    static var regionVariant: String {
+        get { defaults.string(forKey: "regionVariant") ?? "tw" }
+        set { defaults.set(newValue, forKey: "regionVariant") }
+    }
+
     /// Char-level suggestions (bigram, trigram)
     static var charSuggest: Bool {
         get { defaults.object(forKey: "charSuggest") as? Bool ?? true }

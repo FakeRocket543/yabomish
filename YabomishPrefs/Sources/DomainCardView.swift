@@ -32,13 +32,13 @@ struct DomainCardView: View {
             .frame(width: 100, height: 100)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isEnabled ? color.opacity(0.12) : Color(nsColor: .windowBackgroundColor))
+                    .fill(isEnabled ? color.opacity(0.18) : .primary.opacity(0.05))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isEnabled ? color.opacity(0.5) : Color(nsColor: .separatorColor), lineWidth: isEnabled ? 1.5 : 0.5)
+                    .stroke(isEnabled ? color.opacity(0.7) : .primary.opacity(0.15),
+                            lineWidth: isEnabled ? 1.5 : 1)
             )
-            .opacity(isEnabled ? 1.0 : 0.55)
         }
         .buttonStyle(.plain)
         .draggable(entry.id)

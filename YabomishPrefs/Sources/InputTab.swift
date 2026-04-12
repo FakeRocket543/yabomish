@@ -22,6 +22,11 @@ private let panelOptions: [InputOption] = [
     .init(id: "fixed",  label: "固定位置", icon: "rectangle.bottomhalf.filled", desc: "選字窗固定底部"),
 ]
 
+private let regionOptions: [InputOption] = [
+    .init(id: "tw", label: "臺灣正體", icon: "flag", desc: "臺灣用詞優先"),
+    .init(id: "cn", label: "简体中文", icon: "globe.asia.australia", desc: "中国用词优先"),
+]
+
 struct InputTab: View {
     @Bindable var store: PrefsStore
 
@@ -32,6 +37,13 @@ struct InputTab: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("點擊卡片啟用／停用功能。")
                     .font(.callout).foregroundStyle(.secondary)
+
+                Label("地區用詞", systemImage: "map").font(.headline)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach(regionOptions) { opt in
+                        regionCard(opt)
+                    }
+                }
 
                 Label("選字窗", systemImage: "keyboard").font(.headline)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -69,9 +81,9 @@ struct InputTab: View {
             }
             .frame(width: 100, height: 100)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(on ? Color.accentColor.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
+                .fill(on ? Color.accentColor.opacity(0.18) : .primary.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(on ? Color.accentColor.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                .stroke(on ? Color.accentColor.opacity(0.7) : .primary.opacity(0.15),
                         lineWidth: on ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -95,9 +107,36 @@ struct InputTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Color.green.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
+                .fill(selected ? Color.green.opacity(0.18) : .primary.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Color.green.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                .stroke(selected ? Color.green.opacity(0.7) : .primary.opacity(0.15),
+                        lineWidth: selected ? 1.5 : 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func regionCard(_ opt: InputOption) -> some View {
+        let selected = store.regionVariant == opt.id
+        Button { store.regionVariant = opt.id } label: {
+            VStack(spacing: 5) {
+                Image(systemName: opt.icon)
+                    .font(.system(size: 26))
+                    .foregroundStyle(selected ? .purple : .secondary)
+                Text(opt.label)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(selected ? .primary : .secondary)
+                    .lineLimit(1)
+                Text(opt.desc)
+                    .font(.system(size: 11))
+                    .foregroundStyle(selected ? .secondary : .tertiary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, minHeight: 90)
+            .background(RoundedRectangle(cornerRadius: 10)
+                .fill(selected ? Color.purple.opacity(0.18) : .primary.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: 10)
+                .stroke(selected ? Color.purple.opacity(0.7) : .primary.opacity(0.15),
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)

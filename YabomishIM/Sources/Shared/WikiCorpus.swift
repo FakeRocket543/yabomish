@@ -44,6 +44,10 @@ final class WikiCorpus {
 
     // Emoji char map
     private var emojiMap: [String: [String]] = [:]
+
+    // Region variant filter
+    private var regionTW: Set<String> = []
+    private var regionCN: Set<String> = []
     private struct DomainBin { let data: Data; let keyCount: Int; let keyIndexOff: Int; let valIndexOff: Int; let priority: Int }
     private var domainBins: [DomainBin] = []
     var domainBinCount: Int { domainBins.count }
@@ -95,6 +99,7 @@ final class WikiCorpus {
         loadWordNews()
         loadJingjing()
         loadEmojiMap()
+        loadRegionSets()
         reloadDomains()
     }
 
@@ -115,6 +120,25 @@ final class WikiCorpus {
 
     func suggestEmoji(for char: String, limit: Int = 2) -> [String] {
         Array((emojiMap[char] ?? []).prefix(limit))
+    }
+
+    private func loadRegionSets() {
+        if let p = resolvePath(name: "region_tw", ext: "txt"),
+           let s = try? String(contentsOfFile: p, encoding: .utf8) {
+            regionTW = Set(s.split(separator: "\n").map(String.init))
+        }
+        if let p = resolvePath(name: "region_cn", ext: "txt"),
+           let s = try? String(contentsOfFile: p, encoding: .utf8) {
+            regionCN = Set(s.split(separator: "\n").map(String.init))
+        }
+        DebugLog.log("WikiCorpus: region sets loaded — TW \(regionTW.count), CN \(regionCN.count)")
+    }
+
+    /// Returns true if the term should be demoted based on current region variant.
+    func isRegionDemoted(_ term: String) -> Bool {
+        if prefs.regionVariant == "tw" { return regionCN.contains(term) }
+        if prefs.regionVariant == "cn" { return regionTW.contains(term) }
+        return false
     }
 
     func reloadDomains() {

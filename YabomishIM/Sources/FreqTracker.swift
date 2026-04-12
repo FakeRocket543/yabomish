@@ -81,14 +81,20 @@ final class FreqTracker {
     func sortedWithContext(_ candidates: [String], forCode code: String, prev: String) -> [String] {
         if code.hasPrefix(",") { return candidates }
         guard !prev.isEmpty else { return sorted(candidates, forCode: code) }
-        let unigramCounts = queryMap(stmtQueryFreq, code)
-        let bigramCounts = queryMap(stmtQueryBigram, prev)
-        guard !unigramCounts.isEmpty || !bigramCounts.isEmpty else { return candidates }
+        let uni = queryMap(stmtQueryFreq, code)
+        let bi = queryMap(stmtQueryBigram, prev)
+        guard !uni.isEmpty || !bi.isEmpty else { return candidates }
+        let uniT = max(1.0, Double(uni.values.reduce(0, +)))
+        let biT = max(1.0, Double(bi.values.reduce(0, +)))
         return candidates.sorted {
-            let s0 = Double(unigramCounts[$0] ?? 0) * 0.7 + Double(bigramCounts[$0] ?? 0) * 0.3
-            let s1 = Double(unigramCounts[$1] ?? 0) * 0.7 + Double(bigramCounts[$1] ?? 0) * 0.3
-            return s0 > s1
+            backoffScore($0, uni, bi, uniT, biT) > backoffScore($1, uni, bi, uniT, biT)
         }
+    }
+
+    private func backoffScore(_ char: String, _ uni: [String: Int], _ bi: [String: Int],
+                              _ uniT: Double, _ biT: Double) -> Double {
+        if let b = bi[char] { return Double(b) / biT }
+        return 0.4 * Double(uni[char] ?? 0) / uniT
     }
 
     /// Top N learned bigram suggestions for a given prev char

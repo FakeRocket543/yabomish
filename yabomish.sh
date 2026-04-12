@@ -39,7 +39,8 @@ build_im() {
     for f in icon.tiff icon.icns icon_right.tiff icon_left.tiff \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json emoji_char_map.json \
              bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
-             phrases.bin ner_phrases.bin yoji.bin; do
+             phrases.bin ner_phrases.bin yoji.bin \
+             region_tw.txt region_cn.txt; do
         [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
     done
     for f in "$IM_RES"/terms_*.bin; do [ -f "$f" ] && cp "$f" "$IM_APP/Contents/Resources/"; done

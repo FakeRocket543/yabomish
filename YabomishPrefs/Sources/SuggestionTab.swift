@@ -41,8 +41,11 @@ struct SuggestionTab: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 // 1. Hint
-                Text("拖拉調整優先順序。點擊啟用／停用。")
-                    .font(.callout).foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "hand.draw").foregroundStyle(.secondary)
+                    Text("拖拉卡片調整優先順序。點擊啟用／停用。")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
 
                 // 2. Layer order
                 Label("聯想層順序", systemImage: "square.3.layers.3d").font(.headline)
@@ -114,9 +117,9 @@ struct SuggestionTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(enabled ? Color.accentColor.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
+                .fill(enabled ? Color.accentColor.opacity(0.18) : .primary.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(enabled ? Color.accentColor.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                .stroke(enabled ? Color.accentColor.opacity(0.7) : .primary.opacity(0.15),
                         lineWidth: enabled ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -143,9 +146,9 @@ struct SuggestionTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Color.green.opacity(0.18) : Color(nsColor: .controlBackgroundColor)))
+                .fill(selected ? Color.green.opacity(0.18) : .primary.opacity(0.05)))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Color.green.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                .stroke(selected ? Color.green.opacity(0.7) : .primary.opacity(0.15),
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -185,7 +188,7 @@ struct SuggestionTab: View {
 
     // MARK: - Pro domain chips (compact layout)
 
-    private let chipColumns = [GridItem(.adaptive(minimum: 110), spacing: 6)]
+    private let chipColumns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
 
     @ViewBuilder
     private func proChipGrid(entries: Binding<[DomainEntry]>) -> some View {
@@ -199,11 +202,9 @@ struct SuggestionTab: View {
             var arr = entries.wrappedValue
             guard let srcIdx = arr.firstIndex(where: { $0.id == draggedID }) else { return false }
             let item = arr.remove(at: srcIdx)
-            let cellW: CGFloat = 116
-            let col = max(0, Int(location.x / cellW))
+            let col = location.x > 270 ? 1 : 0
             let row = max(0, Int(location.y / 38))
-            let gridCols = max(1, Int(540 / cellW))
-            let destIdx = min(arr.count, row * gridCols + col)
+            let destIdx = min(arr.count, row * 2 + col)
             arr.insert(item, at: destIdx)
             entries.wrappedValue = arr
             return true
@@ -215,34 +216,40 @@ struct SuggestionTab: View {
         let on = store.domainEnabled(entry.id)
         let count = DomainData.binEntryCount(file: entry.file)
         Button { store.setDomainEnabled(entry.id, !on) } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 Image(systemName: entry.icon)
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
+                    .frame(width: 18)
                     .foregroundStyle(on ? .orange : .secondary)
                 Text(entry.label)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(on ? .primary : .secondary)
+                Spacer()
                 if count > 0 {
-                    Text(count >= 10000 ? String(format: "%.0fw", Double(count)/10000) : "\(count)")
-                        .font(.system(size: 9).monospacedDigit())
+                    Text(formatChipCount(count))
+                        .font(.system(size: 10).monospacedDigit())
                         .foregroundStyle(on ? .secondary : .tertiary)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
             .background(
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(on ? Color.orange.opacity(0.18) : Color(nsColor: .controlBackgroundColor))
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(on ? Color.orange.opacity(0.18) : .primary.opacity(0.05))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 7)
-                    .stroke(on ? Color.orange.opacity(0.7) : Color(nsColor: .separatorColor).opacity(0.6),
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(on ? Color.orange.opacity(0.7) : .primary.opacity(0.15),
                             lineWidth: on ? 1.5 : 1)
             )
         }
         .buttonStyle(.plain)
         .draggable(entry.id)
+    }
+
+    private func formatChipCount(_ n: Int) -> String {
+        if n >= 10000 { return String(format: "%.1f 萬", Double(n) / 10000.0) }
+        return "\(n) 筆"
     }
 
     // MARK: - Load / Apply / Reset
@@ -300,6 +307,7 @@ struct SuggestionTab: View {
         store.suggestStrategy = "general"
         store.wordCorpus = "wiki"
         store.charSuggest = true
+        store.regionVariant = "tw"
         loadOrder()
         generalOrder = DomainData.generalDomains
         proOrder = DomainData.proDomains

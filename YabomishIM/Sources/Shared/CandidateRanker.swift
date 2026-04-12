@@ -84,6 +84,14 @@ final class CandidateRanker {
             candidates.sort { domainBoost(for: $0) > domainBoost(for: $1) }
         }
 
+        // Region variant: demote opposite-region terms to end
+        if candidates.count > 1 {
+            let demoted = candidates.filter { wikiCorpus.isRegionDemoted($0) }
+            if !demoted.isEmpty {
+                candidates = candidates.filter { !wikiCorpus.isRegionDemoted($0) } + demoted
+            }
+        }
+
         return candidates
     }
 

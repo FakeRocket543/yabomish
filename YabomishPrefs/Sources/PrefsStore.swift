@@ -19,6 +19,10 @@ import Foundation
         get { access(keyPath: \.wordCorpus); return ud.string(forKey: "wordCorpus") ?? "wiki" }
         set { withMutation(keyPath: \.wordCorpus) { ud.set(newValue, forKey: "wordCorpus") }; postChange() }
     }
+    var regionVariant: String {
+        get { access(keyPath: \.regionVariant); return ud.string(forKey: "regionVariant") ?? "tw" }
+        set { withMutation(keyPath: \.regionVariant) { ud.set(newValue, forKey: "regionVariant") }; postChange() }
+    }
     var charSuggest: Bool {
         get { access(keyPath: \.charSuggest); return ud.object(forKey: "charSuggest") as? Bool ?? true }
         set { withMutation(keyPath: \.charSuggest) { ud.set(newValue, forKey: "charSuggest") }; postChange() }

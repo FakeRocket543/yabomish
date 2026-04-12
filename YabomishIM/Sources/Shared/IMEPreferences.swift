@@ -10,6 +10,7 @@ protocol IMEPreferences {
     var suggestStrategy: String { get }
     var wordCorpus: String { get }
     var charSuggest: Bool { get }
+    var regionVariant: String { get }
     func domainEnabled(_ key: String) -> Bool
     func domainPriority(_ key: String) -> Int
     var punctuationPairing: Bool { get }
@@ -25,6 +26,7 @@ final class DefaultPreferences: IMEPreferences {
     var suggestStrategy: String { YabomishPrefs.suggestStrategy }
     var wordCorpus: String { YabomishPrefs.wordCorpus }
     var charSuggest: Bool { YabomishPrefs.charSuggest }
+    var regionVariant: String { YabomishPrefs.regionVariant }
     func domainEnabled(_ key: String) -> Bool { YabomishPrefs.domainEnabled(key) }
     func domainPriority(_ key: String) -> Int { YabomishPrefs.domainPriority(key) }
     var punctuationPairing: Bool { YabomishPrefs.punctuationPairing }

@@ -8,7 +8,15 @@ Usage:
   # Yoji / chengyu → prefix WBMM (key=prefix, values=full terms)
   python3 build_wbmm.py prefix /path/to/terms.txt /path/to/output.bin [--min-len 4]
 """
-import struct, sys, os
+import struct, sys, os, re
+
+def _is_clean_key(s: str) -> bool:
+    if len(s) < 2: return False
+    if '\t' in s: return False
+    if re.search(r'[a-zA-Z]', s): return False
+    if re.search(r'^[\d.]', s): return False
+    if '--' in s or "'''" in s: return False
+    return True
 
 def build_wbmm(entries: dict[str, list[str]], out_path: str):
     """entries: {key_str: [val_str, ...]} sorted by key."""
@@ -81,6 +89,7 @@ def build_news(tsv_path: str, out_path: str):
                 except ValueError:
                     continue
     words.sort(key=lambda x: -x[1])
+    words = [(w, f) for w, f in words if _is_clean_key(w)]
     # Build prefix → [full words] (top N per prefix)
     entries = defaultdict(list)
     MAX_PER_KEY = 5
@@ -112,6 +121,20 @@ def build_prefix(txt_path: str, out_path: str, min_len: int = 4):
     print(f"Prefix: {len(terms)} terms → {len(entries)} prefix keys")
     build_wbmm(dict(entries), out_path)
 
+def build_bigram_json(json_path: str, out_path: str):
+    """Build WBMM from word_bigram.json {key: [val1, val2, ...]}. Filters junk keys."""
+    import json
+    with open(json_path) as f:
+        data = json.load(f)
+    entries = {}
+    for k, vals in data.items():
+        if not _is_clean_key(k): continue
+        clean = [v for v in vals if len(v) >= 1]
+        if clean:
+            entries[k] = clean
+    print(f"Bigram JSON: {len(data)} → {len(entries)} clean keys")
+    build_wbmm(entries, out_path)
+
 if __name__ == '__main__':
     mode = sys.argv[1]
     if mode == 'news':
@@ -121,6 +144,9 @@ if __name__ == '__main__':
         if '--min-len' in sys.argv:
             min_len = int(sys.argv[sys.argv.index('--min-len') + 1])
         build_prefix(sys.argv[2], sys.argv[3], min_len)
+    elif mode == 'bigram_json':
+        build_bigram_json(sys.argv[2], sys.argv[3])
     else:
         print(f"Unknown mode: {mode}")
+        sys.exit(1)
         sys.exit(1)

@@ -74,7 +74,9 @@ final class SuggestionEngine {
         default:       ordered = [pool2, poolJJ, pool3, pool4]
         }
         for pool in ordered {
-            for s in pool where seen.insert(s).inserted { suggestions.append(s) }
+            for s in pool where seen.insert(s).inserted {
+                if !wikiCorpus.isRegionDemoted(s) { suggestions.append(s) }
+            }
         }
 
         // Emoji
