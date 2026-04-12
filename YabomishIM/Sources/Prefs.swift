@@ -110,6 +110,12 @@ struct YabomishPrefs {
 
     // MARK: - Suggestion system
 
+    /// Master switch for suggestion system
+    static var suggestEnabled: Bool {
+        get { defaults.object(forKey: "suggestEnabled") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "suggestEnabled") }
+    }
+
     /// Use the new shared InputEngine (from iOS). Set to false to use legacy controller.
     static var useNewEngine: Bool {
         get { defaults.object(forKey: "useNewEngine") as? Bool ?? true }

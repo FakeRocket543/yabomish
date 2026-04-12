@@ -8,6 +8,7 @@ private struct InputOption: Identifiable {
 }
 
 private let inputOptions: [InputOption] = [
+    .init(id: "suggestEnabled",       label: "聯想輸入",  icon: "lightbulb",             desc: "送字後推薦候選"),
     .init(id: "autoCommit",           label: "自動送字",  icon: "arrow.right.circle",    desc: "滿碼自動送出"),
     .init(id: "showCodeHint",         label: "拆碼提示",  icon: "eye",                   desc: "送字後顯示碼"),
     .init(id: "zhuyinReverseLookup",  label: "注音反查",  icon: "character.phonetic",    desc: "'; 切換"),
@@ -106,6 +107,7 @@ struct InputTab: View {
 
     private func binding(for key: String) -> Binding<Bool> {
         switch key {
+        case "suggestEnabled":        return $store.suggestEnabled
         case "autoCommit":            return $store.autoCommit
         case "showCodeHint":          return $store.showCodeHint
         case "zhuyinReverseLookup":   return $store.zhuyinReverseLookup

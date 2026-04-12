@@ -778,7 +778,7 @@ final class InputEngine {
         }
 
         // 聯想
-        if !_isSameSoundMode && !_isZhuyinMode {
+        if prefs.suggestEnabled && !_isSameSoundMode && !_isZhuyinMode {
             let results = suggestionEngine.suggest(recentCommitted: _recentCommitted, lastText: text)
             if !results.isEmpty { delegate?.engineDidSuggest(results) }
         }

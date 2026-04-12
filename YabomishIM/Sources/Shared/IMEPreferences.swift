@@ -3,6 +3,7 @@ import Foundation
 /// Protocol to decouple Shared/ engine layer from concrete YabomishPrefs.
 /// Inject a test-double to unit-test engines without UserDefaults.
 protocol IMEPreferences {
+    var suggestEnabled: Bool { get }
     var autoCommit: Bool { get }
     var fuzzyMatch: Bool { get }
     var showCodeHint: Bool { get }
@@ -17,6 +18,7 @@ protocol IMEPreferences {
 /// Bridges the static YabomishPrefs into an instance conforming to IMEPreferences.
 final class DefaultPreferences: IMEPreferences {
     static let shared = DefaultPreferences()
+    var suggestEnabled: Bool { YabomishPrefs.suggestEnabled }
     var autoCommit: Bool { YabomishPrefs.autoCommit }
     var fuzzyMatch: Bool { YabomishPrefs.fuzzyMatch }
     var showCodeHint: Bool { YabomishPrefs.showCodeHint }

@@ -7,6 +7,10 @@ import Foundation
 
     // MARK: - Suggestion
 
+    var suggestEnabled: Bool {
+        get { access(keyPath: \.suggestEnabled); return ud.object(forKey: "suggestEnabled") as? Bool ?? true }
+        set { withMutation(keyPath: \.suggestEnabled) { ud.set(newValue, forKey: "suggestEnabled") }; postChange() }
+    }
     var suggestStrategy: String {
         get { access(keyPath: \.suggestStrategy); return ud.string(forKey: "suggestStrategy") ?? "general" }
         set { withMutation(keyPath: \.suggestStrategy) { ud.set(newValue, forKey: "suggestStrategy") }; postChange() }
