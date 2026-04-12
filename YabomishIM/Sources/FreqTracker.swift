@@ -6,6 +6,9 @@ final class FreqTracker {
     private let path: String
     private var recordCount = 0
     private let bgQueue = DispatchQueue(label: "com.yabomish.freq.bg")
+    private var pendingFreq: [(code: String, char: String)] = []
+    private var pendingBigram: [(prev: String, char: String)] = []
+    private let batchSize = 50
 
     private var stmtUpsertFreq: OpaquePointer?
     private var stmtQueryFreq: OpaquePointer?
@@ -53,21 +56,41 @@ final class FreqTracker {
     // MARK: - Record
 
     func record(code: String, char: String) {
-        bindAndStep(stmtUpsertFreq, code, char)
+        pendingFreq.append((code, char))
         recordCount += 1
+        if pendingFreq.count >= batchSize { flushFreq() }
         if recordCount >= 500 { recordCount = 0; bgQueue.async { [weak self] in self?.decay() } }
     }
 
     func recordBigram(prev: String, char: String) {
         guard !prev.isEmpty else { return }
-        bindAndStep(stmtUpsertBigram, prev, char)
+        pendingBigram.append((prev, char))
+        if pendingBigram.count >= batchSize { flushBigram() }
     }
 
     func recordTrigram(prev2: String, prev1: String, char: String) {
-        // Store as composite key "prev2|prev1" — lightweight trigram
         guard !prev2.isEmpty, !prev1.isEmpty else { return }
-        bindAndStep(stmtUpsertBigram, prev2 + "|" + prev1, char)
+        pendingBigram.append((prev2 + "|" + prev1, char))
+        if pendingBigram.count >= batchSize { flushBigram() }
     }
+
+    private func flushFreq() {
+        guard !pendingFreq.isEmpty else { return }
+        exec("BEGIN")
+        for (code, char) in pendingFreq { bindAndStep(stmtUpsertFreq, code, char) }
+        exec("COMMIT")
+        pendingFreq.removeAll(keepingCapacity: true)
+    }
+
+    private func flushBigram() {
+        guard !pendingBigram.isEmpty else { return }
+        exec("BEGIN")
+        for (prev, char) in pendingBigram { bindAndStep(stmtUpsertBigram, prev, char) }
+        exec("COMMIT")
+        pendingBigram.removeAll(keepingCapacity: true)
+    }
+
+    func flushAll() { flushFreq(); flushBigram() }
 
     // MARK: - Query
 

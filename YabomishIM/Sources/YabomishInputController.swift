@@ -284,6 +284,7 @@ class YabomishInputController: IMKInputController {
             }
         }
         panel.hide()
+        Self.freqTracker.flushAll()
         Self.activeSession = nil
         Self.lastDeactivateTime = Date()
         super.deactivateServer(sender)

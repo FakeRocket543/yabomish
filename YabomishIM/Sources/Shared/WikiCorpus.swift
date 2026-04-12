@@ -120,7 +120,10 @@ final class WikiCorpus {
         let d: Data
         do { d = try Data(contentsOf: URL(fileURLWithPath: p)) }
         catch { DebugLog.log("WikiCorpus loadEmojiMap: \(error.localizedDescription)"); return }
-        guard let obj = try? JSONSerialization.jsonObject(with: d) as? [String: [String]] else { return }
+        guard let obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: [String]] else {
+            DebugLog.log("WikiCorpus: failed to parse emoji_char_map.json")
+            return
+        }
         emojiMap = obj
     }
 

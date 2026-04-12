@@ -17,7 +17,7 @@ RES = BASE / "YabomishIM" / "Resources"
 WIKI_ENTITIES = BASE / "data" / "wiki_work" / "wiki_domain_entities_trad.json"
 NER_PARQUET = BASE / "data" / "wiki_ner_entities.parquet"
 NAER_COMMIT = "0ff0673"  # pure NAER, before wiki merge
-FREQ_THRESHOLD = 10
+FREQ_THRESHOLD = 50
 
 DOMAIN_FILES = {
     "it": "terms_it", "ee": "terms_ee", "med": "terms_med", "law": "terms_law",
@@ -88,7 +88,7 @@ def main():
     for domain, entities in wiki_domains.items():
         before = len(entities)
         filtered = [e for e in entities
-                    if _is_clean_key(e) and ner_freq.get(e, 0) >= FREQ_THRESHOLD]
+                    if _is_clean_key(e) and len(e) >= 3 and ner_freq.get(e, 0) >= FREQ_THRESHOLD]
         wiki_domains[domain] = filtered
         print(f"  {domain}: {before:,} → {len(filtered):,}")
 
@@ -108,7 +108,7 @@ def main():
                 if suffix not in naer[prefix] and len(naer[prefix]) < 8:
                     naer[prefix].append(suffix)
 
-        build_wbmm(naer, str(binpath))
+        build_wbmm({k: v for k, v in naer.items() if len(k) >= 2}, str(binpath))
         print(f"  {fname}: {len(naer):,} keys, +{len(wiki_entities):,} wiki")
 
     print("\nDone!")

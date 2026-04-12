@@ -287,10 +287,21 @@ final class CINTable {
     // MARK: - Text CIN parser (fallback + overlay)
 
     private func parseCINIntoOverlay(path: String) {
+        // 檔案大小限制
+        let attrs = try? FileManager.default.attributesOfItem(atPath: path)
+        let fileSize = attrs?[.size] as? UInt64 ?? 0
+        guard fileSize <= 100_000_000 else {
+            DebugLog.log("CIN file too large: \(fileSize) bytes, skipped")
+            return
+        }
         guard let data = FileManager.default.contents(atPath: path),
               let content = String(data: data, encoding: .utf8) else { return }
         var inChardef = false
-        content.enumerateLines { line, _ in
+        var lineCount = 0
+        let maxLines = 500_000
+        content.enumerateLines { line, stop in
+            lineCount += 1
+            if lineCount > maxLines { stop = true; return }
             let t = line.trimmingCharacters(in: .whitespaces)
             if t.hasPrefix("%selkey ") {
                 let keys = String(t.dropFirst(8)).trimmingCharacters(in: .whitespaces)

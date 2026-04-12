@@ -16,9 +16,11 @@ final class BigramSuggest {
         let shared = AppConstants.sharedDir + "/bigram.bin"
         let path = FileManager.default.fileExists(atPath: shared) ? shared
                  : Bundle.main.path(forResource: "bigram", ofType: "bin")
-        guard let p = path,
-              let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
-              d.count >= 12, d[0] == 0x42, d[1] == 0x47, d[2] == 0x4D, d[3] == 0x4D else { return }
+        guard let p = path else { return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+        catch { DebugLog.log("BigramSuggest: failed to load \(p): \(error)"); return }
+        guard d.count >= 12, d[0] == 0x42, d[1] == 0x47, d[2] == 0x4D, d[3] == 0x4D else { return }
         keyCount = Int(d.u32(4))
         keysOffset = 8
         offsetsOffset = keysOffset + keyCount * 4

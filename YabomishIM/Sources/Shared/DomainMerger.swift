@@ -7,9 +7,11 @@ enum DomainMerger {
 
         for (key, file, _) in WikiCorpus.domainKeys {
             guard prefs.domainEnabled(key),
-                  let p = Bundle.main.path(forResource: file, ofType: "bin"),
-                  let d = try? Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe),
-                  d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
+                  let p = Bundle.main.path(forResource: file, ofType: "bin") else { continue }
+            let d: Data
+            do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+            catch { DebugLog.log("DomainMerger: failed to load \(file).bin: \(error)"); continue }
+            guard d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
 
             let kc = Int(d.u32(4)), ki = Int(d.u32(8)), vi = Int(d.u32(12))
             guard ki >= 16, ki < vi, vi <= d.count else { continue }

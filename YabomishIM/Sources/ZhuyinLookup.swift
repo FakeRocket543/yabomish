@@ -36,7 +36,11 @@ final class ZhuyinLookup {
         if let fp = dataPath("char_freq", "json") {
             do {
                 let fd = try Data(contentsOf: URL(fileURLWithPath: fp))
-                if let freq = try? JSONSerialization.jsonObject(with: fd) as? [String: Int] { charFreq = freq }
+                if let freq = (try? JSONSerialization.jsonObject(with: fd)) as? [String: Int] {
+                    charFreq = freq
+                } else {
+                    DebugLog.log("ZhuyinLookup: char_freq.json parse failed")
+                }
             } catch { DebugLog.log("ZhuyinLookup read char_freq: \(error.localizedDescription)") }
         }
         DebugLog.log("YabomishIM: zhuyin loaded — \(z2c.count) readings, \(c2z.count) chars, \(charFreq.count) freq")
