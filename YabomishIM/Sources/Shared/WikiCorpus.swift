@@ -48,7 +48,7 @@ final class WikiCorpus {
     // Region variant filter
     private var regionTW: Set<String> = []
     private var regionCN: Set<String> = []
-    private struct DomainBin { let data: Data; let keyCount: Int; let keyIndexOff: Int; let valIndexOff: Int; let priority: Int }
+    private struct DomainBin { let data: Data; let keyCount: Int; let keyIndexOff: Int; let valIndexOff: Int; let priority: Int; let isSemantic: Bool }
     private var domainBins: [DomainBin] = []
     var domainBinCount: Int { domainBins.count }
 
@@ -176,7 +176,8 @@ final class WikiCorpus {
             guard ki >= 16, ki < vi, vi <= d.count else { continue }
             // priority = position in ordered list (no longer uses domainPriority pref)
             domainBins.append(DomainBin(data: d, keyCount: Int(d.u32(4)),
-                                        keyIndexOff: ki, valIndexOff: vi, priority: domainBins.count))
+                                        keyIndexOff: ki, valIndexOff: vi, priority: domainBins.count,
+                                        isSemantic: key == "domain_semantic"))
         }
     }
 
@@ -205,8 +206,8 @@ final class WikiCorpus {
             if !hits.isEmpty { ranked.append((pri, hits)) }
         }
 
-        // WBMM bins
-        for bin in domainBins {
+        // WBMM bins (skip semantic — it has its own channel)
+        for bin in domainBins where !bin.isSemantic {
             let hits = queryWBMM(data: bin.data, keyCount: bin.keyCount, keyIndexOff: bin.keyIndexOff,
                                  valIndexOff: bin.valIndexOff, key: prefix, limit: 3)
             if !hits.isEmpty { ranked.append((bin.priority, hits)) }
@@ -338,6 +339,13 @@ final class WikiCorpus {
     }
 
     /// Jingjing-ti phrase expansion: single-char prefix → suffix completions
+    /// Query semantic (near-synonym) bin only — returns full terms, not suffixes
+    func suggestSemantic(for term: String, limit: Int = 5) -> [String] {
+        guard let bin = domainBins.first(where: { $0.isSemantic }) else { return [] }
+        return queryWBMM(data: bin.data, keyCount: bin.keyCount, keyIndexOff: bin.keyIndexOff,
+                         valIndexOff: bin.valIndexOff, key: term, limit: limit)
+    }
+
     func suggestJingjing(prefix: String, limit: Int = 5) -> [String] {
         queryWBMM(data: jjData, keyCount: jjKeyCount, keyIndexOff: jjKeyIndexOff,
                   valIndexOff: jjValIndexOff, key: prefix, limit: limit)

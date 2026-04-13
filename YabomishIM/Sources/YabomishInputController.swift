@@ -65,6 +65,7 @@ class YabomishInputController: IMKInputController {
     private static let freqTracker = FreqTracker()
     private static weak var activeSession: YabomishInputController?
     private static var lastDeactivateTime: Date = .distantPast
+    private var lastCommittedLength: Int = 0
     private static var hasPromptedImport = false
     private static var yabomishWasActive = false
 
@@ -454,8 +455,23 @@ extension YabomishInputController {
         // Shift held: temporary English / wildcard / full-width space
         if flags.contains(.shift) && !flags.contains(.command) && !flags.contains(.control) && !flags.contains(.option) {
             newEngineShiftUsed = true
-            // Shift+digit while candidates showing → output digit directly
+            // Shift+digit while candidates showing
             if let digit = keyCodeToDigit[keyCode], !engine.currentCandidates.isEmpty {
+                // Semantic upper row: Shift+1~5 → replace last committed word
+                let digitIdx = Int(String(digit))! - 1
+                if let semantic = panel.selectSemantic(digitIdx),
+                   let c = engineClient, lastCommittedLength > 0 {
+                    let sel = c.selectedRange()
+                    if sel.location != NSNotFound && sel.location >= lastCommittedLength {
+                        let replaceRange = NSRange(location: sel.location - lastCommittedLength, length: lastCommittedLength)
+                        c.insertText(semantic, replacementRange: replaceRange)
+                        lastCommittedLength = semantic.count
+                    }
+                    panel.hide()
+                    engine.clearCandidates()
+                    return true
+                }
+                // No semantic: original behavior — output digit
                 if !engine.composing.isEmpty {
                     if !engine.currentCandidates.isEmpty { engine.handleSpace() }
                     else { engine.handleEscape() }
@@ -820,14 +836,19 @@ extension YabomishInputController: InputEngineDelegate {
     }
 
     func engineDidSuggest(_ suggestions: [String]) {
+        engineDidSuggestWithSemantic(suggestions, semantic: [])
+    }
+
+    func engineDidSuggestWithSemantic(_ suggestions: [String], semantic: [String]) {
         guard let client = engineClient else { return }
         if engine.composing.isEmpty && !suggestions.isEmpty {
             engine.setCandidates(suggestions)
-            showNewEngineCandidatePanel(client: client)
+            lastCommittedLength = engine._lastCommittedText.count
+            showNewEngineCandidatePanel(client: client, semantic: semantic)
         }
     }
 
-    private func showNewEngineCandidatePanel(client: NSObjectProtocol & IMKTextInput) {
+    private func showNewEngineCandidatePanel(client: NSObjectProtocol & IMKTextInput, semantic: [String] = []) {
         let candidates = engine.currentCandidates
         guard !candidates.isEmpty else { panel.hide(); return }
 
@@ -870,6 +891,6 @@ extension YabomishInputController: InputEngineDelegate {
         }
 
         panel.modeTag = engine.currentModeLabel
-        panel.show(candidates: candidates, selKeys: engine.selKeys, at: origin, composing: engine.composing)
+        panel.show(candidates: candidates, selKeys: engine.selKeys, at: origin, composing: engine.composing, semantic: semantic)
     }
 }

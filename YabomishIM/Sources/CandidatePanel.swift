@@ -41,6 +41,7 @@ final class CandidatePanel: NSPanel {
     // MARK: - Shared state
 
     private var candidates: [String] = []
+    private var semanticCandidates: [String] = []
     private var selKeys: [Character] = []
     private var highlightIndex = 0
     private let pageSize = 9
@@ -50,6 +51,7 @@ final class CandidatePanel: NSPanel {
     // MARK: - Cursor-mode views
 
     private let stackView = NSStackView()
+    private var semanticHeaderLabel: NSTextField!
     private var labels: [NSTextField] = []
     private var pageIndicator: NSTextField!
 
@@ -99,6 +101,15 @@ final class CandidatePanel: NSPanel {
             stackView.bottomAnchor.constraint(equalTo: contentVisual.bottomAnchor),
         ]
         NSLayoutConstraint.activate(stackConstraints)
+
+        // Semantic header (upper row, hidden by default)
+        semanticHeaderLabel = NSTextField(labelWithString: "")
+        semanticHeaderLabel.isBordered = false
+        semanticHeaderLabel.isEditable = false
+        semanticHeaderLabel.wantsLayer = true
+        semanticHeaderLabel.layer?.cornerRadius = 3
+        semanticHeaderLabel.isHidden = true
+        stackView.addArrangedSubview(semanticHeaderLabel)
 
         for _ in 0..<pageSize {
             let label = NSTextField(labelWithString: "")
@@ -194,11 +205,12 @@ final class CandidatePanel: NSPanel {
     /// When true, cursor mode falls back to fixed-mode display (incompatible apps)
     var fallbackFixed = false
 
-    func show(candidates: [String], selKeys: [Character], at origin: NSPoint, composing: String = "") {
+    func show(candidates: [String], selKeys: [Character], at origin: NSPoint, composing: String = "", semantic: [String] = []) {
         onMain {
             guard !candidates.isEmpty else { self.hide(); return }
             self.showGeneration += 1
             self.candidates = candidates
+            self.semanticCandidates = semantic
             self.selKeys = selKeys
             self.highlightIndex = 0
             self.composingText = composing
@@ -232,6 +244,7 @@ final class CandidatePanel: NSPanel {
                 self.orderOut(nil)
             }
             self.candidates = []
+            self.semanticCandidates = []
             self.composingText = ""
         }
     }
@@ -242,6 +255,12 @@ final class CandidatePanel: NSPanel {
         let actual = pageStart + i
         guard actual < candidates.count else { return nil }
         return candidates[actual]
+    }
+
+    /// Select from semantic (upper) row by index (0-based). Returns the semantic term or nil.
+    func selectSemantic(_ index: Int) -> String? {
+        guard index >= 0, index < semanticCandidates.count else { return nil }
+        return semanticCandidates[index]
     }
 
     func pageDown() {
@@ -318,6 +337,20 @@ final class CandidatePanel: NSPanel {
         let fontSize = YabomishPrefs.fontSize
         let start = pageStart
         let end = min(start + pageSize, candidates.count)
+
+        // Semantic upper row
+        if !semanticCandidates.isEmpty {
+            let circleDigits = ["❶","❷","❸","❹","❺","❻","❼","❽","❾"]
+            let parts = semanticCandidates.prefix(5).enumerated().map { (i, t) in
+                "\(i < circleDigits.count ? circleDigits[i] : "\(i+1)")\(t)"
+            }
+            semanticHeaderLabel.stringValue = parts.joined(separator: "  ")
+            semanticHeaderLabel.font = Self.cachedMonoFont(size: fontSize * 0.9)
+            semanticHeaderLabel.textColor = .systemPurple
+            semanticHeaderLabel.isHidden = false
+        } else {
+            semanticHeaderLabel.isHidden = true
+        }
 
         for i in 0..<pageSize {
             let label = labels[i]
@@ -467,6 +500,25 @@ final class CandidatePanel: NSPanel {
         }
 
         fixedLabel.attributedStringValue = result
+
+        // Semantic upper row
+        if !semanticCandidates.isEmpty {
+            let semResult = NSMutableAttributedString()
+            let semFont = Self.cachedFont(size: fontSize * 0.9)
+            let circleDigits = ["❶","❷","❸","❹","❺","❻","❼","❽","❾"]
+            let semColor = NSColor.systemPurple.withAlphaComponent(0.8)
+            let semAttrs: [NSAttributedString.Key: Any] = [.font: semFont, .foregroundColor: semColor]
+            for (i, term) in semanticCandidates.prefix(5).enumerated() {
+                if i > 0 { semResult.append(NSAttributedString(string: sep, attributes: semAttrs)) }
+                let digit = i < circleDigits.count ? circleDigits[i] : "\(i+1)"
+                semResult.append(NSAttributedString(string: "\(digit)\(term)", attributes: semAttrs))
+            }
+            semResult.append(NSAttributedString(string: "\n", attributes: semAttrs))
+            semResult.append(result)
+            fixedLabel.attributedStringValue = semResult
+        } else {
+            fixedLabel.attributedStringValue = result
+        }
 
         let size = fixedLabel.intrinsicContentSize
         let h = size.height + 8

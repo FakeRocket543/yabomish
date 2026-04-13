@@ -11,6 +11,7 @@ protocol InputEngineDelegate: AnyObject {
     func engineDidShowToast(_ text: String)
     func engineDidDeleteBack()
     func engineDidSuggest(_ suggestions: [String])
+    func engineDidSuggestWithSemantic(_ suggestions: [String], semantic: [String])
 }
 
 final class InputEngine {
@@ -41,6 +42,7 @@ final class InputEngine {
     private var _isWildcard = false
     private var _isEnglishMode = false
     private var _lastCommitted = ""
+    var _lastCommittedText: String { _lastCommitted }
     private var _prevCommitted = ""
     private var _recentCommitted = ""
     private var _eatNextSpace = false
@@ -779,8 +781,10 @@ final class InputEngine {
 
         // 聯想
         if prefs.suggestEnabled && !_isSameSoundMode && !_isZhuyinMode {
-            let results = suggestionEngine.suggest(recentCommitted: _recentCommitted, lastText: text)
-            if !results.isEmpty { delegate?.engineDidSuggest(results) }
+            let (results, semantic) = suggestionEngine.suggestWithSemantic(recentCommitted: _recentCommitted, lastText: text)
+            if !results.isEmpty || !semantic.isEmpty {
+                delegate?.engineDidSuggestWithSemantic(results, semantic: semantic)
+            }
         }
     }
 
