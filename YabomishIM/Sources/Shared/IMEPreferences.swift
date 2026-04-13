@@ -14,7 +14,6 @@ protocol IMEPreferences {
     func domainEnabled(_ key: String) -> Bool
     func domainPriority(_ key: String) -> Int
     var punctuationPairing: Bool { get }
-    var semanticSuggest: Bool { get }
 }
 
 /// Bridges the static YabomishPrefs into an instance conforming to IMEPreferences.
@@ -31,5 +30,4 @@ final class DefaultPreferences: IMEPreferences {
     func domainEnabled(_ key: String) -> Bool { YabomishPrefs.domainEnabled(key) }
     func domainPriority(_ key: String) -> Int { YabomishPrefs.domainPriority(key) }
     var punctuationPairing: Bool { YabomishPrefs.punctuationPairing }
-    var semanticSuggest: Bool { YabomishPrefs.semanticSuggest }
 }

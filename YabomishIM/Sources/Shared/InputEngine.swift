@@ -11,7 +11,6 @@ protocol InputEngineDelegate: AnyObject {
     func engineDidShowToast(_ text: String)
     func engineDidDeleteBack()
     func engineDidSuggest(_ suggestions: [String])
-    func engineDidSuggestWithSemantic(_ suggestions: [String], semantic: [String], semanticKeyLen: Int)
 }
 
 final class InputEngine {
@@ -327,15 +326,12 @@ final class InputEngine {
         delegate?.engineDidShowToast(_currentModeLabel)
     } }
 
-    /// Single-quote key: enter same-sound mode or output 頓號
+    /// Single-quote key: output 頓號「、」(official boshiamy behavior)
+    /// Same-sound mode uses ,,TO command instead.
     func handleQuote() { queue.sync {
-        guard !_isSameSoundMode && _composing.isEmpty else { return }
-        if !_lastCommitted.isEmpty {
-            _isSameSoundMode = true; _sameSoundBase = _lastCommitted
-            _handleSameSound(); return
+        if _composing.isEmpty && !_isSameSoundMode {
+            delegate?.engineDidCommit("、")
         }
-        _isSameSoundMode = true; _composing = "'"
-        _notifyComposing()
     } }
 
     func exitZhuyinMode() { queue.sync {
@@ -781,9 +777,9 @@ final class InputEngine {
 
         // 聯想
         if prefs.suggestEnabled && !_isSameSoundMode && !_isZhuyinMode {
-            let (results, semantic, semanticKeyLen) = suggestionEngine.suggestWithSemantic(recentCommitted: _recentCommitted, lastText: text)
-            if !results.isEmpty || !semantic.isEmpty {
-                delegate?.engineDidSuggestWithSemantic(results, semantic: semantic, semanticKeyLen: semanticKeyLen)
+            let results = suggestionEngine.suggest(recentCommitted: _recentCommitted, lastText: text)
+            if !results.isEmpty {
+                delegate?.engineDidSuggest(results)
             }
         }
     }

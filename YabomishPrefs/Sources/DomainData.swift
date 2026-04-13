@@ -4,6 +4,15 @@ enum DomainGroup: String, CaseIterable {
     case general, professional
 }
 
+enum DomainCategory: String {
+    case none
+    case humanities   // 人文社科
+    case bizMed       // 商業醫學
+    case infoEng      // 資訊工程
+    case science      // 自然科學
+    case geoMil       // 地理軍事
+}
+
 struct DomainEntry: Identifiable, Hashable {
     let id: String
     let file: String
@@ -11,6 +20,7 @@ struct DomainEntry: Identifiable, Hashable {
     let icon: String
     let desc: String
     let group: DomainGroup
+    var category: DomainCategory = .none
 }
 
 enum DomainData {
@@ -30,35 +40,50 @@ enum DomainData {
     ]
 
     static let proDomains: [DomainEntry] = [
-        // 日常/文科
-        .init(id: "domain_it", file: "terms_it", label: "資訊", icon: "desktopcomputer", desc: "軟體硬體網路", group: .professional),
-        .init(id: "domain_biz", file: "terms_biz", label: "商業", icon: "chart.line.uptrend.xyaxis", desc: "金融會計管理", group: .professional),
-        .init(id: "domain_law", file: "terms_law", label: "法律", icon: "building.columns", desc: "法規判例條文", group: .professional),
-        .init(id: "domain_med", file: "terms_med", label: "醫學", icon: "cross.case", desc: "臨床藥理病理", group: .professional),
-        .init(id: "domain_edu", file: "terms_edu", label: "教育", icon: "graduationcap", desc: "教學課綱體育", group: .professional),
-        .init(id: "domain_media", file: "terms_media", label: "傳播", icon: "newspaper", desc: "新聞媒體出版", group: .professional),
-        .init(id: "domain_social", file: "terms_social", label: "社會", icon: "person.3", desc: "社工行政福利", group: .professional),
-        .init(id: "domain_govt", file: "terms_govt", label: "政府", icon: "building.2", desc: "機關職稱公文", group: .professional),
-        // 理工
-        .init(id: "domain_ee", file: "terms_ee", label: "電機", icon: "bolt", desc: "電機電子通訊", group: .professional),
-        .init(id: "domain_power", file: "terms_power", label: "電力", icon: "bolt.batteryblock", desc: "電力電工能源", group: .professional),
-        .init(id: "domain_eng", file: "terms_eng", label: "工程", icon: "wrench.and.screwdriver", desc: "土木航空核能", group: .professional),
-        .init(id: "domain_mech", file: "terms_mech", label: "機械", icon: "gearshape.2", desc: "機械工程製造", group: .professional),
-        .init(id: "domain_math", file: "terms_math", label: "數學", icon: "function", desc: "代數幾何統計", group: .professional),
-        .init(id: "domain_phy", file: "terms_phy", label: "物理", icon: "atom", desc: "力學光學計量", group: .professional),
-        .init(id: "domain_chem", file: "terms_chem", label: "化學", icon: "flask", desc: "有機無機化工", group: .professional),
-        .init(id: "domain_bio", file: "terms_bio", label: "生物", icon: "leaf.arrow.circlepath", desc: "動植物生態", group: .professional),
-        .init(id: "domain_material", file: "terms_material", label: "材料", icon: "cube", desc: "材料礦物冶金", group: .professional),
-        .init(id: "domain_agri", file: "terms_agri", label: "農林", icon: "tree", desc: "農林畜牧漁業", group: .professional),
-        // 地理/海事/軍事/藝術
-        .init(id: "domain_geo", file: "terms_geo", label: "地理", icon: "globe.asia.australia", desc: "地質氣象測繪", group: .professional),
-        .init(id: "domain_placename_intl", file: "terms_placename_intl", label: "外國地名", icon: "globe.europe.africa", desc: "國教院譯名", group: .professional),
-        .init(id: "domain_marine", file: "terms_marine", label: "海事", icon: "ferry", desc: "航海造船輪機", group: .professional),
-        .init(id: "domain_mil", file: "terms_mil", label: "軍事", icon: "shield.checkered", desc: "國防軍語武器", group: .professional),
-        .init(id: "domain_art", file: "terms_art", label: "藝術", icon: "paintpalette", desc: "視覺音樂舞蹈", group: .professional),
+        // 商業醫學
+        .init(id: "domain_biz", file: "terms_biz", label: "商業", icon: "chart.line.uptrend.xyaxis", desc: "金融會計管理", group: .professional, category: .bizMed),
+        .init(id: "domain_med", file: "terms_med", label: "醫學", icon: "cross.case", desc: "臨床藥理病理", group: .professional, category: .bizMed),
+        // 人文社科
+        .init(id: "domain_law", file: "terms_law", label: "法律", icon: "building.columns", desc: "法規判例條文", group: .professional, category: .humanities),
+        .init(id: "domain_edu", file: "terms_edu", label: "教育", icon: "graduationcap", desc: "教學課綱體育", group: .professional, category: .humanities),
+        .init(id: "domain_media", file: "terms_media", label: "傳播", icon: "newspaper", desc: "新聞媒體出版", group: .professional, category: .humanities),
+        .init(id: "domain_social", file: "terms_social", label: "社會", icon: "person.3", desc: "社工行政福利", group: .professional, category: .humanities),
+        .init(id: "domain_govt", file: "terms_govt", label: "政府", icon: "building.2", desc: "機關職稱公文", group: .professional, category: .humanities),
+        .init(id: "domain_art", file: "terms_art", label: "藝術", icon: "paintpalette", desc: "視覺音樂舞蹈", group: .professional, category: .humanities),
+        // 資訊工程
+        .init(id: "domain_it", file: "terms_it", label: "資訊", icon: "desktopcomputer", desc: "軟體硬體網路", group: .professional, category: .infoEng),
+        .init(id: "domain_ee", file: "terms_ee", label: "電機", icon: "bolt", desc: "電機電子通訊", group: .professional, category: .infoEng),
+        .init(id: "domain_power", file: "terms_power", label: "電力", icon: "bolt.batteryblock", desc: "電力電工能源", group: .professional, category: .infoEng),
+        .init(id: "domain_eng", file: "terms_eng", label: "工程", icon: "wrench.and.screwdriver", desc: "土木航空核能", group: .professional, category: .infoEng),
+        .init(id: "domain_mech", file: "terms_mech", label: "機械", icon: "gearshape.2", desc: "機械工程製造", group: .professional, category: .infoEng),
+        // 自然科學
+        .init(id: "domain_math", file: "terms_math", label: "數學", icon: "function", desc: "代數幾何統計", group: .professional, category: .science),
+        .init(id: "domain_phy", file: "terms_phy", label: "物理", icon: "atom", desc: "力學光學計量", group: .professional, category: .science),
+        .init(id: "domain_chem", file: "terms_chem", label: "化學", icon: "flask", desc: "有機無機化工", group: .professional, category: .science),
+        .init(id: "domain_bio", file: "terms_bio", label: "生物", icon: "leaf.arrow.circlepath", desc: "動植物生態", group: .professional, category: .science),
+        .init(id: "domain_material", file: "terms_material", label: "材料", icon: "cube", desc: "材料礦物冶金", group: .professional, category: .science),
+        .init(id: "domain_agri", file: "terms_agri", label: "農林", icon: "tree", desc: "農林畜牧漁業", group: .professional, category: .science),
+        // 地理軍事
+        .init(id: "domain_geo", file: "terms_geo", label: "地理", icon: "globe.asia.australia", desc: "地質氣象測繪", group: .professional, category: .geoMil),
+        .init(id: "domain_placename_intl", file: "terms_placename_intl", label: "外國地名", icon: "globe.europe.africa", desc: "國教院譯名", group: .professional, category: .geoMil),
+        .init(id: "domain_marine", file: "terms_marine", label: "海事", icon: "ferry", desc: "航海造船輪機", group: .professional, category: .geoMil),
+        .init(id: "domain_mil", file: "terms_mil", label: "軍事", icon: "shield.checkered", desc: "國防軍語武器", group: .professional, category: .geoMil),
     ]
 
     static let allDomains: [DomainEntry] = generalDomains + proDomains
+
+    static let proCategoryOrder: [DomainCategory] = [.bizMed, .humanities, .infoEng, .science, .geoMil]
+
+    static func categoryLabel(_ cat: DomainCategory) -> String {
+        switch cat {
+        case .bizMed:     return "商業醫學"
+        case .humanities: return "人文社科"
+        case .infoEng:    return "資訊工程"
+        case .science:    return "自然科學"
+        case .geoMil:     return "地理軍事"
+        case .none:       return ""
+        }
+    }
 
     static func binEntryCount(file: String) -> Int {
         let paths = [

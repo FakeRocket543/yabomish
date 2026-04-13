@@ -11,32 +11,32 @@ struct DomainCardView: View {
         Button { isEnabled.toggle() } label: {
             VStack(spacing: 5) {
                 Image(systemName: entry.icon)
-                    .font(.system(size: 26))
+                    .font(Typo.cardIcon)
                     .foregroundStyle(isEnabled ? color : .secondary)
 
                 Text(entry.label)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(Typo.cardTitle)
                     .lineLimit(1)
 
                 Text(entry.desc)
-                    .font(.system(size: 11))
+                    .font(Typo.cardDesc)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
                 if count > 0 {
                     Text(formatCount(count))
-                        .font(.system(size: 10).monospacedDigit())
+                        .font(Typo.cardBadge)
                         .foregroundStyle(.tertiary)
                 }
             }
             .frame(width: 100, height: 100)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isEnabled ? color.opacity(0.18) : .primary.opacity(0.05))
+                    .fill(isEnabled ? color.opacity(0.18) : Typo.cardOff)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isEnabled ? color.opacity(0.7) : .primary.opacity(0.15),
+                    .stroke(isEnabled ? color.opacity(0.7) : Typo.strokeOff,
                             lineWidth: isEnabled ? 1.5 : 1)
             )
         }

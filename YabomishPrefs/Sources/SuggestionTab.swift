@@ -1,11 +1,5 @@
 import SwiftUI
 
-// MARK: - 媽祖廟五色（與 InputTab 共用）
-private let mazuCyan   = Color(red: 143/255, green: 172/255, blue: 191/255)
-private let mazuGold   = Color(red: 242/255, green: 211/255, blue: 121/255)
-private let mazuOrange = Color(red: 242/255, green: 141/255, blue:  53/255)
-private let mazuDeep   = Color(red: 242/255, green: 122/255, blue:  53/255)
-private let mazuRed    = Color(red: 242/255, green:  64/255, blue:  48/255)
 
 private struct SuggestLayer: Identifiable {
     let id: String
@@ -50,11 +44,11 @@ struct SuggestionTab: View {
                 HStack(spacing: 4) {
                     Image(systemName: "hand.draw").foregroundStyle(.secondary)
                     Text("拖拉卡片調整優先順序。點擊啟用／停用。")
-                        .font(.callout).foregroundStyle(.secondary)
+                        .font(Typo.hint).foregroundStyle(.secondary)
                 }
 
                 // 2. Layer order
-                Label("聯想層順序", systemImage: "square.3.layers.3d").font(.headline)
+                Label("聯想層順序", systemImage: "square.3.layers.3d").font(Typo.h2)
                 LazyVGrid(columns: threeColumns, spacing: 8) {
                     ForEach(layerOrder) { layer in
                         layerCard(layer)
@@ -71,7 +65,7 @@ struct SuggestionTab: View {
                 }
 
                 // 3. Word corpus source
-                Label("詞級語料來源", systemImage: "text.book.closed").font(.headline)
+                Label("詞級語料來源", systemImage: "text.book.closed").font(Typo.h2)
                 LazyVGrid(columns: threeColumns, spacing: 8) {
                     ForEach(corpusEntries) { entry in
                         corpusCard(entry)
@@ -79,14 +73,16 @@ struct SuggestionTab: View {
                 }
 
                 // 4. General domains
-                Label("一般詞庫", systemImage: "books.vertical").font(.headline)
-                domainGrid(entries: $generalOrder, color: mazuCyan)
+                Label("一般詞庫", systemImage: "books.vertical").font(Typo.h2)
+                domainGrid(entries: $generalOrder, color: Typo.cyan)
 
                 // 5. Pro domains — compact chip layout, collapsed by default
                 DisclosureGroup("專業詞典（樂詞網＋維基百科）") {
+                    Text("點擊啟用／停用。拖拉調整建議優先順序。")
+                        .font(Typo.hint).foregroundStyle(.secondary)
                     proChipGrid(entries: $proOrder)
                 }
-                .font(.headline)
+                .font(Typo.h2)
 
                 // 6. Bottom bar
                 HStack {
@@ -111,21 +107,21 @@ struct SuggestionTab: View {
         Button { if layer.id == "char" { store.charSuggest.toggle() } } label: {
             VStack(spacing: 5) {
                 Image(systemName: layer.icon)
-                    .font(.system(size: 26))
-                    .foregroundStyle(enabled ? mazuDeep : .secondary)
+                    .font(Typo.cardIcon)
+                    .foregroundStyle(enabled ? Typo.deep : .secondary)
                 Text(layer.label)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(Typo.cardTitle)
                     .lineLimit(1)
                 Text(layer.desc)
-                    .font(.system(size: 11))
+                    .font(Typo.cardDesc)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(enabled ? mazuDeep.opacity(0.18) : .primary.opacity(0.05)))
+                .fill(enabled ? Typo.deep.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(enabled ? mazuDeep.opacity(0.7) : .primary.opacity(0.15),
+                .stroke(enabled ? Typo.deep.opacity(0.7) : Typo.strokeOff,
                         lineWidth: enabled ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -140,21 +136,21 @@ struct SuggestionTab: View {
         Button { store.wordCorpus = entry.id } label: {
             VStack(spacing: 5) {
                 Image(systemName: entry.icon)
-                    .font(.system(size: 26))
-                    .foregroundStyle(selected ? mazuRed : .secondary)
+                    .font(Typo.cardIcon)
+                    .foregroundStyle(selected ? Typo.red : .secondary)
                 Text(entry.label)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(Typo.cardTitle)
                     .lineLimit(1)
                 Text(entry.desc)
-                    .font(.system(size: 11))
+                    .font(Typo.cardDesc)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? mazuRed.opacity(0.18) : .primary.opacity(0.05)))
+                .fill(selected ? Typo.red.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? mazuRed.opacity(0.7) : .primary.opacity(0.15),
+                .stroke(selected ? Typo.red.opacity(0.7) : Typo.strokeOff,
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -199,23 +195,20 @@ struct SuggestionTab: View {
 
     @ViewBuilder
     private func proChipGrid(entries: Binding<[DomainEntry]>) -> some View {
-        LazyVGrid(columns: chipColumns, spacing: 6) {
-            ForEach(entries.wrappedValue) { entry in
-                proChip(entry)
+        let grouped = Dictionary(grouping: entries.wrappedValue, by: \.category)
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(DomainData.proCategoryOrder, id: \.self) { cat in
+                if let items = grouped[cat], !items.isEmpty {
+                    Text(DomainData.categoryLabel(cat))
+                        .font(Typo.h3).foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                    LazyVGrid(columns: chipColumns, spacing: 6) {
+                        ForEach(items) { entry in
+                            proChip(entry)
+                        }
+                    }
+                }
             }
-        }
-        .dropDestination(for: String.self) { items, location in
-            guard let draggedID = items.first else { return false }
-            var arr = entries.wrappedValue
-            guard let srcIdx = arr.firstIndex(where: { $0.id == draggedID }) else { return false }
-            let item = arr.remove(at: srcIdx)
-            let col = location.x > 270 ? 1 : 0
-            let row = max(0, Int(location.y / 38))
-            let destIdx = min(arr.count, row * 2 + col)
-            arr.insert(item, at: destIdx)
-            entries.wrappedValue = arr
-            saveDomainOrder()
-            return true
         }
     }
 
@@ -226,16 +219,16 @@ struct SuggestionTab: View {
         Button { store.setDomainEnabled(entry.id, !on) } label: {
             HStack(spacing: 6) {
                 Image(systemName: entry.icon)
-                    .font(.system(size: 13))
+                    .font(Typo.chipIcon)
                     .frame(width: 18)
-                    .foregroundStyle(on ? mazuOrange : .secondary)
+                    .foregroundStyle(on ? Typo.orange : .secondary)
                 Text(entry.label)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(Typo.chipTitle)
                     .foregroundStyle(on ? .primary : .secondary)
                 Spacer()
                 if count > 0 {
                     Text(formatChipCount(count))
-                        .font(.system(size: 10).monospacedDigit())
+                        .font(Typo.chipBadge)
                         .foregroundStyle(on ? .secondary : .tertiary)
                 }
             }
@@ -243,11 +236,11 @@ struct SuggestionTab: View {
             .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(on ? mazuOrange.opacity(0.18) : .primary.opacity(0.05))
+                    .fill(on ? Typo.orange.opacity(0.18) : Typo.cardOff)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(on ? mazuOrange.opacity(0.7) : .primary.opacity(0.15),
+                    .stroke(on ? Typo.orange.opacity(0.7) : Typo.strokeOff,
                             lineWidth: on ? 1.5 : 1)
             )
         }

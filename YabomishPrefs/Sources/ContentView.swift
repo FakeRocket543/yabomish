@@ -15,10 +15,10 @@ struct ContentView: View {
         TabView {
             InputTab(store: store).tabItem { Label("輸入", systemImage: "keyboard") }
             SuggestionTab(store: store).tabItem { Label("聯想與詞庫", systemImage: "text.magnifyingglass") }
+            ShortcutTab().tabItem { Label("短碼", systemImage: "text.cursor") }
             AppearanceTab(store: store).tabItem { Label("外觀", systemImage: "paintbrush") }
-            UsageTab().tabItem { Label("使用方法", systemImage: "book") }
-            HelpTab().tabItem { Label("說明", systemImage: "questionmark.circle") }
+            HelpTab().tabItem { Label("關於", systemImage: "info.circle") }
         }
-        .frame(minWidth: 580, minHeight: 480)
+        .frame(minWidth: 640, minHeight: 520)
     }
 }

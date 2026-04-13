@@ -457,22 +457,7 @@ extension YabomishInputController {
             newEngineShiftUsed = true
             // Shift+digit while candidates showing
             if let digit = keyCodeToDigit[keyCode], !engine.currentCandidates.isEmpty {
-                // Semantic upper row: Shift+1~5 → replace last committed word
-                let digitIdx = Int(String(digit))! - 1
-                DebugLog.log("Shift+\(digit): digitIdx=\(digitIdx), semanticCount=\(panel.semanticCandidates.count), lastLen=\(lastCommittedLength)")
-                if let semantic = panel.selectSemantic(digitIdx),
-                   let c = engineClient, lastCommittedLength > 0 {
-                    let sel = c.selectedRange()
-                    if sel.location != NSNotFound && sel.location >= lastCommittedLength {
-                        let replaceRange = NSRange(location: sel.location - lastCommittedLength, length: lastCommittedLength)
-                        c.insertText(semantic, replacementRange: replaceRange)
-                        lastCommittedLength = semantic.count
-                    }
-                    panel.hide()
-                    engine.clearCandidates()
-                    return true
-                }
-                // No semantic: original behavior — output digit
+                // Shift+digit: output digit
                 if !engine.composing.isEmpty {
                     if !engine.currentCandidates.isEmpty { engine.handleSpace() }
                     else { engine.handleEscape() }
@@ -837,40 +822,21 @@ extension YabomishInputController: InputEngineDelegate {
     }
 
     func engineDidSuggest(_ suggestions: [String]) {
-        engineDidSuggestWithSemantic(suggestions, semantic: [], semanticKeyLen: 0)
-    }
-
-    func engineDidSuggestWithSemantic(_ suggestions: [String], semantic: [String], semanticKeyLen: Int) {
         guard let client = engineClient else { return }
-        DebugLog.log("engineDidSuggestWithSemantic: \(suggestions.count) suggestions, \(semantic.count) semantic, keyLen=\(semanticKeyLen)")
+        DebugLog.log("engineDidSuggest: \(suggestions.count) suggestions")
         if engine.composing.isEmpty && !suggestions.isEmpty {
             engine.setCandidates(suggestions)
-            lastCommittedLength = semanticKeyLen > 0 ? semanticKeyLen : engine._lastCommittedText.count
-            showNewEngineCandidatePanel(client: client, semantic: semantic)
+            lastCommittedLength = engine._lastCommittedText.count
+            showNewEngineCandidatePanel(client: client)
         }
     }
 
-    private func showNewEngineCandidatePanel(client: NSObjectProtocol & IMKTextInput, semantic: [String] = []) {
+    private func showNewEngineCandidatePanel(client: NSObjectProtocol & IMKTextInput) {
         let candidates = engine.currentCandidates
         guard !candidates.isEmpty else { panel.hide(); return }
 
-        var cursorRect = NSRect.zero
-        let markedRange = client.markedRange()
-        let queryRange: NSRange
-        if markedRange.location != NSNotFound && markedRange.length > 0 {
-            queryRange = NSRange(location: NSMaxRange(markedRange), length: 0)
-        } else {
-            queryRange = client.selectedRange()
-        }
-        if queryRange.location != NSNotFound {
-            var loc = queryRange.location
-            cursorRect = client.firstRect(forCharacterRange: queryRange, actualRange: nil)
-            while cursorRect.origin == .zero && loc > 0 {
-                loc -= 1
-                cursorRect = client.firstRect(
-                    forCharacterRange: NSRange(location: loc, length: 0), actualRange: nil)
-            }
-        }
+        let markedLen = client.markedRange().length
+        let cursorRect = Self.queryCursorRect(client: client, markedLength: markedLen > 0 ? markedLen : 0)
 
         let hasCursor: Bool = {
             guard cursorRect.minX > 0 || cursorRect.minY > 0
@@ -893,6 +859,27 @@ extension YabomishInputController: InputEngineDelegate {
         }
 
         panel.modeTag = engine.currentModeLabel
-        panel.show(candidates: candidates, selKeys: engine.selKeys, at: origin, composing: engine.composing, semantic: semantic)
+        panel.show(candidates: candidates, selKeys: engine.selKeys, at: origin, composing: engine.composing)
+    }
+
+    // MARK: - Cursor rect (OpenVanilla approach, fixes Chrome omnibox)
+
+    private static func queryCursorRect(client: IMKTextInput, markedLength: Int) -> NSRect {
+        // Primary: attributes(forCharacterIndex:lineHeightRectangle:)
+        // Works in Chrome omnibox where firstRect returns garbage.
+        var rect = NSRect.zero
+        let idx = max(0, markedLength - 1)
+        let attrs = client.attributes(forCharacterIndex: idx, lineHeightRectangle: &rect)
+        if attrs != nil, !attrs!.isEmpty, rect != .zero {
+            return rect
+        }
+        // Retry with index 0
+        rect = .zero
+        _ = client.attributes(forCharacterIndex: 0, lineHeightRectangle: &rect)
+        if rect != .zero { return rect }
+        // Fallback: firstRect (works in most apps)
+        let sel = client.selectedRange()
+        let range = sel.location != NSNotFound ? sel : NSRange(location: 0, length: 0)
+        return client.firstRect(forCharacterRange: range, actualRange: nil)
     }
 }

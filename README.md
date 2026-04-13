@@ -40,7 +40,7 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 | `,,H` | 命令說明 |
 
 ### 查詢功能
-- **同音字查詢** — 送字後按 `'` 列出同音字；空閒時按 `'` 進入同音字模式
+- **同音字查詢** — `,,TO` 進入同音字模式，每次送字列出同音字
 - **注音反查** — `';` 或 `,,ZH` 切換，輸入注音查嘸蝦米碼
 - **拼音查碼** — `,,PYS` / `,,PYT`，輸入拼音字母 + 聲調數字（空白鍵 = 一聲）
 
@@ -69,7 +69,7 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 - **補碼** `v`/`r`/`s`/`f` — 選第 2–5 候選字
 - **滿碼自動送字** — 可選，碼打滿且唯一候選時自動送出
 - **`/` 穿透** — 空閒時直送 App（slash command）
-- **`'` 頓號** — 同音字模式下 `'` + Space 輸出頓號
+- **`'` 頓號** — 空閒時按 `'` 輸出頓號「、」
 - **全型空格** — Shift+Space 或 `,,` + Space
 - **Shift 快按** — 中英切換（0.3 秒內）
 - **Shift 按住** — 暫時英文模式
@@ -78,19 +78,19 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 
 ### 擴充表系統
 - `~/Library/YabomishIM/tables/*.txt` — tab-separated `編碼<Tab>內容`
-- 安裝時預設 `emoji.txt`（1,906 個 emoji，`em` 開頭五碼）
+- 安裝時預設 Emoji 聯想（送字後自動建議相關 emoji）
 - 修改後打 `,,RL` + Space 即時重載
 - 支援 iCloud 同步資料夾共用
 
-### 管理程式（YabomishPrefs.app）
+### 設定程式（YabomishPrefs.app）
 
-獨立 GUI 偏好設定 App，五個分頁：
+獨立 GUI 設定 App，五個分頁：
 
 - **輸入** — 用詞習慣、選字窗模式、聯想輸入、自動送字、拆碼提示、注音反查、模糊匹配、標點配對等開關
 - **聯想與詞庫** — 三層順序拖拉、詞級語料來源切換、一般詞庫與專業詞典啟用／排序
+- **短碼** — 空碼綁定自訂文字／指令，匯入匯出
 - **外觀** — 字體大小、透明度、模式提示大小、蝦頭方向、Debug 模式
-- **使用方法** — 步驟式操作教學
-- **說明** — 快捷鍵速查表
+- **關於** — 使用方法、快捷鍵速查、語料來源與授權
 
 首次開啟有三頁引導（匯入字表 → 加入輸入方式 → 常用快捷鍵）。
 
@@ -107,10 +107,10 @@ git clone https://github.com/user/yabomish.git && cd yabomish && ./yabomish.sh
 ```
 
 選擇 `1) 完整安裝` 即可。安裝過程會：
-1. 編譯輸入法（YabomishIM.app）和管理程式（YabomishPrefs.app）
+1. 編譯輸入法（YabomishIM.app）和設定程式（YabomishPrefs.app）
 2. 安裝到 `/Library/Input Methods/` 和 `/Applications/`
 3. 詢問蝦頭方向和狀態列名稱
-4. 部署預設擴充表（emoji.txt）
+4. 詢問蝦頭方向和狀態列名稱
 
 安裝完成後：
 1. 系統設定 → 鍵盤 → 輸入方式 → 加入「Yabomish」
@@ -118,7 +118,7 @@ git clone https://github.com/user/yabomish.git && cd yabomish && ./yabomish.sh
 
 ### 手動匯入字表
 
-偏好設定 → 匯入字表⋯ → 選擇 `liu.cin`（裝置端編譯為 `.bin`，不上傳、不外流）
+設定程式 → 匯入字表⋯ → 選擇 `liu.cin`（裝置端編譯為 `.bin`，不上傳、不外流）
 
 ## 使用
 
@@ -132,7 +132,8 @@ git clone https://github.com/user/yabomish.git && cd yabomish && ./yabomish.sh
 | 選字 | 1–9 |
 | 補碼 | `v`/`r`/`s`/`f`（第 2–5 候選） |
 | 萬用碼 | `*`（Shift+8） |
-| 同音字 | `'`（送字後 / 空閒時） |
+| 頓號 | `'` |
+| 同音字 | `,,TO` |
 | 注音查碼 | `';` |
 | 中英切換 | 快按 Shift |
 | 暫時英文 | 按住 Shift |
@@ -158,7 +159,7 @@ cd yabomish && ./yabomish.sh
 | `liu.bin` | 編譯後的二進位字表 |
 | `freq.db` | 字頻學習資料（SQLite WAL） |
 | `tables/` | 擴充表資料夾 |
-| `tables/emoji.txt` | Emoji 擴充表 |
+| `tables/user_shortcuts.txt` | 使用者自訂短碼 |
 | `user_phrases.txt` | 使用者自訂詞組 |
 | `debug.log` | Debug 日誌（開啟時） |
 
@@ -192,15 +193,15 @@ YabomishIM/Sources/
     ├── MemoryBudget.swift         # 記憶體預算管理（iOS 60MB 限制）
     └── Constants.swift            # 路徑常數（App Group / Application Support）
 
-YabomishPrefs/Sources/             # 獨立管理程式（SwiftUI）
+YabomishPrefs/Sources/             # 獨立設定程式（SwiftUI）
 ├── main.swift
-├── ContentView.swift              # TabView（輸入/聯想與詞庫/外觀/使用方法/說明）
+├── ContentView.swift              # TabView（輸入/聯想與詞庫/短碼/外觀/關於）
 ├── PrefsStore.swift               # @Observable UserDefaults 包裝
 ├── InputTab.swift                 # 用詞習慣、選字窗、輸入功能開關
 ├── SuggestionTab.swift            # 聯想層順序、詞級語料、詞庫管理
+├── ShortcutTab.swift              # 空碼短碼綁定、匯入匯出
 ├── AppearanceTab.swift            # 字型、透明度、模式提示、Debug
-├── UsageTab.swift                 # 使用方法教學
-├── HelpTab.swift                  # 快捷鍵速查
+├── HelpTab.swift                  # 使用方法＋快捷鍵速查＋語料授權
 ├── WelcomeView.swift              # 首次使用引導
 ├── DomainCardView.swift           # 詞庫卡片元件
 └── DomainData.swift               # 詞庫定義（6 一般 + 20 專業）
@@ -243,7 +244,7 @@ tools/
 | 歇後語 | [chinese-xinhua](https://github.com/pwxcoo/chinese-xinhua) | MIT |
 | 韓語漢字詞 | [Kengdic](https://github.com/garfieldnate/kengdic) | MPL 2.0 / LGPL 2.0+ |
 | 維基語料 | 中文維基百科 zhwiki dump | CC-BY-SA 3.0 |
-| 新聞詞頻 | 台灣新聞斷詞統計 | 衍生統計 |
+| 新聞詞頻 | 國家教育研究院 新聞語料庫 | 政府開放資料 |
 | 萌典字頻 | [萌典](https://www.moedict.tw/) | CC0 |
 | Emoji | [Unicode CLDR](https://cldr.unicode.org/) | Unicode License |
 

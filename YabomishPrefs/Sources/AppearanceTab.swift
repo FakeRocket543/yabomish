@@ -24,6 +24,7 @@ struct AppearanceTab: View {
                             Text("\(Int(store.fixedAlpha * 100))%").monospacedDigit().frame(width: 40, alignment: .trailing)
                         }
                     }
+                    .font(Typo.body)
                     .padding(.vertical, 4)
                 }
 
@@ -36,6 +37,7 @@ struct AppearanceTab: View {
                             Text("→ 向右").tag("right")
                         }
                     }
+                    .font(Typo.body)
                     .padding(.vertical, 4)
                 }
 
@@ -50,6 +52,7 @@ struct AppearanceTab: View {
                             }
                         }
                     }
+                    .font(Typo.body)
                     .padding(.vertical, 4)
                 }
             }

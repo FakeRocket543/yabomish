@@ -88,8 +88,8 @@ install_im() {
     local ICON; ICON=$(defaults read $IM_BUNDLE_ID iconDirection 2>/dev/null || echo "left")
     local CUR="<- 向左"; [ "$ICON" = "right" ] && CUR="-> 向右"
     echo ""
-    echo "蝦頭方向（目前: $CUR）：  1) <- 向左  2) -> 向右"
-    printf "選擇 [1/2，Enter 保持]: "; read -r c
+    echo "蝦頭方向 (目前: $CUR):  1) <- 向左  2) -> 向右"
+    printf "選擇 [1/2, Enter 保持]: "; read -r c
     case "$c" in 1) ICON="left";; 2) ICON="right";; esac
     defaults write $IM_BUNDLE_ID iconDirection "$ICON"
     [ "$ICON" = "right" ] && [ -f "$DIR/icon_right.tiff" ] && sudo cp "$DIR/icon_right.tiff" "$DIR/icon.tiff"
@@ -99,8 +99,8 @@ install_im() {
     local LBL; LBL=$(defaults read $IM_BUNDLE_ID menuBarLabel 2>/dev/null || echo "yabomish")
     local LCUR="Yabomish"; [ "$LBL" = "yabo" ] && LCUR="Yabo"
     echo ""
-    echo "狀態列名稱（目前: $LCUR）：  1) Yabo  2) Yabomish"
-    printf "選擇 [1/2，Enter 保持]: "; read -r c
+    echo "狀態列名稱 (目前: $LCUR):  1) Yabo  2) Yabomish"
+    printf "選擇 [1/2, Enter 保持]: "; read -r c
     case "$c" in 1) LBL="yabo";; 2) LBL="yabomish";; esac
     defaults write $IM_BUNDLE_ID menuBarLabel "$LBL"
     case "$LBL" in
@@ -110,8 +110,7 @@ install_im() {
 
     # 字表
     mkdir -p "$USER_DIR/tables"
-    local TSRC="$ROOT/YabomishIM/Resources/tables"
-    [ -d "$TSRC" ] && find "$TSRC" -name "*.txt" ! -name "*example*" -exec cp {} "$USER_DIR/tables/" \;
+    # emoji.txt no longer deployed — emoji handled by emoji_char_map.json suggestion system
     [ -f "$ROOT/liu.cin" ] && [ ! -f "$USER_DIR/liu.cin" ] && cp "$ROOT/liu.cin" "$USER_DIR/"
 
     ok "輸入法已安裝"
