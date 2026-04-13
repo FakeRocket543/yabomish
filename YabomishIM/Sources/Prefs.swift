@@ -180,6 +180,11 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "punctuationPairing") }
     }
 
+    static var semanticSuggest: Bool {
+        get { defaults.object(forKey: "semanticSuggest") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "semanticSuggest") }
+    }
+
     /// Debug mode: write detailed logs to ~/Library/YabomishIM/debug.log
     static var debugMode: Bool {
         get { defaults.object(forKey: "debugMode") as? Bool ?? false }

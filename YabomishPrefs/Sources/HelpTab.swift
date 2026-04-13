@@ -46,6 +46,14 @@ struct HelpTab: View {
                     ("專業詞典", "點擊啟用所需領域。排序越前面，建議越優先"),
                 ])
 
+                section("近似義建議", icon: "arrow.triangle.branch", items: [
+                    ("啟用", "輸入 tab →「近似義建議」卡片"),
+                    ("觸發", "送字後自動顯示（上排紫色 ❶❷❸）"),
+                    ("選擇", "Shift + 1~5 替換剛送出的詞"),
+                    ("範例", "打「快樂」→ 上排出現 ❶愉悅 ❷開心 ❸歡喜"),
+                    ("說明", "基於語義向量的近義詞，跨文化圈"),
+                ])
+
                 section("擴充表", icon: "doc.text", items: [
                     ("路徑", "~/Library/YabomishIM/tables/*.txt"),
                     ("格式", "編碼<Tab>內容，一行一筆"),

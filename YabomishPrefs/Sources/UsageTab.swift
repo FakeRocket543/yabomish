@@ -58,6 +58,15 @@ struct UsageTab: View {
                     "聯想策略設為「詞庫優先」時，同碼字排序會偏向你正在打的領域",
                 ])
 
+                guide("近似義建議", icon: "arrow.triangle.branch", steps: [
+                    "在「輸入」頁開啟「近似義建議」",
+                    "送字後，候選窗上排（紫色）顯示近義詞",
+                    "按 Shift + 1~5 替換剛送出的詞",
+                    "例：打「快樂」→ 上排 ❶愉悅 ❷開心 ❸歡喜",
+                    "按 Shift+2 →「快樂」被替換為「開心」",
+                    "適合寫作、翻譯、斟酌用詞的場景",
+                ])
+
                 guide("擴充表", icon: "doc.text", steps: [
                     "擴充表放在 ~/Library/YabomishIM/tables/",
                     "格式：編碼<Tab>內容，一行一筆",

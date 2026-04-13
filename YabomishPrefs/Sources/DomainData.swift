@@ -26,7 +26,6 @@ enum DomainData {
         .init(id: "domain_placename", file: "terms_placename", label: "台灣地名", icon: "mappin.and.ellipse", desc: "台鐵/捷運站名", group: .general),
         .init(id: "domain_ttg", file: "terms_ttg", label: "學科術語", icon: "graduationcap", desc: "教育部台語學科", group: .general),
         .init(id: "domain_korean", file: "terms_korean", label: "韓語漢字詞", icon: "k.circle", desc: "Kengdic 漢字詞", group: .general),
-        .init(id: "domain_semantic", file: "terms_semantic", label: "近似義", icon: "arrow.triangle.branch", desc: "Qwen3 語義近鄰", group: .general),
         .init(id: "domain_yoji", file: "yoji", label: "日本熟語", icon: "leaf", desc: "日式四字詞", group: .general),
     ]
 

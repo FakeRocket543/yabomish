@@ -23,6 +23,7 @@ private let inputOptions: [InputOption] = [
     .init(id: "zhuyinReverseLookup",  label: "注音反查",  icon: "character.phonetic",    desc: "'; 切換"),
     .init(id: "homophoneMultiReading",label: "同音多讀",  icon: "speaker.wave.2",        desc: "含罕見讀音"),
     .init(id: "fuzzyMatch",           label: "模糊匹配",  icon: "magnifyingglass",       desc: "鄰鍵容錯"),
+    .init(id: "semanticSuggest",      label: "近似義建議", icon: "arrow.triangle.branch", desc: "Shift+數字替換近義詞"),
     .init(id: "punctuationPairing",   label: "標點配對",  icon: "quote.opening",         desc: "「→「」自動配對"),
 ]
 
@@ -159,6 +160,7 @@ struct InputTab: View {
         case "zhuyinReverseLookup":   return $store.zhuyinReverseLookup
         case "homophoneMultiReading": return $store.homophoneMultiReading
         case "fuzzyMatch":            return $store.fuzzyMatch
+        case "semanticSuggest":       return $store.semanticSuggest
         case "punctuationPairing":    return $store.punctuationPairing
         default:                      return .constant(false)
         }

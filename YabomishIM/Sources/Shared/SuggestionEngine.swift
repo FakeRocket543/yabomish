@@ -92,10 +92,12 @@ final class SuggestionEngine {
         let suggestions = suggest(recentCommitted: recentCommitted, lastText: lastText)
         // Semantic: look up the last committed word (2-8 chars)
         var semantic: [String] = []
-        for len in stride(from: min(8, recentCommitted.count), through: 2, by: -1) {
-            let term = String(recentCommitted.suffix(len))
-            semantic = wikiCorpus.suggestSemantic(for: term, limit: 5)
-            if !semantic.isEmpty { break }
+        if prefs.semanticSuggest {
+            for len in stride(from: min(8, recentCommitted.count), through: 2, by: -1) {
+                let term = String(recentCommitted.suffix(len))
+                semantic = wikiCorpus.suggestSemantic(for: term, limit: 5)
+                if !semantic.isEmpty { break }
+            }
         }
         return (suggestions, semantic)
     }
