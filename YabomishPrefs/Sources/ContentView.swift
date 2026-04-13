@@ -15,7 +15,7 @@ struct ContentView: View {
         TabView {
             InputTab(store: store).tabItem { Label("輸入", systemImage: "keyboard") }
             SuggestionTab(store: store).tabItem { Label("聯想與詞庫", systemImage: "text.magnifyingglass") }
-            ShortcutTab().tabItem { Label("短碼", systemImage: "text.cursor") }
+            ShortcutTab().tabItem { Label("快捷碼", systemImage: "text.cursor") }
             AppearanceTab(store: store).tabItem { Label("外觀", systemImage: "paintbrush") }
             HelpTab().tabItem { Label("關於", systemImage: "info.circle") }
         }

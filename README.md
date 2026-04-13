@@ -88,7 +88,7 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 
 - **輸入** — 用詞習慣、選字窗模式、聯想輸入、自動送字、拆碼提示、注音反查、模糊匹配、標點配對等開關
 - **聯想與詞庫** — 三層順序拖拉、詞級語料來源切換、一般詞庫與專業詞典啟用／排序
-- **短碼** — 空碼綁定自訂文字／指令，匯入匯出
+- **快捷碼** — 空碼綁定自訂文字／指令，匯入匯出
 - **外觀** — 字體大小、透明度、模式提示大小、蝦頭方向、Debug 模式
 - **關於** — 使用方法、快捷鍵速查、語料來源與授權
 
@@ -159,7 +159,7 @@ cd yabomish && ./yabomish.sh
 | `liu.bin` | 編譯後的二進位字表 |
 | `freq.db` | 字頻學習資料（SQLite WAL） |
 | `tables/` | 擴充表資料夾 |
-| `tables/user_shortcuts.txt` | 使用者自訂短碼 |
+| `tables/user_shortcuts.txt` | 使用者自訂快捷碼 |
 | `user_phrases.txt` | 使用者自訂詞組 |
 | `debug.log` | Debug 日誌（開啟時） |
 
@@ -195,11 +195,11 @@ YabomishIM/Sources/
 
 YabomishPrefs/Sources/             # 獨立設定程式（SwiftUI）
 ├── main.swift
-├── ContentView.swift              # TabView（輸入/聯想與詞庫/短碼/外觀/關於）
+├── ContentView.swift              # TabView（輸入/聯想與詞庫/快捷碼/外觀/關於）
 ├── PrefsStore.swift               # @Observable UserDefaults 包裝
 ├── InputTab.swift                 # 用詞習慣、選字窗、輸入功能開關
 ├── SuggestionTab.swift            # 聯想層順序、詞級語料、詞庫管理
-├── ShortcutTab.swift              # 空碼短碼綁定、匯入匯出
+├── ShortcutTab.swift              # 空碼快捷碼綁定、匯入匯出
 ├── AppearanceTab.swift            # 字型、透明度、模式提示、Debug
 ├── HelpTab.swift                  # 使用方法＋快捷鍵速查＋語料授權
 ├── WelcomeView.swift              # 首次使用引導

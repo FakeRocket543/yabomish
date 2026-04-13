@@ -31,7 +31,7 @@ struct ShortcutTab: View {
             VStack(alignment: .leading, spacing: 16) {
                 // Hint
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("把空碼變成你的短碼 skill — 打 2–4 碼直接輸出整段文字。")
+                    Text("把空碼變成你的快捷碼 skill — 打 2–4 碼直接輸出整段文字。")
                         .font(Typo.hint)
                     Text("適合綁定 agent 指令、prompt template、常用片語、簽名檔。")
                         .font(Typo.hint).foregroundStyle(.secondary)
@@ -43,7 +43,7 @@ struct ShortcutTab: View {
                         demoRow("agpt", "請用繁體中文回答，並附上參考來源")
                         demoRow("amtg", "@channel 今天的 standup 更新如下：")
                         demoRow("acmd", "cd ~/Projects && git status")
-                        demoRow("asig", "— FL, Yabomish Developer")
+                        demoRow("asig", "Best regards, — your name")
                     }
                     .padding(4)
                 }
@@ -74,7 +74,7 @@ struct ShortcutTab: View {
     }
 
     private var addSection: some View {
-        GroupBox("新增短碼") {
+        GroupBox("新增快捷碼") {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("編碼")
@@ -107,14 +107,14 @@ struct ShortcutTab: View {
         case .tooShort: Text("至少 2 碼").foregroundStyle(.secondary).font(Typo.caption)
         case .available: Text("✓ 可用").foregroundStyle(Typo.ok).font(Typo.caption)
         case .existsInCIN(let s): Text("字表已有：\(s)").foregroundStyle(Typo.warn).font(Typo.caption)
-        case .existsInShortcuts(let s): Text("已有短碼，將覆蓋：\(s)").foregroundStyle(Typo.warn).font(Typo.caption)
+        case .existsInShortcuts(let s): Text("已有快捷碼，將覆蓋：\(s)").foregroundStyle(Typo.warn).font(Typo.caption)
         }
     }
 
     // MARK: - List Section
 
     private var listSection: some View {
-        GroupBox("已建立的短碼") {
+        GroupBox("已建立的快捷碼") {
             VStack(spacing: 8) {
                 HStack {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
@@ -139,7 +139,7 @@ struct ShortcutTab: View {
                 }
                 .frame(minHeight: 200)
                 HStack {
-                    Text("\(shortcuts.count) 筆短碼")
+                    Text("\(shortcuts.count) 筆快捷碼")
                     Spacer()
                     Text("4碼空碼剩餘 \(freeCount)")
                 }
@@ -277,7 +277,7 @@ struct ShortcutTab: View {
 
     private func exportShortcuts() {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "yabomish_短碼.txt"
+        panel.nameFieldStringValue = "yabomish_快捷碼.txt"
         panel.allowedContentTypes = [.plainText]
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let text = shortcuts.map { "\($0.code)\t\($0.content)" }.joined(separator: "\n")
