@@ -459,6 +459,7 @@ extension YabomishInputController {
             if let digit = keyCodeToDigit[keyCode], !engine.currentCandidates.isEmpty {
                 // Semantic upper row: Shift+1~5 → replace last committed word
                 let digitIdx = Int(String(digit))! - 1
+                DebugLog.log("Shift+\(digit): digitIdx=\(digitIdx), semanticCount=\(panel.semanticCandidates.count), lastLen=\(lastCommittedLength)")
                 if let semantic = panel.selectSemantic(digitIdx),
                    let c = engineClient, lastCommittedLength > 0 {
                     let sel = c.selectedRange()
@@ -836,15 +837,15 @@ extension YabomishInputController: InputEngineDelegate {
     }
 
     func engineDidSuggest(_ suggestions: [String]) {
-        engineDidSuggestWithSemantic(suggestions, semantic: [])
+        engineDidSuggestWithSemantic(suggestions, semantic: [], semanticKeyLen: 0)
     }
 
-    func engineDidSuggestWithSemantic(_ suggestions: [String], semantic: [String]) {
+    func engineDidSuggestWithSemantic(_ suggestions: [String], semantic: [String], semanticKeyLen: Int) {
         guard let client = engineClient else { return }
-        DebugLog.log("engineDidSuggestWithSemantic: \(suggestions.count) suggestions, \(semantic.count) semantic")
+        DebugLog.log("engineDidSuggestWithSemantic: \(suggestions.count) suggestions, \(semantic.count) semantic, keyLen=\(semanticKeyLen)")
         if engine.composing.isEmpty && !suggestions.isEmpty {
             engine.setCandidates(suggestions)
-            lastCommittedLength = engine._lastCommittedText.count
+            lastCommittedLength = semanticKeyLen > 0 ? semanticKeyLen : engine._lastCommittedText.count
             showNewEngineCandidatePanel(client: client, semantic: semantic)
         }
     }

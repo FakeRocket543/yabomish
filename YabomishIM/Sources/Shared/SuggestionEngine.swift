@@ -88,17 +88,18 @@ final class SuggestionEngine {
     }
 
     /// Returns (suggestions, semanticSuggestions) — semantic is for the dual-row upper panel
-    func suggestWithSemantic(recentCommitted: String, lastText: String) -> (suggestions: [String], semantic: [String]) {
+    func suggestWithSemantic(recentCommitted: String, lastText: String) -> (suggestions: [String], semantic: [String], semanticKeyLen: Int) {
         let suggestions = suggest(recentCommitted: recentCommitted, lastText: lastText)
         // Semantic: look up the last committed word (2-8 chars)
         var semantic: [String] = []
+        var semanticKeyLen = 0
         if prefs.semanticSuggest {
             for len in stride(from: min(8, recentCommitted.count), through: 2, by: -1) {
                 let term = String(recentCommitted.suffix(len))
                 semantic = wikiCorpus.suggestSemantic(for: term, limit: 5)
-                if !semantic.isEmpty { break }
+                if !semantic.isEmpty { semanticKeyLen = len; break }
             }
         }
-        return (suggestions, semantic)
+        return (suggestions, semantic, semanticKeyLen)
     }
 }

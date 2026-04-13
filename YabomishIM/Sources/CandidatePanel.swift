@@ -41,7 +41,7 @@ final class CandidatePanel: NSPanel {
     // MARK: - Shared state
 
     private var candidates: [String] = []
-    private var semanticCandidates: [String] = []
+    private(set) var semanticCandidates: [String] = []
     private var selKeys: [Character] = []
     private var highlightIndex = 0
     private let pageSize = 9
