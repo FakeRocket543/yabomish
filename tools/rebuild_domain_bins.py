@@ -26,19 +26,20 @@ DOMAIN_FILES = {
     "art": "terms_art", "mil": "terms_mil", "marine": "terms_marine",
     "material": "terms_material", "agri": "terms_agri", "media": "terms_media",
     "social": "terms_social", "govt": "terms_govt",
+    "placename_intl": "terms_placename_intl",
+    "power": "terms_power",
+    "mech": "terms_mech",
 }
 
-def restore_naer_bins():
-    """Restore pure NAER bins from git."""
-    for domain, fname in DOMAIN_FILES.items():
-        binfile = f"YabomishIM/Resources/{fname}.bin"
-        r = subprocess.run(["git", "show", f"{NAER_COMMIT}:{binfile}"],
-                           capture_output=True, cwd=str(BASE))
-        if r.returncode == 0:
-            (RES / f"{fname}.bin").write_bytes(r.stdout)
-            print(f"  restored {fname}.bin ({len(r.stdout):,} bytes)")
-        else:
-            print(f"  SKIP {fname}.bin (not in {NAER_COMMIT})")
+# NAER categories to split OUT of parent domains into new child domains.
+# Key = new child domain, value = (parent domain, [NAER category prefixes])
+NAER_PARQUET = BASE / "data" / "naer_terms.parquet"
+DOMAIN_SPLITS = {
+    "placename_intl": ("geo", ["外國地名譯名"]),
+    "power": ("ee", ["電力工程", "電力學名詞", "電工學名詞"]),
+    "mech": ("eng", ["機械工程名詞", "機械名詞", "機構與機器原理",
+                      "兩岸對照名詞-機械"]),
+}
 
 def load_ner_freq():
     """Load NER entity frequencies from parquet."""
@@ -74,17 +75,85 @@ def load_naer_terms(binpath):
         entries[key] = vals
     return entries
 
-def main():
-    print("Step 1: Restore pure NAER bins")
-    restore_naer_bins()
+def _load_naer_split_terms():
+    """Load NAER terms that should be split into child domains.
+    Returns {child_domain: set_of_zh_terms}."""
+    import pandas as pd
+    df = pd.read_parquet(NAER_PARQUET)
+    result = {}
+    for child, (parent, prefixes) in DOMAIN_SPLITS.items():
+        mask = df["domain"].apply(lambda d: any(d.startswith(p) for p in prefixes))
+        result[child] = set(df.loc[mask, "zh"])
+        print(f"  {child} ← {parent}: {len(result[child]):,} NAER terms matched")
+    return result
 
-    print("\nStep 2: Load wiki entities + NER freq")
+
+def split_parent_bin(parent_entries, split_terms):
+    """Split entries from parent bin: terms matching split_terms go to child.
+    Returns (parent_remaining, child_entries)."""
+    child = {}
+    parent_remaining = {}
+    for key, vals in parent_entries.items():
+        child_vals = []
+        parent_vals = []
+        for v in vals:
+            full_term = key + v
+            if full_term in split_terms:
+                child_vals.append(v)
+            else:
+                parent_vals.append(v)
+        if child_vals:
+            child[key] = child_vals
+        if parent_vals:
+            parent_remaining[key] = parent_vals
+        # Key itself might be a full term (no suffix) — check if key is in split set
+        if not vals and key in split_terms:
+            child[key] = []
+        elif not vals:
+            parent_remaining[key] = []
+    return parent_remaining, child
+
+
+def main():
+    print("Step 1: Restore pure NAER bins (parent domains only)")
+    # Only restore the original 20 domains from git
+    original_domains = {k: v for k, v in DOMAIN_FILES.items()
+                        if k not in DOMAIN_SPLITS}
+    for domain, fname in original_domains.items():
+        binfile = f"YabomishIM/Resources/{fname}.bin"
+        r = subprocess.run(["git", "show", f"{NAER_COMMIT}:{binfile}"],
+                           capture_output=True, cwd=str(BASE))
+        if r.returncode == 0:
+            (RES / f"{fname}.bin").write_bytes(r.stdout)
+            print(f"  restored {fname}.bin ({len(r.stdout):,} bytes)")
+        else:
+            print(f"  SKIP {fname}.bin (not in {NAER_COMMIT})")
+
+    print("\nStep 2: Split parent bins → child domains")
+    split_term_sets = _load_naer_split_terms()
+    for child, (parent, _prefixes) in DOMAIN_SPLITS.items():
+        parent_path = RES / f"{DOMAIN_FILES[parent]}.bin"
+        parent_entries = load_naer_terms(parent_path)
+        before = len(parent_entries)
+        parent_remaining, child_entries = split_parent_bin(
+            parent_entries, split_term_sets[child])
+        # Write child bin
+        child_path = RES / f"{DOMAIN_FILES[child]}.bin"
+        build_wbmm({k: v for k, v in child_entries.items() if len(k) >= 2},
+                    str(child_path))
+        # Overwrite parent with remaining
+        build_wbmm({k: v for k, v in parent_remaining.items() if len(k) >= 2},
+                    str(parent_path))
+        print(f"  {parent}: {before:,} → {len(parent_remaining):,} keys"
+              f"  |  {child}: {len(child_entries):,} keys")
+
+    print("\nStep 3: Load wiki entities + NER freq")
     with open(WIKI_ENTITIES) as f:
         wiki_domains = json.load(f)
     ner_freq = load_ner_freq()
     print(f"  NER freq table: {len(ner_freq):,} entities")
 
-    print(f"\nStep 3: Filter wiki entities (freq >= {FREQ_THRESHOLD}, clean keys)")
+    print(f"\nStep 4: Filter wiki entities (freq >= {FREQ_THRESHOLD}, clean keys)")
     for domain, entities in wiki_domains.items():
         before = len(entities)
         filtered = [e for e in entities
@@ -92,13 +161,12 @@ def main():
         wiki_domains[domain] = filtered
         print(f"  {domain}: {before:,} → {len(filtered):,}")
 
-    print("\nStep 4: Merge and rebuild bins")
+    print("\nStep 5: Merge wiki entities and rebuild all bins")
     for domain, fname in DOMAIN_FILES.items():
         binpath = RES / f"{fname}.bin"
         naer = load_naer_terms(binpath)
         wiki_entities = wiki_domains.get(domain, [])
 
-        # Add wiki entities as prefix-expansion entries
         for entity in wiki_entities:
             for plen in range(2, len(entity)):
                 prefix = entity[:plen]
