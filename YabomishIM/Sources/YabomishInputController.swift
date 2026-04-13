@@ -841,6 +841,7 @@ extension YabomishInputController: InputEngineDelegate {
 
     func engineDidSuggestWithSemantic(_ suggestions: [String], semantic: [String]) {
         guard let client = engineClient else { return }
+        DebugLog.log("engineDidSuggestWithSemantic: \(suggestions.count) suggestions, \(semantic.count) semantic")
         if engine.composing.isEmpty && !suggestions.isEmpty {
             engine.setCandidates(suggestions)
             lastCommittedLength = engine._lastCommittedText.count

@@ -7,7 +7,10 @@ enum DataDownloader {
     private static let marker = "bigram.bin"
 
     static var isDataAvailable: Bool {
-        FileManager.default.fileExists(atPath: supportDir + "/" + marker)
+        // Check App Support first, then bundle Resources
+        if FileManager.default.fileExists(atPath: supportDir + "/" + marker) { return true }
+        if Bundle.main.path(forResource: "bigram", ofType: "bin") != nil { return true }
+        return false
     }
 
     static func ensureData(completion: @escaping (Bool) -> Void) {
@@ -29,7 +32,6 @@ enum DataDownloader {
                 if fm.fileExists(atPath: zipPath) { try fm.removeItem(atPath: zipPath) }
                 try fm.moveItem(atPath: tmpURL.path, toPath: zipPath)
 
-                // unzip
                 let proc = Process()
                 proc.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
                 proc.arguments = ["-o", zipPath, "-d", supportDir]
