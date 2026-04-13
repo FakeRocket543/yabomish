@@ -60,7 +60,7 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 
 ### 智慧排序
 - **Unigram** — 字頻學習（SQLite，每 500 次自動 decay）
-- **Bigram** — 前後文權重（70% unigram + 30% bigram）
+- **Bigram** — 自適應 stupid backoff（bigram 命中用機率，未命中 fallback unigram × α，α 根據 session 內命中率自動調整）
 - **Trigram** — 複合鍵 `prev2|prev1` 存入 bigram 表
 - **用詞習慣** — 臺灣用詞 / 中式用詞切換（NAER 兩岸對照表），對側用詞降權
 
@@ -238,7 +238,7 @@ tools/
 | 台灣俗諺 | [教育部台灣閩南語常用詞辭典](https://sutian.moe.edu.tw/) | 政府開放資料 |
 | 客語辭典 | [教育部臺灣客語辭典](https://hakkadict.moe.edu.tw/)（六腔） | 政府開放資料 |
 | 台灣地名 | [教育部本土語言標注臺灣地名](https://language.moe.gov.tw/) | CC-BY 3.0 TW |
-| 學科術語 | [教育部臺灣台語學科術語](https://stti.moe.edu.tw/) | CC-BY 3.0 TW |
+| 台語學科 | [教育部臺灣台語學科術語](https://stti.moe.edu.tw/) | CC-BY 3.0 TW |
 | 兩岸用詞對照 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
 | 專業詞典 ×20 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
 | 歇後語 | [chinese-xinhua](https://github.com/pwxcoo/chinese-xinhua) | MIT |

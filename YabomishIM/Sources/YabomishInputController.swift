@@ -242,6 +242,7 @@ class YabomishInputController: IMKInputController {
                 _ = PhraseLookup.shared
                 _ = WikiCorpus.shared
                 _ = BigramSuggest.shared
+                _ = Self.cinTable.shortestCodesTable
             }
         }
         Self.activeSession = self
@@ -518,7 +519,7 @@ extension YabomishInputController {
             return true
         case 53: // Escape
             if engine.composing.isEmpty {
-                if !engine.currentCandidates.isEmpty {
+                if !engine.currentCandidates.isEmpty || panel.isVisible_ {
                     engine.clearCandidates()
                     panel.hide()
                     return true

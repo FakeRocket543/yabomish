@@ -10,21 +10,21 @@ enum Typo {
     static let h3 = Font.system(size: 13, weight: .bold) // 子標題
 
     // Body
-    static let body     = Font.system(size: 13)
-    static let bodyMono = Font.system(size: 13, weight: .medium, design: .monospaced)
-    static let hint     = Font.system(size: 13)
-    static let caption  = Font.system(size: 11)
+    static let body     = Font.system(size: 14)
+    static let bodyMono = Font.system(size: 14, weight: .medium, design: .monospaced)
+    static let hint     = Font.system(size: 14)
+    static let caption  = Font.system(size: 12)
 
     // Cards
     static let cardIcon  = Font.system(size: 24)
-    static let cardTitle = Font.system(size: 13, weight: .semibold)
+    static let cardTitle = Font.system(size: 14, weight: .semibold)
     static let cardDesc  = Font.system(size: 13)
-    static let cardBadge = Font.system(size: 11).monospacedDigit()
+    static let cardBadge = Font.system(size: 12).monospacedDigit()
 
     // Chips
-    static let chipIcon  = Font.system(size: 13)
-    static let chipTitle = Font.system(size: 13, weight: .medium)
-    static let chipBadge = Font.system(size: 11).monospacedDigit()
+    static let chipIcon  = Font.system(size: 14)
+    static let chipTitle = Font.system(size: 14, weight: .medium)
+    static let chipBadge = Font.system(size: 12).monospacedDigit()
 
     // MARK: - Colors（媽祖廟五色）
 

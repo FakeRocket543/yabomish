@@ -8,8 +8,10 @@
 | 目錄 | 產出 bin | 筆數 | 來源 | 授權 |
 |------|---------|------|------|------|
 | `word_ngram/` | `word_ngram.bin` | 85K keys | 中文維基百科 ckip 斷詞 bigram | CC-BY-SA 3.0 |
-| `word_news/` | `word_news.bin` | 492K 詞 | 台灣新聞語料詞頻 | 衍生統計資料 |
+| `word_news/` | `word_news.bin` | 492K 詞 | 國家教育研究院 新聞語料庫 | 政府開放資料 |
+| `phrases/` | `phrases.bin` | — | 萌典（教育部國語辭典） | CC0 |
 | `chengyu/` | `chengyu.bin` | 33K 成語 | 教育部成語典 | 政府開放資料 |
+| `yoji/` | `yoji.bin` | — | MDict 日本語辭典（排除中文成語重疊） | 衍生整理 |
 | `ner/` | `ner_phrases.bin` | 5M 實體 (filtered) | 中文維基百科 NER | CC-BY-SA 3.0 |
 | `jingjing/` | `terms_jingjing.bin` | 188 詞條 | 自建晶晶體詞典 | 自有 |
 | `cn_slang/` | `terms_cn_slang.bin` | 3,119 詞條 | 中國網路流行語（繁體化） | 衍生整理 |
@@ -18,6 +20,7 @@
 | `hakka/` | `terms_hakka.bin` | 19,570 詞目 | 教育部臺灣客語辭典（六腔） | 政府開放資料 |
 | `korean/` | `terms_korean.bin` | 33,414 漢字詞 | Kengdic 韓英辭典 | MPL 2.0 / LGPL 2.0+ |
 | `placename/` | `terms_placename.bin` | 519 地名 | 教育部本土語言標注臺灣地名 | CC-BY 3.0 TW |
+| `placename_intl/` | `terms_placename_intl.bin` | 53K 譯名 | 國家教育研究院 樂詞網 | 政府開放資料 |
 | `ttg/` | `terms_ttg.bin` | 4,553 術語 | 教育部臺灣台語學科術語 | CC-BY 3.0 TW |
 | `naer/` | `terms_*.bin` ×20 | 378 CSV | 國家教育研究院樂詞網 | 政府開放資料 |
 | `region/` | `region_tw.txt` / `region_cn.txt` | 82K / 82K | NAER 兩岸對照名詞 | 政府開放資料 |

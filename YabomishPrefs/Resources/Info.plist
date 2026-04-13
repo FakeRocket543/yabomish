@@ -5,7 +5,9 @@
     <key>CFBundleIdentifier</key>
     <string>com.yabomish.prefs</string>
     <key>CFBundleName</key>
-    <string>YabomishPrefs</string>
+    <string>Yabomish 設定</string>
+    <key>CFBundleDisplayName</key>
+    <string>Yabomish 設定</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>

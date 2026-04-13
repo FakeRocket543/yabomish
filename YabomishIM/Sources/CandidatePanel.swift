@@ -174,6 +174,14 @@ final class CandidatePanel: NSPanel {
         guard now - lastA11yNotify >= 0.016 else { return }
         lastA11yNotify = now
         NSAccessibility.post(element: self, notification: .valueChanged)
+        // Announce current highlighted candidate for VoiceOver
+        if highlightIndex < candidates.count {
+            let idx = highlightIndex - pageStart + 1
+            let text = "第\(idx)，\(candidates[highlightIndex])"
+            NSAccessibility.post(element: self,
+                                 notification: .announcementRequested,
+                                 userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue])
+        }
     }
 
     private var useReducedMotion: Bool {
@@ -328,6 +336,7 @@ final class CandidatePanel: NSPanel {
                 let candIdx = start + i
                 let keyChar = i < selKeys.count ? keyLabel(selKeys[i]) : " "
                 label.stringValue = "\(keyChar)\(candidates[candIdx])"
+                label.setAccessibilityLabel("第\(i + 1)，\(candidates[candIdx])")
                 label.isHidden = false
                 if candIdx == highlightIndex {
                     label.drawsBackground = true
@@ -467,8 +476,6 @@ final class CandidatePanel: NSPanel {
             ]
             result.append(NSAttributedString(string: sep + "[\(modeTag)]", attributes: tagAttrs))
         }
-
-        fixedLabel.attributedStringValue = result
 
         fixedLabel.attributedStringValue = result
 

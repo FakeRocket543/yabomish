@@ -40,7 +40,7 @@
   - 客語辭典 19,570 筆（教育部六腔：四縣/海陸/大埔/饒平/詔安/南四縣）
   - 韓語漢字詞 33,414 筆（Kengdic, MPL 2.0）
   - 台灣地名 519 筆（教育部本土語言地名, CC-BY 3.0 TW）
-  - 學科術語 4,553 筆（教育部台語學科, CC-BY 3.0 TW）
+  - 台語學科 4,553 筆（教育部台語學科, CC-BY 3.0 TW）
   - 晶晶體 188 筆（自建，獨立 poolJJ，單字觸發）
 - **兩岸用詞切換** — 偏好設定新增紫色卡片，82K 詞兩岸標記，runtime 降權
 - **管理程式（YabomishPrefs.app）** — 獨立 SwiftUI 偏好設定 App
@@ -55,6 +55,7 @@
 ### 改進
 - **FreqTracker: stupid backoff + 歸一化** — 取代 raw count 加權，bigram 命中用機率，未命中 fallback unigram × 0.4
 - **FreqTracker: 批次緩衝寫入** — 每 50 筆 flush 一次 SQLite（BEGIN/COMMIT），I/O 減少約 50 倍
+- **FreqTracker: 自適應 stupid backoff** — alpha 值從硬編碼 0.4 改為根據 session 內 bigram 命中率自動調整（前 100 次查詢用 0.4 暖機，之後用實際 miss rate）
 - **word_ngram.bin 清洗** — 移除 46% 垃圾 key（英文/數字/wiki markup），7.4MB → 2.8MB
 - **terms_*.bin 重建** — 純 NAER + 維基 freq≥10 過濾，砍掉 90-99% 冷門實體
 - **所有 domain bin 最短 prefix 改為 2 字** — 排除單字觸發噪音（晶晶體保留單字觸發）

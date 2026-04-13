@@ -280,6 +280,156 @@ func testRankerModeFiltering() {
     check(spResult.contains("好") || spResult.contains("號"), "mode .sp keeps chars with shortest code 'a'")
 }
 
+// === Integration tests: full typing flow ===
+
+func testIntegrationTypeAndCommit() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    // Load a test CIN table
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    // Type "a" → should have candidates 好/號
+    engine.handleLetter("a")
+    checkEqual(engine.composing, "a", "composing is 'a'")
+    check(engine.currentCandidates.count >= 2, "candidates for 'a'")
+
+    // Space → commit first candidate
+    engine.handleSpace()
+    check(mock.commits.count > 0, "space commits")
+    let committed = mock.commits.first ?? ""
+    check(committed == "好" || committed == "號", "committed a valid char")
+    check(engine.composing.isEmpty, "composing cleared after commit")
+}
+
+func testIntegrationTypeMultiChar() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    // Type "ab" → should have candidate 哈
+    engine.handleLetter("a")
+    engine.handleLetter("b")
+    checkEqual(engine.composing, "ab", "composing is 'ab'")
+    check(engine.currentCandidates.contains("哈"), "candidates contain 哈")
+
+    // Space → commit
+    engine.handleSpace()
+    checkEqual(mock.commits.first, "哈", "committed 哈")
+}
+
+func testIntegrationBackspaceAndRetype() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    engine.handleLetter("a")
+    engine.handleLetter("b")
+    engine.handleBackspace()
+    checkEqual(engine.composing, "a", "backspace removes last char")
+    engine.handleLetter("b")
+    checkEqual(engine.composing, "ab", "retype after backspace")
+    engine.handleSpace()
+    checkEqual(mock.commits.first, "哈", "commit after backspace+retype")
+}
+
+func testIntegrationEscapeCancels() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    engine.handleLetter("a")
+    engine.handleEscape()
+    check(engine.composing.isEmpty, "escape clears composing")
+    check(engine.currentCandidates.isEmpty, "escape clears candidates")
+    checkEqual(mock.commits.count, 0, "escape does not commit")
+}
+
+func testIntegrationEnterCommitsRawCode() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    engine.handleLetter("a")
+    engine.handleLetter("b")
+    engine.handleEnter()
+    check(mock.commits.contains("ab"), "enter commits raw code 'ab'")
+}
+
+func testIntegrationDigitSelect() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    engine.handleLetter("a")
+    // "a" has 好 and 號 — select second with digit 2
+    if engine.currentCandidates.count >= 2 {
+        let second = engine.currentCandidates[1]
+        engine.selectCandidate(at: 1)
+        check(mock.commits.contains(second), "digit 2 selects second candidate")
+    }
+}
+
+func testIntegrationCommaCommandMode() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+
+    // ,,S → switch to simplified Chinese
+    engine.handleLetter(",")
+    engine.handleLetter(",")
+    engine.handleLetter("s")
+    engine.handleSpace()
+    check(mock.toasts.count > 0, "comma command shows toast")
+}
+
+func testIntegrationQuoteOutputsPunctuation() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+
+    // ' in idle → should output 頓號
+    engine.handleQuote()
+    check(mock.commits.contains("、"), "quote outputs 頓號")
+}
+
+func testIntegrationSequentialCommits() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    // Type and commit multiple chars in sequence
+    engine.handleLetter("a")
+    engine.handleSpace()
+    engine.handleLetter("b")
+    engine.handleSpace()
+    engine.handleLetter("a")
+    engine.handleLetter("b")
+    engine.handleSpace()
+
+    check(mock.commits.count == 3, "three sequential commits")
+}
+
 // Run all tests
 print("Running YabomishIM tests...")
 testHarness()
@@ -303,6 +453,15 @@ testCINTableValidNextKeys()
 testFreqTrackerRecordAndSort()
 testFreqTrackerBigramBoost()
 testRankerModeFiltering()
+testIntegrationTypeAndCommit()
+testIntegrationTypeMultiChar()
+testIntegrationBackspaceAndRetype()
+testIntegrationEscapeCancels()
+testIntegrationEnterCommitsRawCode()
+testIntegrationDigitSelect()
+testIntegrationCommaCommandMode()
+testIntegrationQuoteOutputsPunctuation()
+testIntegrationSequentialCommits()
 
 print("\n\(passed) passed, \(failed) failed")
 exit(failed > 0 ? 1 : 0)

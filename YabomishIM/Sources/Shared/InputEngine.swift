@@ -327,9 +327,15 @@ final class InputEngine {
     } }
 
     /// Single-quote key: output 頓號「、」(official boshiamy behavior)
-    /// Same-sound mode uses ,,TO command instead.
+    /// In same-sound mode: start composing with ' prefix for code input.
     func handleQuote() { queue.sync {
-        if _composing.isEmpty && !_isSameSoundMode {
+        if _isSameSoundMode {
+            _composing = "'"
+            _sameSoundBase = ""
+            _notifyComposing()
+            return
+        }
+        if _composing.isEmpty {
             delegate?.engineDidCommit("、")
         }
     } }

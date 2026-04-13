@@ -32,9 +32,10 @@ build_im() {
     mkdir -p "$IM_APP/Contents/MacOS" "$IM_APP/Contents/Resources"
 
     cp "$IM_RES/Info.plist" "$IM_APP/Contents/Info.plist"
+    local VER; VER=$(grep -m1 '^## \[' "$ROOT/CHANGELOG.md" | sed 's/.*\[\(.*\)\].*/\1/')
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
-    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 0.2.17.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
 
     for f in icon.tiff icon.icns icon_right.tiff icon_left.tiff \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json emoji_char_map.json \

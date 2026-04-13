@@ -42,7 +42,10 @@ final class FreqTracker {
     // MARK: - DB Setup
 
     private func openDB() {
-        guard sqlite3_open(path, &db) == SQLITE_OK else { return }
+        guard sqlite3_open(path, &db) == SQLITE_OK else {
+            DebugLog.log("FreqTracker sqlite3_open failed: \(path)")
+            return
+        }
         exec("PRAGMA journal_mode=WAL")
         exec("PRAGMA synchronous=NORMAL")
         exec("CREATE TABLE IF NOT EXISTS freq(code TEXT, char TEXT, n INTEGER, PRIMARY KEY(code,char))")
@@ -56,24 +59,34 @@ final class FreqTracker {
     // MARK: - Record
 
     func record(code: String, char: String) {
-        pendingFreq.append((code, char))
-        recordCount += 1
-        if pendingFreq.count >= batchSize { flushFreq() }
-        if recordCount >= 500 { recordCount = 0; bgQueue.async { [weak self] in self?.decay() } }
+        bgQueue.async { [weak self] in
+            guard let self else { return }
+            self.pendingFreq.append((code, char))
+            self.recordCount += 1
+            if self.pendingFreq.count >= self.batchSize { self.flushFreq() }
+            if self.recordCount >= 500 { self.recordCount = 0; self.decay() }
+        }
     }
 
     func recordBigram(prev: String, char: String) {
         guard !prev.isEmpty else { return }
-        pendingBigram.append((prev, char))
-        if pendingBigram.count >= batchSize { flushBigram() }
+        bgQueue.async { [weak self] in
+            guard let self else { return }
+            self.pendingBigram.append((prev, char))
+            if self.pendingBigram.count >= self.batchSize { self.flushBigram() }
+        }
     }
 
     func recordTrigram(prev2: String, prev1: String, char: String) {
         guard !prev2.isEmpty, !prev1.isEmpty else { return }
-        pendingBigram.append((prev2 + "|" + prev1, char))
-        if pendingBigram.count >= batchSize { flushBigram() }
+        bgQueue.async { [weak self] in
+            guard let self else { return }
+            self.pendingBigram.append((prev2 + "|" + prev1, char))
+            if self.pendingBigram.count >= self.batchSize { self.flushBigram() }
+        }
     }
 
+    /// Must be called on bgQueue
     private func flushFreq() {
         guard !pendingFreq.isEmpty else { return }
         exec("BEGIN")
@@ -82,6 +95,7 @@ final class FreqTracker {
         pendingFreq.removeAll(keepingCapacity: true)
     }
 
+    /// Must be called on bgQueue
     private func flushBigram() {
         guard !pendingBigram.isEmpty else { return }
         exec("BEGIN")
@@ -90,7 +104,7 @@ final class FreqTracker {
         pendingBigram.removeAll(keepingCapacity: true)
     }
 
-    func flushAll() { flushFreq(); flushBigram() }
+    func flushAll() { bgQueue.sync { flushFreq(); flushBigram() } }
 
     // MARK: - Query
 
@@ -114,10 +128,21 @@ final class FreqTracker {
         }
     }
 
+    // MARK: - Adaptive backoff
+
+    private var bigramHits = 0
+    private var bigramMisses = 0
+
     private func backoffScore(_ char: String, _ uni: [String: Int], _ bi: [String: Int],
                               _ uniT: Double, _ biT: Double) -> Double {
-        if let b = bi[char] { return Double(b) / biT }
-        return 0.4 * Double(uni[char] ?? 0) / uniT
+        if let b = bi[char] {
+            bigramHits += 1
+            return Double(b) / biT
+        }
+        bigramMisses += 1
+        let total = bigramHits + bigramMisses
+        let alpha: Double = total < 100 ? 0.4 : Double(bigramMisses) / Double(total)
+        return alpha * Double(uni[char] ?? 0) / uniT
     }
 
     /// Top N learned bigram suggestions for a given prev char
@@ -144,13 +169,13 @@ final class FreqTracker {
 
     func decay(factor: Double = 0.9) {
         var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(db, "UPDATE freq SET n=CAST(n*?1 AS INTEGER)", -1, &stmt, nil) == SQLITE_OK {
+        if sqlite3_prepare_v2(db, "UPDATE freq SET n=MAX(1,CAST(n*?1 AS INTEGER))", -1, &stmt, nil) == SQLITE_OK {
             sqlite3_bind_double(stmt, 1, factor)
             sqlite3_step(stmt)
             sqlite3_finalize(stmt)
         }
         exec("DELETE FROM freq WHERE n<1")
-        if sqlite3_prepare_v2(db, "UPDATE bigram SET n=CAST(n*?1 AS INTEGER)", -1, &stmt, nil) == SQLITE_OK {
+        if sqlite3_prepare_v2(db, "UPDATE bigram SET n=MAX(1,CAST(n*?1 AS INTEGER))", -1, &stmt, nil) == SQLITE_OK {
             sqlite3_bind_double(stmt, 1, factor)
             sqlite3_step(stmt)
             sqlite3_finalize(stmt)
