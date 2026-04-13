@@ -43,12 +43,11 @@ struct AppearanceTab: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Toggle("Debug 模式", isOn: $store.debugMode)
                         if store.debugMode {
-                            Toggle("新引擎（重新登入後生效）", isOn: $store.useNewEngine)
-                        }
-                        Button("打開 debug.log…") {
-                            let url = URL(fileURLWithPath: NSHomeDirectory())
-                                .appendingPathComponent("Library/YabomishIM/debug.log")
-                            NSWorkspace.shared.open(url)
+                            Button("打開 debug.log…") {
+                                let url = URL(fileURLWithPath: NSHomeDirectory())
+                                    .appendingPathComponent("Library/YabomishIM/debug.log")
+                                NSWorkspace.shared.open(url)
+                            }
                         }
                     }
                     .padding(.vertical, 4)
