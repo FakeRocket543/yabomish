@@ -78,6 +78,7 @@ final class WikiCorpus {
         ("domain_placename", "terms_placename", "台灣地名"),
         ("domain_ttg", "terms_ttg", "學科術語"),
         ("domain_korean", "terms_korean", "韓語漢字詞"),
+        ("domain_semantic", "terms_semantic", "近似義"),
         ("domain_yoji", "yoji", "日本熟語"),
     ]
     /// Group 2: 專業詞典
