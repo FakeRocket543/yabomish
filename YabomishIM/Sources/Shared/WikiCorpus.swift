@@ -64,6 +64,12 @@ final class WikiCorpus {
     private var jjKeyIndexOff = 0
     private var jjValIndexOff = 0
 
+    // Semantic near-synonym (WBMM, loaded independently)
+    private var semData: Data?
+    private var semKeyCount = 0
+    private var semKeyIndexOff = 0
+    private var semValIndexOff = 0
+
     /// All domain/corpus bins available for the third layer (checkbox + priority)
     /// Group 1: 一般詞庫
     static let generalDomainKeys: [(key: String, file: String, label: String)] = [
@@ -78,7 +84,6 @@ final class WikiCorpus {
         ("domain_placename", "terms_placename", "台灣地名"),
         ("domain_ttg", "terms_ttg", "學科術語"),
         ("domain_korean", "terms_korean", "韓語漢字詞"),
-        ("domain_semantic", "terms_semantic", "近似義"),
         ("domain_yoji", "yoji", "日本熟語"),
     ]
     /// Group 2: 專業詞典
@@ -107,6 +112,7 @@ final class WikiCorpus {
         loadWordBigram()
         loadWordNews()
         loadJingjing()
+        loadSemantic()
         loadEmojiMap()
         loadRegionSets()
         reloadDomains()
@@ -158,6 +164,7 @@ final class WikiCorpus {
         nerData = nil; nerKeyCount = 0
         phData = nil; phKeyCount = 0
         loadJingjing()
+        loadSemantic()
         // Use DomainOrderManager order (drag-reorder position = priority)
         let orderedKeys = DomainOrderManager.shared.allOrderedKeys()
         let keyToFile = Dictionary(uniqueKeysWithValues: Self.domainKeys.map { ($0.key, $0.file) })
@@ -338,12 +345,26 @@ final class WikiCorpus {
         DebugLog.log("WikiCorpus: jingjing loaded — \(jjKeyCount) keys")
     }
 
+    private func loadSemantic() {
+        guard prefs.semanticSuggest,
+              let p = resolvePath(name: "terms_semantic", ext: "bin") else { semData = nil; return }
+        let d: Data
+        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
+        catch { DebugLog.log("WikiCorpus loadSemantic: \(error.localizedDescription)"); return }
+        guard d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
+        semKeyCount = Int(d.u32(4))
+        semKeyIndexOff = Int(d.u32(8))
+        semValIndexOff = Int(d.u32(12))
+        guard semKeyIndexOff >= 16, semKeyIndexOff < semValIndexOff, semValIndexOff <= d.count else { return }
+        semData = d
+        DebugLog.log("WikiCorpus: semantic loaded — \(semKeyCount) keys")
+    }
+
     /// Jingjing-ti phrase expansion: single-char prefix → suffix completions
     /// Query semantic (near-synonym) bin only — returns full terms, not suffixes
     func suggestSemantic(for term: String, limit: Int = 5) -> [String] {
-        guard let bin = domainBins.first(where: { $0.isSemantic }) else { return [] }
-        return queryWBMM(data: bin.data, keyCount: bin.keyCount, keyIndexOff: bin.keyIndexOff,
-                         valIndexOff: bin.valIndexOff, key: term, limit: limit)
+        queryWBMM(data: semData, keyCount: semKeyCount, keyIndexOff: semKeyIndexOff,
+                  valIndexOff: semValIndexOff, key: term, limit: limit)
     }
 
     func suggestJingjing(prefix: String, limit: Int = 5) -> [String] {
