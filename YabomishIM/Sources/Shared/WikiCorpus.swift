@@ -346,8 +346,12 @@ final class WikiCorpus {
     }
 
     private func loadSemantic() {
+        DebugLog.log("WikiCorpus loadSemantic: pref=\(prefs.semanticSuggest)")
         guard prefs.semanticSuggest,
-              let p = resolvePath(name: "terms_semantic", ext: "bin") else { semData = nil; return }
+              let p = resolvePath(name: "terms_semantic", ext: "bin") else {
+            DebugLog.log("WikiCorpus loadSemantic: skipped (pref=\(prefs.semanticSuggest), path=\(resolvePath(name: "terms_semantic", ext: "bin") ?? "nil"))")
+            semData = nil; return
+        }
         let d: Data
         do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
         catch { DebugLog.log("WikiCorpus loadSemantic: \(error.localizedDescription)"); return }

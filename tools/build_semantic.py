@@ -23,6 +23,7 @@ GENERAL_BINS = [
     "terms_kautian", "terms_hakka", "terms_korean", "terms_xiehouyu",
     "terms_jingjing", "terms_cn_slang", "terms_placename", "terms_ttg",
     "yoji",
+    "word_ngram", "word_news",
 ]
 
 
@@ -40,6 +41,9 @@ def extract_values_from_wbmm(path):
         so = struct.unpack_from("<I", d, eo)[0]
         sl = struct.unpack_from("<H", d, eo + 4)[0]
         key = d[so : so + sl].decode("utf-8", errors="replace")
+        # Add key itself (for word_ngram/word_news, keys are common words)
+        if 2 <= len(key) <= 4:
+            terms.add(key)
         vs = struct.unpack_from("<I", d, eo + 6)[0]
         vc = struct.unpack_from("<H", d, eo + 10)[0]
         for j in range(vc):
@@ -48,7 +52,7 @@ def extract_values_from_wbmm(path):
             vsl = struct.unpack_from("<H", d, vo + 4)[0]
             val = d[vso : vso + vsl].decode("utf-8", errors="replace")
             full = key + val
-            if 2 <= len(full) <= 8:
+            if 2 <= len(full) <= 4:
                 terms.add(full)
     return terms
 
