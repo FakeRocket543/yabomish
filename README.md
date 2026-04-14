@@ -94,11 +94,11 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 
 | 輸入 | 聯想與詞庫 | 專業詞典（28 本） |
 |:---:|:---:|:---:|
-| ![輸入](images/prefs-input.png) | ![聯想與詞庫](images/prefs-suggestion.png) | ![專業詞典](images/prefs-domains.png) |
+| ![輸入](images/prefs-input.webp) | ![聯想與詞庫](images/prefs-suggestion.webp) | ![專業詞典](images/prefs-domains.webp) |
 
 | 快捷碼 | 外觀 | 關於 |
 |:---:|:---:|:---:|
-| ![快捷碼](images/prefs-shortcuts.png) | ![外觀](images/prefs-appearance.png) | ![關於](images/prefs-about.png) |
+| ![快捷碼](images/prefs-shortcuts.webp) | ![外觀](images/prefs-appearance.webp) | ![關於](images/prefs-about.webp) |
 
 首次開啟有三頁引導（匯入字表 → 加入輸入方式 → 常用快捷鍵）。
 
