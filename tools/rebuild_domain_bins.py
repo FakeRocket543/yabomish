@@ -205,19 +205,20 @@ def load_naer_terms(binpath):
     return entries
 
 
-_BRACKET_RE = re.compile(r'[{｛〔\[].+?[}｝〕\]]')
-_STRAY_BRACKET_RE = re.compile(r'[{｛}｝〔〕\[\]]')
+_BRACKET_RE = re.compile(r'[{｛〔\[（【].+?[}｝〕\]）】]')
+_STRAY_BRACKET_RE = re.compile(r'[{｛}｝〔〕\[\]（）【】]')
 _ENGLISH_RE = re.compile(r'[a-zA-Z]{3,}')
 
 def _clean_naer_terms(raw_terms):
-    """Split on ；/; , strip brackets/annotations, drop English and overlong terms."""
+    """Split on ；/;/，/,  strip brackets/annotations, drop English and overlong terms."""
     out = set()
     for t in raw_terms:
-        parts = re.split(r'[；;]', t)
+        parts = re.split(r'[；;，,]', t)
         for p in parts:
             p = _BRACKET_RE.sub('', p)
             p = _STRAY_BRACKET_RE.sub('', p).strip()
-            if not p or len(p) < 2 or len(p) > 12:
+            p = re.sub(r'\s+', '', p)  # collapse spaces
+            if not p or len(p) < 2 or len(p) > 8:
                 continue
             if _ENGLISH_RE.search(p):
                 continue
@@ -277,7 +278,7 @@ def main():
     for domain, entities in wiki_domains.items():
         before = len(entities)
         filtered = [e for e in entities
-                    if _is_clean_key(e) and 3 <= len(e) <= 12 and ner_freq.get(e, 0) >= FREQ_THRESHOLD]
+                    if _is_clean_key(e) and 3 <= len(e) <= 8 and ner_freq.get(e, 0) >= FREQ_THRESHOLD]
         wiki_domains[domain] = filtered
         print(f"  {domain}: {before:,} → {len(filtered):,}")
 
