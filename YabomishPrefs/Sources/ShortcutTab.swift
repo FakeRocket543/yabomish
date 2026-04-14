@@ -16,6 +16,8 @@ struct ShortcutTab: View {
     @State private var search = ""
     @State private var codeStatus: CodeStatus = .empty
     @State private var freeCount = 0
+    @State private var corpusQuery = ""
+    @State private var corpusResults: [(String, String)] = []  // (label, detail)
 
     enum CodeStatus {
         case empty, tooShort, available
@@ -52,6 +54,9 @@ struct ShortcutTab: View {
                 listSection
                 Text("檔案路徑：~/Library/YabomishIM/tables/user_shortcuts.txt\n修改後輸入 ,,RL + 空白鍵 即時重載。")
                     .font(Typo.caption).foregroundStyle(.secondary)
+
+                // Corpus search
+                corpusSearchSection
             }
             .padding(20)
         }
@@ -282,5 +287,120 @@ struct ShortcutTab: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let text = shortcuts.map { "\($0.code)\t\($0.content)" }.joined(separator: "\n")
         try? text.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    // MARK: - Corpus Search
+
+    private var corpusSearchSection: some View {
+        GroupBox("詞庫查詢") {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("輸入中文詞查詢是否已收錄", text: $corpusQuery)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { searchCorpus() }
+                    Button("查詢") { searchCorpus() }
+                        .disabled(corpusQuery.count < 2)
+                }
+                if !corpusResults.isEmpty {
+                    ForEach(corpusResults, id: \.0) { label, detail in
+                        HStack(spacing: 6) {
+                            Image(systemName: detail.isEmpty ? "xmark.circle" : "checkmark.circle.fill")
+                                .foregroundStyle(detail.isEmpty ? .secondary : Typo.ok)
+                            Text(label).font(Typo.body)
+                            if !detail.isEmpty {
+                                Text(detail).font(Typo.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .padding(4)
+        }
+    }
+
+    private func searchCorpus() {
+        let q = corpusQuery.trimmingCharacters(in: .whitespaces)
+        guard q.count >= 2 else { return }
+        var results: [(String, String)] = []
+
+        // Search all WBMM bins
+        let resDir = "/Library/Input Methods/YabomishIM.app/Contents/Resources"
+        let bins: [(String, String)] = DomainData.allDomains.map { ($0.file, $0.label) } + [
+            ("chengyu", "成語"), ("phrases", "萌典詞組"), ("ner_phrases", "NER 詞組"),
+            ("word_ngram", "維基詞頻"), ("word_news", "新聞詞頻"), ("yoji", "日本熟語"),
+        ]
+        for (file, label) in bins {
+            let path = resDir + "/\(file).bin"
+            if wbmmContains(path: path, query: q) {
+                results.append((label, "✓ 已收錄"))
+            }
+        }
+
+        // Search user shortcuts
+        if shortcuts.contains(where: { $0.content.contains(q) || $0.code == q }) {
+            results.append(("使用者快捷碼", "✓ 已收錄"))
+        }
+
+        if results.isEmpty {
+            results.append(("未在任何詞庫中找到「\(q)」", ""))
+        }
+        corpusResults = results
+    }
+
+    private func wbmmContains(path: String, query: String) -> Bool {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe),
+              data.count >= 16, data[0] == 0x57, data[1] == 0x42, data[2] == 0x4D, data[3] == 0x4D
+        else { return false }
+        let kc = Int(data.u32(4))
+        let ki = Int(data.u32(8))
+        let vi = Int(data.u32(12))
+        // Binary search for the query as a prefix key
+        let target = Array(query.utf8)
+        var lo = 0, hi = kc - 1
+        while lo <= hi {
+            let mid = (lo + hi) / 2
+            let eo = ki + mid * 12
+            guard eo + 12 <= data.count else { return false }
+            let so = Int(data.u32(eo))
+            let sl = Int(data.u16(eo + 4))
+            guard so + sl <= data.count else { return false }
+            let key = Array(data[so..<(so + sl)])
+            if key == target { return true }
+            if key.lexicographicallyPrecedes(target) { lo = mid + 1 } else { hi = mid - 1 }
+        }
+        // Also check if query appears as prefix+suffix combination
+        let prefix2 = String(query.prefix(2))
+        let suffix = String(query.dropFirst(2))
+        let prefixBytes = Array(prefix2.utf8)
+        lo = 0; hi = kc - 1
+        while lo <= hi {
+            let mid = (lo + hi) / 2
+            let eo = ki + mid * 12
+            guard eo + 12 <= data.count else { return false }
+            let so = Int(data.u32(eo))
+            let sl = Int(data.u16(eo + 4))
+            guard so + sl <= data.count else { return false }
+            let key = Array(data[so..<(so + sl)])
+            if key == prefixBytes {
+                if suffix.isEmpty { return true }
+                let vs = Int(data.u32(eo + 6))
+                let vc = Int(data.u16(eo + 10))
+                for j in 0..<vc {
+                    let vo = vi + (vs + j) * 6
+                    guard vo + 6 <= data.count else { break }
+                    let vso = Int(data.u32(vo))
+                    let vsl = Int(data.u16(vo + 4))
+                    guard vso + vsl <= data.count else { continue }
+                    if let v = String(data: data[vso..<(vso + vsl)], encoding: .utf8), v == suffix {
+                        return true
+                    }
+                }
+                return false
+            }
+            if key.lexicographicallyPrecedes(prefixBytes) { lo = mid + 1 } else { hi = mid - 1 }
+        }
+        return false
     }
 }
