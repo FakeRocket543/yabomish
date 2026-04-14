@@ -64,7 +64,7 @@ final class PhraseLookup {
         return results
     }
 
-    // MARK: - Layer 3: Community Context
+    // MARK: - Layer 3: Community Context (dormant — 保留供未來自動 domain 偵測使用)
 
     /// 查詢實體所屬社群
     func communityFor(_ entity: String) -> Int? {
