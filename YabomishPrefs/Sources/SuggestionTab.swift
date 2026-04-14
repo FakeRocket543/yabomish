@@ -37,25 +37,24 @@ struct SuggestionTab: View {
     private let threeColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
     private let domainColumns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
-    private var hasCorpus: Bool {
-        DomainData.binEntryCount(file: "bigram") > 0 ||
-        DomainData.allDomains.contains { DomainData.binEntryCount(file: $0.file) > 0 }
+    private var hasProDomains: Bool {
+        DomainData.proDomains.contains { DomainData.binEntryCount(file: $0.file) > 0 }
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if !hasCorpus {
+                if !hasProDomains {
                     VStack(spacing: 8) {
                         Image(systemName: "shippingbox").font(.system(size: 32)).foregroundStyle(.secondary)
-                        Text("目前為精簡安裝，未包含聯想語料。")
+                        Text("目前為精簡安裝，未包含專業詞典。")
                             .font(Typo.body)
-                        Text("重新執行 yabomish.sh 選擇「完整安裝」即可啟用聯想功能。")
+                        Text("重新執行 yabomish.sh 選擇「完整安裝」即可啟用 28 個專業詞典。")
                             .font(Typo.hint).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
-                } else {
+                    .padding(.vertical, 20)
+                }
                 // 1. Hint
                 HStack(spacing: 4) {
                     Image(systemName: "hand.draw").foregroundStyle(.secondary)
@@ -118,7 +117,6 @@ struct SuggestionTab: View {
                     Button("重置") { showResetConfirm = true }
                     Spacer()
                 }
-                } // end else (hasCorpus)
             }
             .padding(20)
         }

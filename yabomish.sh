@@ -46,12 +46,14 @@ build_im() {
     done
     [ -d "$IM_RES/tables" ] && cp -R "$IM_RES/tables" "$IM_APP/Contents/Resources/"
 
-    # 聯想語料（完整版才包含）
+    # 基礎語料（精簡版也包含：聯想、成語、兩岸用詞）
+    for f in bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
+             phrases.bin ner_phrases.bin yoji.bin region_tw.txt region_cn.txt; do
+        [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
+    done
+
+    # 專業詞典（完整版才包含）
     if [ "$MODE" = "full" ]; then
-        for f in bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
-                 phrases.bin ner_phrases.bin yoji.bin region_tw.txt region_cn.txt; do
-            [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
-        done
         for f in "$IM_RES"/terms_*.bin; do [ -f "$f" ] && cp "$f" "$IM_APP/Contents/Resources/"; done
     fi
     echo -n "APPL????" > "$IM_APP/Contents/PkgInfo"
@@ -157,8 +159,8 @@ do_uninstall() {
 show_menu() {
     printf "\n${B}Yabomish 管理工具${N}\n"
     echo "-----------------------------"
-    printf "  ${B}1)${N} 完整安裝（含聯想語料）\n"
-    printf "  ${B}2)${N} 精簡安裝（不含聯想語料）\n"
+    printf "  ${B}1)${N} 完整安裝（含 28 專業詞典）\n"
+    printf "  ${B}2)${N} 精簡安裝（基礎聯想，不含專業詞典）\n"
     printf "  ${B}3)${N} 只編譯（不安裝）\n"
     printf "  ${B}4)${N} 只安裝（已編譯過）\n"
     printf "  ${B}5)${N} 快速重裝輸入法\n"
