@@ -159,7 +159,7 @@ do_uninstall() {
 ask_mode() {
     printf "  1) 完整（含 28 專業詞典，~98MB）  2) 精簡（基礎聯想，~18MB）\n"
     printf "  選擇 [1/2, Enter=完整]: "; read -r m
-    case "$m" in 2) echo "lite";; *) echo "full";; esac
+    case "$m" in 2) BUILD_MODE="lite";; *) BUILD_MODE="full";; esac
 }
 
 show_menu() {
@@ -179,8 +179,8 @@ check_xcode
 while true; do
     show_menu; read -r choice; echo ""
     case "$choice" in
-        1) M=$(ask_mode); build_im "$M"; build_prefs; install_im; install_prefs;;
-        2) M=$(ask_mode); build_im "$M"; build_prefs;;
+        1) ask_mode; build_im "$BUILD_MODE"; build_prefs; install_im; install_prefs;;
+        2) ask_mode; build_im "$BUILD_MODE"; build_prefs;;
         3) install_im; install_prefs;;
         4) build_prefs; install_prefs;;
         5) do_uninstall;;
