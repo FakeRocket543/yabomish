@@ -204,7 +204,7 @@ YabomishPrefs/Sources/             # 獨立設定程式（SwiftUI）
 ├── HelpTab.swift                  # 使用方法＋快捷鍵速查＋語料授權
 ├── WelcomeView.swift              # 首次使用引導
 ├── DomainCardView.swift           # 詞庫卡片元件
-└── DomainData.swift               # 詞庫定義（6 一般 + 20 專業）
+└── DomainData.swift               # 詞庫定義（6 一般 + 28 專業）
 ```
 
 ## 知識挖掘 Pipeline
@@ -240,7 +240,7 @@ tools/
 | 台灣地名 | [教育部本土語言標注臺灣地名](https://language.moe.gov.tw/) | CC-BY 3.0 TW |
 | 台語學科 | [教育部臺灣台語學科術語](https://stti.moe.edu.tw/) | CC-BY 3.0 TW |
 | 兩岸用詞對照 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
-| 專業詞典 ×20 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
+| 專業詞典 ×28 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
 | 歇後語 | [chinese-xinhua](https://github.com/pwxcoo/chinese-xinhua) | MIT |
 | 韓語漢字詞 | [Kengdic](https://github.com/garfieldnate/kengdic) | MPL 2.0 / LGPL 2.0+ |
 | 維基語料 | 中文維基百科 zhwiki dump | CC-BY-SA 3.0 |

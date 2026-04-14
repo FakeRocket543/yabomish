@@ -2,6 +2,30 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.3.47] — 2026-04-14
+
+### 新增
+- **NAER 語料補齊** — 從 parquet 直接建 bin，覆蓋率 84% → 99.5%（+293K 詞條，217 個子分類全部對應）
+- **NAER domain 拆分** — 專業詞典 23 → 28 個：`eng` 拆為土木水利/航太/核能/紡織食品，`bio` 拆為動物生態/植物/魚類
+- **專業詞典 badge** — 設定程式「聯想與詞庫」頁，專業詞典收合時顯示已啟用數量（如 3/28）
+- **擴充表修正碼優先** — 擴充表（`tables/*.txt`）的字排在主表前面，可用於修正碼表錯誤
+
+### 改進
+- **NAER 詞條清洗** — 分號/逗號拆分多義詞、去括號注釋（全形/半形/方括號/黑括號）、去英文、詞長限 3-8 字
+- **中國流行語清洗** — 移除 72 筆模板句（xx/XX）、解釋性文字、格式錯誤（3,119 → 3,047）
+- **bin 總大小** — 185MB → 74MB（清洗 + 拆分後）
+
+### 修正
+- **clone URL** — README、usage.md、安裝手冊改為正確的 GitHub URL
+- **.gitignore** — 修正 gen_pinyin_data.py/vChewing-macOS 黏在一行的 bug
+- **git 歷史清理** — filter-repo 移除已刪除大檔，.git 6.5GB → 226MB
+
+### 變更
+- 移除 git tracking：YabomishPrefs.app 建置產物、data/ 殘留檔案、大 parquet、學術論文 PDF
+- 專業詞典數量：×20 → ×28（README、HelpTab、手冊同步更新）
+
+---
+
 ## [0.3.44] — 2026-04-14
 
 ### 新增
