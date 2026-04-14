@@ -205,6 +205,24 @@ def load_naer_terms(binpath):
     return entries
 
 
+_BRACKET_RE = re.compile(r'[{〔\[].+?[}〕\]]')
+_ENGLISH_RE = re.compile(r'[a-zA-Z]{3,}')
+
+def _clean_naer_terms(raw_terms):
+    """Split on ；/; , strip brackets/annotations, drop English and overlong terms."""
+    out = set()
+    for t in raw_terms:
+        parts = re.split(r'[；;]', t)
+        for p in parts:
+            p = _BRACKET_RE.sub('', p).strip()
+            if not p or len(p) < 2 or len(p) > 12:
+                continue
+            if _ENGLISH_RE.search(p):
+                continue
+            out.add(p)
+    return list(out)
+
+
 def build_naer_from_parquet():
     """Build NAER bins directly from naer_terms.parquet using NAER_DOMAIN_MAP."""
     import pandas as pd
@@ -226,7 +244,8 @@ def build_naer_from_parquet():
     total_mapped = 0
 
     for bin_domain, fname in DOMAIN_FILES.items():
-        terms = mapped.loc[mapped["bin"] == bin_domain, "zh"].dropna().unique()
+        raw_terms = mapped.loc[mapped["bin"] == bin_domain, "zh"].dropna().unique()
+        terms = _clean_naer_terms(raw_terms)
         entries = defaultdict(list)
         for term in terms:
             for plen in range(2, len(term)):
@@ -237,7 +256,7 @@ def build_naer_from_parquet():
         binpath = RES / f"{fname}.bin"
         build_wbmm(dict(entries), str(binpath))
         total_mapped += len(terms)
-        print(f"  {fname}: {len(terms):,} terms → {len(entries):,} keys")
+        print(f"  {fname}: {len(raw_terms):,} raw → {len(terms):,} clean → {len(entries):,} keys")
 
     print(f"  Total mapped: {total_mapped:,} unique terms from {len(mapped):,} rows")
 
