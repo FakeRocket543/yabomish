@@ -3,7 +3,7 @@ import Foundation
 /// 語料下載：從 GitHub Release 下載語料 zip 並解壓至 Application Support
 enum DataDownloader {
     static let dataURL = "https://github.com/user/yabomish-data/releases/download/v0.3.0/yabomish-data-v0.3.0.zip"
-    static let supportDir = NSHomeDirectory() + "/Library/Application Support/YabomishIM"
+    static let supportDir = AppConstants.sharedDir
     private static let marker = "bigram.bin"
 
     static var isDataAvailable: Bool {

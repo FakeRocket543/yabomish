@@ -2,6 +2,39 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.3.50] — 2026-04-15
+
+### 修正
+- **路徑統一** — 所有程式碼統一使用 `~/Library/Application Support/Yabomish/`，消除三個路徑並存的問題（DebugLog、PrefsWindow、CINTable、DataDownloader、PhraseLookup）
+- **`'` `;` `/` 完整直送** — composing 中按這三個鍵會先送字再直送，英文模式下也能正確輸出 `'`
+- **安全輸入偵測** — 切換到密碼欄位時清除 composing 並隱藏候選字面板
+- **模式互斥** — `,,ZH`、`,,TO`、`,,PYS`/`,,PYT` 進入時互相清除對方的旗標，不再可能同時啟用多個模式
+- **同音字模式穩定性** — 打碼查不到字或 backspace 刪到空時不再意外退出同音字模式（只有 Escape 才退出）
+- **Shift 快按保護** — composing 中快按 Shift 不再觸發中英切換
+- **deactivate 清模式** — 切換 app 時正確退出注音/拼音模式
+- **線程安全** — 公開存取器改用 NSRecursiveLock，delegate 回調中讀取屬性不再 data race
+
+### 改進
+- **關於頁面** — 加入 GitHub 原始碼連結，更新路徑說明和快捷鍵速查
+- **`.gitignore`** — 排除 `YabomishIM/Resources/*.bin`（94MB 語料不再追蹤）
+
+---
+
+## [0.3.49] — 2026-04-14
+
+### 變更
+- **`'` `;` 空閒直送** — 不再攔截單引號和分號，直接傳給 App。寫程式時 SQL 字串、JavaScript 引號、shell script 等場景不再被輸入法干擾
+- **頓號回歸 `vv`** — 移除 `,,D` 命令，頓號「、」直接用嘸蝦米碼 `vv` + 空白鍵（5.7 版起的標準做法）
+- **注音查碼只留 `,,ZH`** — 移除 `';` 快捷鍵切換注音模式
+- **同音字模式簡化** — `,,TO` 進入後直接打碼，不再需要 `'` 前綴
+
+### 修正
+- **移除腳本路徑修正** — `yabomish.sh` 的 `USER_DIR` 改為 `~/Library/Application Support/Yabomish`（與 Swift 程式一致），移除時不再殘留字表和字頻資料
+- **安裝覆蓋問題** — 安裝前先刪除舊 app，避免完整版→精簡版切換時殘留 `terms_*.bin`
+- **字表偵測** — 安裝後同時檢查 `liu.cin` 和 `liu.bin`
+
+---
+
 ## [0.3.48] — 2026-04-14
 
 ### 新增

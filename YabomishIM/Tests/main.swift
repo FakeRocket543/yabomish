@@ -402,14 +402,15 @@ func testIntegrationCommaCommandMode() {
     check(mock.toasts.count > 0, "comma command shows toast")
 }
 
-func testIntegrationQuoteOutputsPunctuation() {
+func testIntegrationQuotePassthrough() {
     let engine = InputEngine()
     let mock = MockEngineDelegate()
     engine.delegate = mock
 
-    // ' in idle → should output 頓號
-    engine.handleQuote()
-    check(mock.commits.contains("、"), "quote outputs 頓號")
+    // ' key is no longer intercepted — no engine method to call
+    // Just verify engine doesn't have any quote-related side effects
+    check(engine.composing.isEmpty, "composing stays empty without quote handler")
+    checkEqual(mock.commits.count, 0, "no commits without input")
 }
 
 func testIntegrationSequentialCommits() {
@@ -462,7 +463,7 @@ testIntegrationEscapeCancels()
 testIntegrationEnterCommitsRawCode()
 testIntegrationDigitSelect()
 testIntegrationCommaCommandMode()
-testIntegrationQuoteOutputsPunctuation()
+testIntegrationQuotePassthrough()
 testIntegrationSequentialCommits()
 
 print("\n\(passed) passed, \(failed) failed")

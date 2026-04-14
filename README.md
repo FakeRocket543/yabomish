@@ -40,8 +40,8 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 | `,,H` | 命令說明 |
 
 ### 查詢功能
-- **同音字查詢** — `,,TO` 進入同音字模式，每次送字列出同音字
-- **注音反查** — `';` 或 `,,ZH` 切換，輸入注音查嘸蝦米碼
+- **同音字查詢** — `,,TO` 進入同音字模式，直接打碼送字後列同音字
+- **注音反查** — `,,ZH` 切換，輸入注音查嘸蝦米碼
 - **拼音查碼** — `,,PYS` / `,,PYT`，輸入拼音字母 + 聲調數字（空白鍵 = 一聲）
 
 ### 聯想輸入
@@ -69,7 +69,8 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 - **補碼** `v`/`r`/`s`/`f` — 選第 2–5 候選字
 - **滿碼自動送字** — 可選，碼打滿且唯一候選時自動送出
 - **`/` 穿透** — 空閒時直送 App（slash command）
-- **`'` 頓號** — 空閒時按 `'` 輸出頓號「、」
+- **`'` `;` 直送** — 空閒時不攔截，直送 App（方便寫程式）
+- **頓號** — 嘸蝦米碼 `vv` + 空白鍵（字表內建）
 - **全型空格** — Shift+Space 或 `,,` + Space
 - **Shift 快按** — 中英切換（0.3 秒內）
 - **Shift 按住** — 暫時英文模式
@@ -77,7 +78,7 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 - **Enter** — 送出原始碼文字
 
 ### 擴充表系統
-- `~/Library/YabomishIM/tables/*.txt` — tab-separated `編碼<Tab>內容`
+- `~/Library/Application Support/Yabomish/tables/*.txt` — tab-separated `編碼<Tab>內容`
 - 安裝時預設 Emoji 聯想（送字後自動建議相關 emoji）
 - 修改後打 `,,RL` + Space 即時重載
 - 支援 iCloud 同步資料夾共用
@@ -166,7 +167,7 @@ cd yabomish && ./yabomish.sh
 
 ## 資料路徑
 
-`~/Library/YabomishIM/`：
+`~/Library/Application Support/Yabomish/`：
 
 | 檔案 | 說明 |
 |------|------|

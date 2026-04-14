@@ -53,7 +53,6 @@ final class PrefsWindow: NSPanel {
 
         // ━━━ 字表（最重要，放最上面）━━━
         let cinInstalled = FileManager.default.fileExists(atPath: AppConstants.cinPath)
-            || FileManager.default.fileExists(atPath: NSHomeDirectory() + "/Library/YabomishIM/liu.cin")
             || FileManager.default.fileExists(atPath: AppConstants.sharedDir + "/liu.bin")
 
         if !cinInstalled {
@@ -148,9 +147,9 @@ final class PrefsWindow: NSPanel {
         hintBtn.setAccessibilityHelp("送字後顯示該字的嘸蝦米拆碼")
         stack.addArrangedSubview(hintBtn)
 
-        let zyBtn = NSButton(checkboxWithTitle: "注音反查（'; 切換）", target: self, action: #selector(zhuyinLookupChanged(_:)))
+        let zyBtn = NSButton(checkboxWithTitle: "注音反查（,,ZH 切換）", target: self, action: #selector(zhuyinLookupChanged(_:)))
         zyBtn.state = YabomishPrefs.zhuyinReverseLookup ? .on : .off
-        zyBtn.setAccessibilityHelp("按 '; 切換注音反查模式")
+        zyBtn.setAccessibilityHelp("輸入 ,,ZH 切換注音反查模式")
         stack.addArrangedSubview(zyBtn)
 
         // ━━━ 聯想 ━━━
@@ -387,8 +386,7 @@ final class PrefsWindow: NSPanel {
 
         // .txt → 複製到 tables/
         if !txtFiles.isEmpty {
-            let dir = NSHomeDirectory() + "/Library/YabomishIM/tables"
-            try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+            let dir = AppConstants.tablesDir
             var imported: [String] = []
             for url in txtFiles {
                 let dst = dir + "/" + url.lastPathComponent
@@ -405,7 +403,7 @@ final class PrefsWindow: NSPanel {
     }
 
     @objc private func openExtrasFolder() {
-        let dir = NSHomeDirectory() + "/Library/YabomishIM/tables"
+        let dir = AppConstants.tablesDir
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         NSWorkspace.shared.open(URL(fileURLWithPath: dir))
     }
@@ -440,7 +438,7 @@ final class PrefsWindow: NSPanel {
     }
 
     @objc private func openDebugLog() {
-        let path = NSHomeDirectory() + "/Library/YabomishIM/debug.log"
+        let path = AppConstants.sharedDir + "/debug.log"
         if FileManager.default.fileExists(atPath: path) {
             NSWorkspace.shared.open(URL(fileURLWithPath: path))
         } else {

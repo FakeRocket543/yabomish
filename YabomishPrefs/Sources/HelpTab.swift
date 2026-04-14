@@ -33,9 +33,8 @@ struct HelpTab: View {
                 ])
 
                 guide("注音反查與拼音查碼", icon: "textformat.abc", steps: [
-                    "同音字模式下按 '; → 切換注音反查（打注音看嘸蝦米碼）",
-                    "再按 '; 切回嘸蝦米",
-                    "打 ,,ZH + Space 也可切換注音反查",
+                    "打 ,,ZH + Space → 切換注音反查（打注音看嘸蝦米碼）",
+                    "再打 ,,ZH + Space 切回嘸蝦米",
                     "打 ,,PYS + Space → 拼音查碼（簡體）",
                     "打 ,,PYT + Space → 拼音查碼（繁體）",
                     "拼音模式：輸入拼音字母，按 1–5 選聲調（Space = 一聲）",
@@ -59,7 +58,7 @@ struct HelpTab: View {
                 ])
 
                 guide("擴充表", icon: "doc.text", steps: [
-                    "擴充表放在 ~/Library/YabomishIM/tables/",
+                    "擴充表放在 ~/Library/Application Support/Yabomish/tables/",
                     "格式：編碼<Tab>內容，一行一筆",
                     "修改後打 ,,RL + Space 即時重載",
                 ])
@@ -75,8 +74,7 @@ struct HelpTab: View {
                     ("1–9, 0", "選字"),
                     ("* (星號)", "萬用碼"),
                     ("v / r / s / f", "補碼（第 2–5 候選字）"),
-                    ("' (單引號)", "頓號「、」"),
-                    ("';", "注音反查模式"),
+                    ("' ; /", "直送（不攔截，方便寫程式）"),
                     ("Tab / ← →", "翻頁選字"),
                 ])
 
@@ -112,7 +110,7 @@ struct HelpTab: View {
                 ])
 
                 section("擴充表", icon: "doc.text", items: [
-                    ("路徑", "~/Library/YabomishIM/tables/*.txt"),
+                    ("路徑", "~/Library/Application Support/Yabomish/tables/*.txt"),
                     ("格式", "編碼<Tab>內容，一行一筆"),
                     ("重載", "修改後打 ,,RL 即時生效"),
                 ])
@@ -126,7 +124,7 @@ struct HelpTab: View {
 
                 HStack {
                     Spacer()
-                    Text("所有資料存放於 ~/Library/YabomishIM/")
+                    Text("所有資料存放於 ~/Library/Application Support/Yabomish/")
                         .font(Typo.caption).foregroundStyle(.tertiary)
                     Spacer()
                 }
@@ -164,6 +162,13 @@ struct HelpTab: View {
 
                 Text("本程式碼以 MIT 授權釋出。各語料依其原始授權條款使用。")
                     .font(Typo.caption).foregroundStyle(.secondary)
+
+                HStack(spacing: 4) {
+                    Text("原始碼：").font(Typo.caption).foregroundStyle(.secondary)
+                    Link("github.com/FakeRocket543/yabomish",
+                         destination: URL(string: "https://github.com/FakeRocket543/yabomish")!)
+                        .font(Typo.caption)
+                }
             }
             .padding(20)
         }

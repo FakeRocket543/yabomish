@@ -17,6 +17,7 @@ YabomishPrefs/YabomishPrefs.app/
 data/
 *.bak
 YabomishIM/Resources/yabomish_ime.db
+YabomishIM/Resources/*.bin
 __pycache__/
 .serena/
 install_quick_action.sh

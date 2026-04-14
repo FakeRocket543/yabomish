@@ -1,6 +1,5 @@
 import Cocoa
 import InputMethodKit
-import NaturalLanguage
 
 
 
@@ -10,7 +9,7 @@ private let keyCodeToChar: [UInt16: Character] = [
     8: "c", 9: "v", 11: "b", 12: "q", 13: "w", 14: "e", 15: "r",
     16: "y", 17: "t", 32: "u", 34: "i", 31: "o", 35: "p",
     38: "j", 40: "k", 37: "l", 45: "n", 46: "m",
-    43: ",", 47: ".", 41: ";", 44: "/",
+    43: ",", 47: ".", 41: ";", 44: "/", 39: "'",
     33: "[", 30: "]",
     27: "-", 24: "=", 42: "\\", 50: "`",
 ]
@@ -58,7 +57,7 @@ class YabomishInputController: IMKInputController {
     static let cinTable: CINTable = {
         let t = CINTable()
         t.reload()
-        if t.isEmpty { DebugLog.log("YabomishIM: No CIN table. Place liu.cin in ~/Library/YabomishIM/") }
+        if t.isEmpty { DebugLog.log("YabomishIM: No CIN table. Place liu.cin in \(AppConstants.sharedDir)") }
         return t
     }()
 
@@ -96,7 +95,11 @@ class YabomishInputController: IMKInputController {
         guard let event = event else { return false }
         guard event.type == .keyDown || event.type == .flagsChanged else { return false }
         guard let client = sender as? (NSObjectProtocol & IMKTextInput) else { return false }
-        if IsSecureEventInputEnabled() { return false }
+        if IsSecureEventInputEnabled() {
+            if !engine.composing.isEmpty { engine.handleEscape() }
+            panel.hide()
+            return false
+        }
         return handleWithNewEngine(event, client: client)
     }
 
@@ -271,7 +274,8 @@ class YabomishInputController: IMKInputController {
         }
         if let client = sender as? (NSObjectProtocol & IMKTextInput) {
             if engine.isZhuyinMode || engine.isPinyinMode {
-                engine.handleEscape()
+                if engine.isZhuyinMode { engine.exitZhuyinMode() }
+                if engine.isPinyinMode { engine.exitPinyinMode() }
                 client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             } else if !engine.composing.isEmpty {
@@ -353,7 +357,7 @@ class YabomishInputController: IMKInputController {
     }
 
     private static func importSelectedCIN(from src: URL, attachedTo window: NSWindow?) {
-        let dir = NSHomeDirectory() + "/Library/YabomishIM"
+        let dir = AppConstants.sharedDir
         let dst = dir + "/liu.cin"
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         try? FileManager.default.removeItem(atPath: dst)
@@ -532,9 +536,6 @@ extension YabomishInputController {
             if engine.composing.isEmpty { return false }
             engine.handleEnter()
             return true
-        case 39: // Quote
-            engine.handleQuote()
-            return true
         default: break
         }
 
@@ -583,8 +584,8 @@ extension YabomishInputController {
             }
         }
 
-        // Non-CIN punctuation passthrough: - = \ `  ([ ] are used by CIN)
-        let passthroughKeyCodes: Set<UInt16> = [27, 24, 42, 50]  // - = \ `
+        // Non-CIN punctuation passthrough: - = \ ` ' ; /
+        let passthroughKeyCodes: Set<UInt16> = [27, 24, 42, 50, 39, 41, 44]
         if passthroughKeyCodes.contains(keyCode) {
             if !engine.composing.isEmpty {
                 if !engine.currentCandidates.isEmpty { engine.handleSpace() }
@@ -595,12 +596,6 @@ extension YabomishInputController {
             } else if let ch = keyCodeToChar[keyCode] {
                 client.insertText(String(ch), replacementRange: notFoundRange)
             }
-            return true
-        }
-
-        // '/' passthrough when idle
-        if keyCode == 44 && engine.composing.isEmpty {
-            client.insertText("/", replacementRange: notFoundRange)
             return true
         }
 
@@ -643,7 +638,8 @@ extension YabomishInputController {
             newEngineLastShiftDown = event.timestamp
             newEngineShiftUsed = false
         } else if newEngineLastShiftDown > 0 {
-            if event.timestamp - newEngineLastShiftDown < 0.3 && !newEngineShiftUsed {
+            if event.timestamp - newEngineLastShiftDown < 0.3 && !newEngineShiftUsed
+                && engine.composing.isEmpty {
                 engine.toggleEnglishMode()
             }
             newEngineLastShiftDown = 0

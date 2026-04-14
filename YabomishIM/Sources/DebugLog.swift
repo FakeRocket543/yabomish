@@ -1,8 +1,8 @@
 import Foundation
 
-/// Writes timestamped debug logs to ~/Library/YabomishIM/debug.log
+/// Writes timestamped debug logs to AppConstants.sharedDir/debug.log
 enum DebugLog {
-    private static let logPath = NSHomeDirectory() + "/Library/YabomishIM/debug.log"
+    private static var logPath: String { AppConstants.sharedDir + "/debug.log" }
     private static let maxSize = 512 * 1024  // 512 KB
 
     static func log(_ msg: String) {
@@ -10,19 +10,20 @@ enum DebugLog {
         let ts = ISO8601DateFormatter().string(from: Date())
         let line = "[\(ts)] \(msg)\n"
         let fm = FileManager.default
-        let dir = NSHomeDirectory() + "/Library/YabomishIM"
+        let dir = AppConstants.sharedDir
         try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        if !fm.fileExists(atPath: logPath) {
-            fm.createFile(atPath: logPath, contents: nil)
+        let path = logPath
+        if !fm.fileExists(atPath: path) {
+            fm.createFile(atPath: path, contents: nil)
         }
         // Rotate if too large
-        if let attr = try? fm.attributesOfItem(atPath: logPath),
+        if let attr = try? fm.attributesOfItem(atPath: path),
            let size = attr[.size] as? Int, size > maxSize {
-            try? fm.removeItem(atPath: logPath + ".old")
-            try? fm.moveItem(atPath: logPath, toPath: logPath + ".old")
-            fm.createFile(atPath: logPath, contents: nil)
+            try? fm.removeItem(atPath: path + ".old")
+            try? fm.moveItem(atPath: path, toPath: path + ".old")
+            fm.createFile(atPath: path, contents: nil)
         }
-        if let fh = FileHandle(forWritingAtPath: logPath) {
+        if let fh = FileHandle(forWritingAtPath: path) {
             fh.seekToEndOfFile()
             fh.write(line.data(using: .utf8)!)
             fh.closeFile()

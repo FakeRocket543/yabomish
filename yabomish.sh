@@ -15,7 +15,8 @@ IM_APP="$IM_BUILD/YabomishIM.app"
 PREFS_DIR="$ROOT/YabomishPrefs"
 PREFS_APP="$PREFS_DIR/YabomishPrefs.app"
 INSTALL_DIR="/Library/Input Methods"
-USER_DIR="$HOME/Library/YabomishIM"
+USER_DIR="$HOME/Library/Application Support/Yabomish"
+USER_DIR_LEGACY="$HOME/Library/YabomishIM"
 IM_BUNDLE_ID="com.yabomishim.inputmethod.YabomishIM"
 
 check_xcode() {
@@ -91,6 +92,7 @@ install_im() {
     printf "${C}> 安裝輸入法...${N}\n"
     killall YabomishIM 2>/dev/null || true; sleep 1
 
+    sudo rm -rf "$INSTALL_DIR/YabomishIM.app"
     sudo cp -R "$IM_APP" "$INSTALL_DIR/"
     sudo chmod -R a+rX "$INSTALL_DIR/YabomishIM.app"
 
@@ -125,7 +127,7 @@ install_im() {
     [ -f "$ROOT/liu.cin" ] && [ ! -f "$USER_DIR/liu.cin" ] && cp "$ROOT/liu.cin" "$USER_DIR/"
 
     ok "輸入法已安裝"
-    [ -f "$USER_DIR/liu.cin" ] && ok "字表就緒" || warn "尚未偵測到字表，首次切換時會引導匯入"
+    [ -f "$USER_DIR/liu.cin" ] || [ -f "$USER_DIR/liu.bin" ] && ok "字表就緒" || warn "尚未偵測到字表，首次切換時會引導匯入"
 
     printf "${C}> 重新啟動輸入法...${N}\n"
     killall YabomishIM 2>/dev/null || true
@@ -152,7 +154,10 @@ do_uninstall() {
     rm -rf /Applications/YabomishPrefs.app
     defaults delete $IM_BUNDLE_ID 2>/dev/null || true
     printf "一併刪除使用者資料（字表、字頻）？[y/N] "; read -r c
-    [[ "$c" =~ ^[Yy]$ ]] && rm -rf "$USER_DIR" && echo "已刪除 $USER_DIR"
+    [[ "$c" =~ ^[Yy]$ ]] && {
+        rm -rf "$USER_DIR" && echo "已刪除 $USER_DIR"
+        rm -rf "$USER_DIR_LEGACY" 2>/dev/null && echo "已刪除 $USER_DIR_LEGACY"
+    }
     ok "移除完成，請登出再登入"
 }
 

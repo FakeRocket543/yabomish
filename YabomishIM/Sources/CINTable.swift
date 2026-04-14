@@ -328,7 +328,7 @@ final class CINTable {
     private func loadExtras() {
         let dir = AppConstants.tablesDir
         #if os(macOS)
-        var dirs = [dir, NSHomeDirectory() + "/Library/YabomishIM/tables"]
+        var dirs = [dir]
         if let sync = YabomishPrefs.syncFolder {
             dirs.append((sync as NSString).appendingPathComponent("tables"))
         }
