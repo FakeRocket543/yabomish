@@ -156,16 +156,20 @@ do_uninstall() {
     ok "移除完成，請登出再登入"
 }
 
+ask_mode() {
+    printf "  1) 完整（含 28 專業詞典，~98MB）  2) 精簡（基礎聯想，~18MB）\n"
+    printf "  選擇 [1/2, Enter=完整]: "; read -r m
+    case "$m" in 2) echo "lite";; *) echo "full";; esac
+}
+
 show_menu() {
     printf "\n${B}Yabomish 管理工具${N}\n"
     echo "-----------------------------"
-    printf "  ${B}1)${N} 完整安裝（含 28 專業詞典）\n"
-    printf "  ${B}2)${N} 精簡安裝（基礎聯想，不含專業詞典）\n"
-    printf "  ${B}3)${N} 只編譯（不安裝）\n"
-    printf "  ${B}4)${N} 只安裝（已編譯過）\n"
-    printf "  ${B}5)${N} 快速重裝輸入法\n"
-    printf "  ${B}6)${N} 快速重裝偏好設定\n"
-    printf "  ${B}7)${N} 移除 Yabomish\n"
+    printf "  ${B}1)${N} 編譯 + 安裝\n"
+    printf "  ${B}2)${N} 只編譯（不安裝）\n"
+    printf "  ${B}3)${N} 只安裝（已編譯過）\n"
+    printf "  ${B}4)${N} 快速重裝偏好設定\n"
+    printf "  ${B}5)${N} 移除 Yabomish\n"
     printf "  ${B}0)${N} 離開\n"
     echo "-----------------------------"
     printf "選擇: "
@@ -175,14 +179,12 @@ check_xcode
 while true; do
     show_menu; read -r choice; echo ""
     case "$choice" in
-        1) build_im full; build_prefs; install_im; install_prefs;;
-        2) build_im lite; build_prefs; install_im; install_prefs;;
-        3) build_im full; build_prefs;;
-        4) install_im; install_prefs;;
-        5) build_im full; install_im;;
-        6) build_prefs; install_prefs;;
-        7) do_uninstall;;
+        1) M=$(ask_mode); build_im "$M"; build_prefs; install_im; install_prefs;;
+        2) M=$(ask_mode); build_im "$M"; build_prefs;;
+        3) install_im; install_prefs;;
+        4) build_prefs; install_prefs;;
+        5) do_uninstall;;
         0) echo "Bye!"; exit 0;;
-        *) warn "請輸入 0-7";;
+        *) warn "請輸入 0-5";;
     esac
 done

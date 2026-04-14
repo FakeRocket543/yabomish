@@ -162,7 +162,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 cd yabomish && ./yabomish.sh
 ```
 
-選擇 `7) 移除 Yabomish`。
+選擇 `5) 移除 Yabomish`。
 
 ## 資料路徑
 
