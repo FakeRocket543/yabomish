@@ -14,7 +14,7 @@
 | `yoji/` | `yoji.bin` | — | MDict 日本語辭典（排除中文成語重疊） | 衍生整理 |
 | `ner/` | `ner_phrases.bin` | 5M 實體 (filtered) | 中文維基百科 NER | CC-BY-SA 3.0 |
 | `jingjing/` | `terms_jingjing.bin` | 188 詞條 | 自建晶晶體詞典 | 自有 |
-| `cn_slang/` | `terms_cn_slang.bin` | 3,119 詞條 | 中國網路流行語（繁體化） | 衍生整理 |
+| `cn_slang/` | `terms_cn_slang.bin` | 3,047 詞條 | 中國網路流行語（繁體化） | 衍生整理 |
 | `xiehouyu/` | `terms_xiehouyu.bin` | 14,032 筆 | chinese-xinhua (中華新華字典) | MIT |
 | `kautian/` | `terms_kautian.bin` | 428 俗諺 | 教育部台灣閩南語常用詞辭典 | 政府開放資料 |
 | `hakka/` | `terms_hakka.bin` | 19,570 詞目 | 教育部臺灣客語辭典（六腔） | 政府開放資料 |
@@ -22,7 +22,7 @@
 | `placename/` | `terms_placename.bin` | 519 地名 | 教育部本土語言標注臺灣地名 | CC-BY 3.0 TW |
 | `placename_intl/` | `terms_placename_intl.bin` | 53K 譯名 | 國家教育研究院 樂詞網 | 政府開放資料 |
 | `ttg/` | `terms_ttg.bin` | 4,553 術語 | 教育部臺灣台語學科術語 | CC-BY 3.0 TW |
-| `naer/` | `terms_*.bin` ×20 | 378 CSV | 國家教育研究院樂詞網 | 政府開放資料 |
+| `naer/` | `terms_*.bin` ×28 | 378 CSV | 國家教育研究院樂詞網 | 政府開放資料 |
 | `region/` | `region_tw.txt` / `region_cn.txt` | 82K / 82K | NAER 兩岸對照名詞 | 政府開放資料 |
 | `char_bigram/` | `bigram.bin` / `trigram.bin` | — | 維基百科字級 n-gram | CC-BY-SA 3.0 |
 | `emoji/` | (runtime 用) | — | CLDR emoji 中文標注 | Unicode License |
