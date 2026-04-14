@@ -26,3 +26,4 @@ yabomish_data/char_bigram/wiki_trigram_general.parquet
 yabomish_data/ner/wiki_ner_entities.parquettrigram_suggest.json
 bigram_suggest.json
 test_0414/
+yabomish_data/ner/wiki_ner_entities.parquet
