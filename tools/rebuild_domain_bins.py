@@ -21,14 +21,17 @@ FREQ_THRESHOLD = 50
 
 DOMAIN_FILES = {
     "it": "terms_it", "ee": "terms_ee", "med": "terms_med", "law": "terms_law",
-    "phy": "terms_phy", "chem": "terms_chem", "bio": "terms_bio", "math": "terms_math",
-    "biz": "terms_biz", "edu": "terms_edu", "geo": "terms_geo", "eng": "terms_eng",
+    "phy": "terms_phy", "chem": "terms_chem", "math": "terms_math",
+    "biz": "terms_biz", "edu": "terms_edu", "geo": "terms_geo",
     "art": "terms_art", "mil": "terms_mil", "marine": "terms_marine",
     "material": "terms_material", "agri": "terms_agri", "media": "terms_media",
     "social": "terms_social", "govt": "terms_govt",
     "placename_intl": "terms_placename_intl",
-    "power": "terms_power",
-    "mech": "terms_mech",
+    "power": "terms_power", "mech": "terms_mech",
+    # eng split
+    "eng": "terms_eng", "aero": "terms_aero", "nuclear": "terms_nuclear", "textile": "terms_textile",
+    # bio split
+    "bio": "terms_bio", "botany": "terms_botany", "fish": "terms_fish",
 }
 
 NAER_DOMAIN_MAP = {
@@ -79,10 +82,13 @@ NAER_DOMAIN_MAP = {
     '生態學名詞-兩岸生態學名詞': 'bio',
     '生命科學名詞-兩岸中小學教科書名詞': 'bio',
     '生命科學名詞-科學家譯名': 'bio',
-    '兩岸對照名詞-動物 ': 'bio', '兩岸對照名詞-植物': 'bio',
-    '兩岸對照名詞-漁業水產': 'bio',
-    '生物學名詞-植物': 'bio', '中央研究院臺灣物種名錄': 'bio',
-    '魚類': 'bio', '生物學名詞-植物-兩岸植物學名詞': 'bio',
+    '兩岸對照名詞-動物 ': 'bio',
+    # botany (split from bio)
+    '生物學名詞-植物': 'botany', '中央研究院臺灣物種名錄': 'botany',
+    '生物學名詞-植物-兩岸植物學名詞': 'botany',
+    '兩岸對照名詞-植物': 'botany',
+    # fish (split from bio)
+    '魚類': 'fish', '兩岸對照名詞-漁業水產': 'fish',
     # math
     '數學名詞': 'math', '統計學名詞': 'math', '高中以下數學名詞': 'math',
     '數學名詞-兩岸數學名詞': 'math', '數學名詞-兩岸中小學教科書名詞': 'math',
@@ -114,12 +120,15 @@ NAER_DOMAIN_MAP = {
     # placename_intl
     '外國地名譯名': 'placename_intl',
     # eng
-    '土木工程名詞': 'eng', '食品科技': 'eng', '核能名詞': 'eng',
-    '工業工程名詞': 'eng', '工程圖學': 'eng', '水利工程': 'eng',
-    '生產自動化': 'eng',
-    '航空太空名詞': 'eng', '紡織科技': 'eng', '交通': 'eng',
-    '兩岸對照名詞-航天': 'eng', '兩岸對照名詞-航空': 'eng',
-    '兩岸對照名詞-紡織': 'eng', '兩岸對照名詞-輕工': 'eng',
+    '土木工程名詞': 'eng', '工業工程名詞': 'eng', '工程圖學': 'eng',
+    '水利工程': 'eng', '生產自動化': 'eng', '交通': 'eng',
+    # aero (split from eng)
+    '航空太空名詞': 'aero', '兩岸對照名詞-航天': 'aero', '兩岸對照名詞-航空': 'aero',
+    # nuclear (split from eng)
+    '核能名詞': 'nuclear',
+    # textile (split from eng)
+    '食品科技': 'textile', '紡織科技': 'textile',
+    '兩岸對照名詞-紡織': 'textile', '兩岸對照名詞-輕工': 'textile',
     # mech
     '機械工程名詞': 'mech', '機械名詞-兩岸機械名詞': 'mech',
     '兩岸對照名詞-機械': 'mech', '機構與機器原理': 'mech',
