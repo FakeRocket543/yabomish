@@ -247,6 +247,7 @@ func testFreqTrackerRecordAndSort() {
     tracker.record(code: code, char: "A")
     tracker.record(code: code, char: "A")
     tracker.record(code: code, char: "B")
+    tracker.flushAll()
     let sorted = tracker.sorted(["B", "A"], forCode: code)
     checkEqual(sorted, ["A", "B"], "A (3x) before B (1x)")
     tracker.reset()
@@ -255,6 +256,7 @@ func testFreqTrackerRecordAndSort() {
 func testFreqTrackerBigramBoost() {
     let tracker = FreqTracker()
     for _ in 0..<5 { tracker.recordBigram(prev: "甲", char: "乙") }
+    tracker.flushAll()
     let top = tracker.topBigrams(prev: "甲")
     check(top.contains("乙"), "topBigrams(prev: '甲') contains '乙'")
     let boosted = tracker.bigramBoost(prev: "甲", candidates: ["丙", "乙"])
