@@ -92,6 +92,14 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 - **外觀** — 字體大小、透明度、模式提示大小、蝦頭方向、Debug 模式
 - **關於** — 使用方法、快捷鍵速查、語料來源與授權
 
+| 輸入 | 聯想與詞庫 | 專業詞典（28 本） |
+|:---:|:---:|:---:|
+| ![輸入](images/prefs-input.png) | ![聯想與詞庫](images/prefs-suggestion.png) | ![專業詞典](images/prefs-domains.png) |
+
+| 快捷碼 | 外觀 | 關於 |
+|:---:|:---:|:---:|
+| ![快捷碼](images/prefs-shortcuts.png) | ![外觀](images/prefs-appearance.png) | ![關於](images/prefs-about.png) |
+
 首次開啟有三頁引導（匯入字表 → 加入輸入方式 → 常用快捷鍵）。
 
 ## 需求
