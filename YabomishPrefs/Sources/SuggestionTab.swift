@@ -77,10 +77,22 @@ struct SuggestionTab: View {
                 domainGrid(entries: $generalOrder, color: Typo.cyan)
 
                 // 5. Pro domains — compact chip layout, collapsed by default
-                DisclosureGroup("專業詞典（樂詞網＋維基百科）") {
+                DisclosureGroup {
                     Text("點擊啟用／停用。拖拉調整建議優先順序。")
                         .font(Typo.hint).foregroundStyle(.secondary)
                     proChipGrid(entries: $proOrder)
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("專業詞典（樂詞網＋維基百科）")
+                        let n = proOrder.filter { store.domainEnabled($0.id) }.count
+                        if n > 0 {
+                            Text("\(n)/\(proOrder.count)")
+                                .font(.system(size: 11, weight: .medium))
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Capsule().fill(Typo.orange.opacity(0.25)))
+                                .foregroundStyle(Typo.orange)
+                        }
+                    }
                 }
                 .font(Typo.h2)
 

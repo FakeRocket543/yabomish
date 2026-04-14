@@ -375,7 +375,7 @@ final class CINTable {
         var result: [String] = []
         let idx = binSearch(c)
         if idx >= 0, let d = binData { result = readChars(d, at: idx) }
-        if let extra = overlay[c] { result += extra }
+        if let extra = overlay[c] { result = extra + result }
         return result
     }
 
