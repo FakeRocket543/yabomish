@@ -23,4 +23,5 @@ install_quick_action.sh
 build_old/
 doct/papers/*.pdf
 yabomish_data/char_bigram/wiki_trigram_general.parquet
-yabomish_data/ner/wiki_ner_entities.parquet
+yabomish_data/ner/wiki_ner_entities.parquettrigram_suggest.json
+bigram_suggest.json

@@ -27,7 +27,8 @@ check_xcode() {
 }
 
 build_im() {
-    printf "${C}> 編譯輸入法...${N}\n"
+    local MODE="${1:-full}"
+    printf "${C}> 編譯輸入法 (%s)...${N}\n" "$MODE"
     rm -rf "$IM_BUILD"
     mkdir -p "$IM_APP/Contents/MacOS" "$IM_APP/Contents/Resources"
 
@@ -37,15 +38,22 @@ build_im() {
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
 
+    # 核心資源（精簡版也包含）
     for f in icon.tiff icon.icns icon_right.tiff icon_left.tiff \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json emoji_char_map.json \
-             bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
-             phrases.bin ner_phrases.bin yoji.bin \
-             region_tw.txt region_cn.txt; do
+             char_freq.json; do
         [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
     done
-    for f in "$IM_RES"/terms_*.bin; do [ -f "$f" ] && cp "$f" "$IM_APP/Contents/Resources/"; done
     [ -d "$IM_RES/tables" ] && cp -R "$IM_RES/tables" "$IM_APP/Contents/Resources/"
+
+    # 聯想語料（完整版才包含）
+    if [ "$MODE" = "full" ]; then
+        for f in bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
+                 phrases.bin ner_phrases.bin yoji.bin region_tw.txt region_cn.txt; do
+            [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
+        done
+        for f in "$IM_RES"/terms_*.bin; do [ -f "$f" ] && cp "$f" "$IM_APP/Contents/Resources/"; done
+    fi
     echo -n "APPL????" > "$IM_APP/Contents/PkgInfo"
 
     swiftc -module-name YabomishIM \
@@ -54,7 +62,7 @@ build_im() {
         -o "$IM_APP/Contents/MacOS/YabomishIM" \
         $(find "$IM_SRC" -name "*.swift" | sort)
 
-    ok "YabomishIM.app (build $STAMP.$HASH)"
+    ok "YabomishIM.app [$MODE] (build $STAMP.$HASH, $(du -sh "$IM_APP" | cut -f1))"
 }
 
 build_prefs() {
@@ -149,12 +157,13 @@ do_uninstall() {
 show_menu() {
     printf "\n${B}Yabomish 管理工具${N}\n"
     echo "-----------------------------"
-    printf "  ${B}1)${N} 完整安裝（編譯 + 安裝全部）\n"
-    printf "  ${B}2)${N} 只編譯（不安裝）\n"
-    printf "  ${B}3)${N} 只安裝（已編譯過）\n"
-    printf "  ${B}4)${N} 快速重裝輸入法\n"
-    printf "  ${B}5)${N} 快速重裝偏好設定\n"
-    printf "  ${B}6)${N} 移除 Yabomish\n"
+    printf "  ${B}1)${N} 完整安裝（含聯想語料）\n"
+    printf "  ${B}2)${N} 精簡安裝（不含聯想語料）\n"
+    printf "  ${B}3)${N} 只編譯（不安裝）\n"
+    printf "  ${B}4)${N} 只安裝（已編譯過）\n"
+    printf "  ${B}5)${N} 快速重裝輸入法\n"
+    printf "  ${B}6)${N} 快速重裝偏好設定\n"
+    printf "  ${B}7)${N} 移除 Yabomish\n"
     printf "  ${B}0)${N} 離開\n"
     echo "-----------------------------"
     printf "選擇: "
@@ -164,13 +173,14 @@ check_xcode
 while true; do
     show_menu; read -r choice; echo ""
     case "$choice" in
-        1) build_im; build_prefs; install_im; install_prefs;;
-        2) build_im; build_prefs;;
-        3) install_im; install_prefs;;
-        4) build_im; install_im;;
-        5) build_prefs; install_prefs;;
-        6) do_uninstall;;
+        1) build_im full; build_prefs; install_im; install_prefs;;
+        2) build_im lite; build_prefs; install_im; install_prefs;;
+        3) build_im full; build_prefs;;
+        4) install_im; install_prefs;;
+        5) build_im full; install_im;;
+        6) build_prefs; install_prefs;;
+        7) do_uninstall;;
         0) echo "Bye!"; exit 0;;
-        *) warn "請輸入 0-6";;
+        *) warn "請輸入 0-7";;
     esac
 done

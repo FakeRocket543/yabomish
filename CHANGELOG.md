@@ -2,6 +2,17 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.3.48] — 2026-04-14
+
+### 新增
+- **精簡安裝模式** — `yabomish.sh` 選項 2，不含聯想語料（~3MB），適合只需要基本嘸蝦米輸入的使用者
+
+### 移除
+- `trigram_suggest.json`（5.4MB）、`bigram_suggest.json`（0.3MB）— 死檔，程式碼未引用
+- `yabomish_data/korean/kengdic.tsv`（11MB）、`yabomish_data/kautian/kautian.ods`（4MB）— 重複的原始語料
+
+---
+
 ## [0.3.47] — 2026-04-14
 
 ### 新增
