@@ -214,22 +214,32 @@ def load_naer_terms(binpath):
     return entries
 
 
-_BRACKET_RE = re.compile(r'[{｛〔\[（【].+?[}｝〕\]）】]')
-_STRAY_BRACKET_RE = re.compile(r'[{｛}｝〔〕\[\]（）【】]')
+_NUMBERED_RE = re.compile(r'\(\d+\)')
+_BRACKET_RE = re.compile(r'[\({｛〔\[（【][^)}｝〕\]）】]*[\)}｝〕\]）】]')
+_TRAILING_PAREN_RE = re.compile(r'[\(（\[【][^)）\]】]*$')
+_QUOTE_RE = re.compile(r'^["\u201c\u201d\u2018\u2019]+|["\u201c\u201d\u2018\u2019]+$')
+_STRAY_BRACKET_RE = re.compile(r'[{｛}｝〔〕\[\]（）【】()]')
 _ENGLISH_RE = re.compile(r'[a-zA-Z]{3,}')
+_HAN_RE = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf]')
 
 def _clean_naer_terms(raw_terms):
-    """Split on ；/;/，/,  strip brackets/annotations, drop English and overlong terms."""
+    """Split (1)(2) numbering and ；/;, strip brackets/annotations, drop English and overlong."""
     out = set()
     for t in raw_terms:
-        parts = re.split(r'[；;，,]', t)
+        # Split (1)xxx(2)yyy into separate items
+        t2 = _NUMBERED_RE.sub('；', t)
+        parts = re.split(r'[；;]', t2)
         for p in parts:
             p = _BRACKET_RE.sub('', p)
+            p = _TRAILING_PAREN_RE.sub('', p)
+            p = _QUOTE_RE.sub('', p)
             p = _STRAY_BRACKET_RE.sub('', p).strip()
-            p = re.sub(r'\s+', '', p)  # collapse spaces
-            if not p or len(p) < 2 or len(p) > 8:
+            p = re.sub(r'\s+', '', p)
+            if not p or len(p) < 2 or len(p) > 16:
                 continue
             if _ENGLISH_RE.search(p):
+                continue
+            if not _HAN_RE.search(p):
                 continue
             out.add(p)
     return list(out)
@@ -260,7 +270,8 @@ def build_naer_from_parquet():
         terms = _clean_naer_terms(raw_terms)
         entries = defaultdict(list)
         for term in terms:
-            for plen in range(2, len(term)):
+            min_prefix = 3 if len(term) >= 4 else 2
+            for plen in range(min_prefix, len(term)):
                 prefix = term[:plen]
                 suffix = term[plen:]
                 if suffix and len(entries[prefix]) < 8:

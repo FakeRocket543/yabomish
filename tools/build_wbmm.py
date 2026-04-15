@@ -101,7 +101,7 @@ def build_news(tsv_path: str, out_path: str):
     print(f"News: {len(words)} words → {len(entries)} prefix keys")
     build_wbmm(dict(entries), out_path)
 
-def build_prefix(txt_path: str, out_path: str, min_len: int = 4):
+def build_prefix(txt_path: str, out_path: str, min_len: int = 2):
     """Build prefix-expansion WBMM from a text file (one term per line)."""
     from collections import defaultdict
     terms = []
@@ -112,9 +112,13 @@ def build_prefix(txt_path: str, out_path: str, min_len: int = 4):
                 terms.append(t)
     terms = sorted(set(terms))
     entries = defaultdict(list)
-    MAX_PER_KEY = 5
-    for term in terms:
-        for plen in range(2, len(term)):
+    MAX_PER_KEY = 8
+    # Process shorter terms first so they get priority in prefix slots
+    for term in sorted(terms, key=lambda t: (len(t), t)):
+        # For short terms (2-3 chars), start prefix from 1 char
+        # For longer terms (4+), start from 2 chars
+        start = 1 if len(term) <= 3 else 2
+        for plen in range(start, len(term)):
             prefix = term[:plen]
             if len(entries[prefix]) < MAX_PER_KEY:
                 entries[prefix].append(term)
