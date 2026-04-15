@@ -394,7 +394,7 @@ struct ShortcutTab: View {
     }
 
     /// Return matched words from a WBMM bin for the given query.
-    /// Finds exact match and prefix-based completions (up to 8).
+    /// All bins use suffix format: key + value = full word.
     private func wbmmMatch(path: String, query: String) -> [String] {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe),
               data.count >= 16, data[0] == 0x57, data[1] == 0x42, data[2] == 0x4D, data[3] == 0x4D
@@ -406,7 +406,6 @@ struct ShortcutTab: View {
 
         for plen in 1...query.count {
             let prefix = String(query.prefix(plen))
-            let suffix = String(query.dropFirst(plen))
             let prefixBytes = Array(prefix.utf8)
             var lo = 0, hi = kc - 1
             while lo <= hi {
@@ -427,14 +426,8 @@ struct ShortcutTab: View {
                         let vsl = Int(data.u16(vo + 4))
                         guard vso + vsl <= data.count else { continue }
                         if let v = String(data: data[vso..<(vso + vsl)], encoding: .utf8) {
-                            // full-word format: v itself starts with prefix (e.g. cn_slang, news, chengyu)
-                            if v.hasPrefix(prefix) {
-                                if v.hasPrefix(query) { found.insert(v) }
-                            } else {
-                                // suffix format: prefix + v = full word (e.g. NAER domain bins)
-                                let full = prefix + v
-                                if full.hasPrefix(query) { found.insert(full) }
-                            }
+                            let full = prefix + v
+                            if full.hasPrefix(query) { found.insert(full) }
                         }
                     }
                     break

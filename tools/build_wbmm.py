@@ -77,7 +77,7 @@ def build_wbmm(entries: dict[str, list[str]], out_path: str):
 
 def build_news(tsv_path: str, out_path: str):
     """Build prefix-expansion WBMM from news word freq TSV (word\\tfreq).
-    Key = each prefix (2~N-1 chars), Value = full words sorted by freq."""
+    Key = each prefix (2~N-1 chars), Value = suffix (remainder after prefix), sorted by freq."""
     from collections import defaultdict
     words = []
     with open(tsv_path, encoding='utf-8') as f:
@@ -90,19 +90,20 @@ def build_news(tsv_path: str, out_path: str):
                     continue
     words.sort(key=lambda x: -x[1])
     words = [(w, f) for w, f in words if _is_clean_key(w)]
-    # Build prefix → [full words] (top N per prefix)
     entries = defaultdict(list)
     MAX_PER_KEY = 5
     for word, freq in words:
         for plen in range(2, len(word)):
             prefix = word[:plen]
-            if len(entries[prefix]) < MAX_PER_KEY:
-                entries[prefix].append(word)
+            suffix = word[plen:]
+            if suffix and len(entries[prefix]) < MAX_PER_KEY:
+                entries[prefix].append(suffix)
     print(f"News: {len(words)} words → {len(entries)} prefix keys")
     build_wbmm(dict(entries), out_path)
 
 def build_prefix(txt_path: str, out_path: str, min_len: int = 2):
-    """Build prefix-expansion WBMM from a text file (one term per line)."""
+    """Build prefix-expansion WBMM from a text file (one term per line).
+    Key = prefix, Value = suffix (remainder after prefix)."""
     from collections import defaultdict
     terms = []
     with open(txt_path, encoding='utf-8') as f:
@@ -113,15 +114,18 @@ def build_prefix(txt_path: str, out_path: str, min_len: int = 2):
     terms = sorted(set(terms))
     entries = defaultdict(list)
     MAX_PER_KEY = 8
-    # Process shorter terms first so they get priority in prefix slots
     for term in sorted(terms, key=lambda t: (len(t), t)):
-        # For short terms (2-3 chars), start prefix from 1 char
-        # For longer terms (4+), start from 2 chars
-        start = 1 if len(term) <= 3 else 2
-        for plen in range(start, len(term)):
+        if len(term) >= 4:
+            min_prefix = 3
+        elif len(term) >= 3:
+            min_prefix = 2
+        else:
+            min_prefix = 1
+        for plen in range(min_prefix, len(term)):
             prefix = term[:plen]
-            if len(entries[prefix]) < MAX_PER_KEY:
-                entries[prefix].append(term)
+            suffix = term[plen:]
+            if suffix and len(entries[prefix]) < MAX_PER_KEY:
+                entries[prefix].append(suffix)
     print(f"Prefix: {len(terms)} terms → {len(entries)} prefix keys")
     build_wbmm(dict(entries), out_path)
 
