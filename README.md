@@ -148,9 +148,9 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | 選字 | 1–9 |
 | 補碼 | `v`/`r`/`s`/`f`（第 2–5 候選） |
 | 萬用碼 | `*`（Shift+8） |
-| 頓號 | `'` |
+| 頓號 | `vv` + 空白鍵 |
 | 同音字 | `,,TO` |
-| 注音查碼 | `';` |
+| 注音查碼 | `,,ZH` |
 | 中英切換 | 快按 Shift |
 | 暫時英文 | 按住 Shift |
 | 全型空格 | Shift+Space |
