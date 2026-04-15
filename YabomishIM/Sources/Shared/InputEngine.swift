@@ -16,8 +16,8 @@ protocol InputEngineDelegate: AnyObject {
 final class InputEngine {
     weak var delegate: InputEngineDelegate?
 
-    let cinTable = CINTable()
-    let freqTracker = FreqTracker()
+    let cinTable: CINTable
+    let freqTracker: FreqTracker
     private let ranker: CandidateRanker
     private let zhuyinLookup: ZhuyinLookup
     private let suggestionEngine: SuggestionEngine
@@ -29,10 +29,14 @@ final class InputEngine {
         return body()
     }
 
-    init(zhuyinLookup: ZhuyinLookup = .shared,
+    init(cinTable: CINTable? = nil,
+         freqTracker: FreqTracker? = nil,
+         zhuyinLookup: ZhuyinLookup = .shared,
          suggestionEngine: SuggestionEngine = .shared,
          wikiCorpus: WikiCorpus = .shared,
          prefs: IMEPreferences = DefaultPreferences.shared) {
+        self.cinTable = cinTable ?? CINTable()
+        self.freqTracker = freqTracker ?? FreqTracker()
         self.zhuyinLookup = zhuyinLookup
         self.suggestionEngine = suggestionEngine
         self.prefs = prefs

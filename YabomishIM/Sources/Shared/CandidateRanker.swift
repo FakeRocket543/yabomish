@@ -79,9 +79,14 @@ final class CandidateRanker {
         case .t, .j: break
         }
 
-        // Domain-aware reranking (stable sort — only reorder when boost differs)
+        // Domain-aware reranking (stable: preserve original order when boost is equal)
         if prefs.suggestStrategy == "domain" && !domainHits.isEmpty && candidates.count > 1 {
-            candidates.sort { domainBoost(for: $0) > domainBoost(for: $1) }
+            let indexed = candidates.enumerated().map { ($0.offset, $0.element) }
+            candidates = indexed.sorted {
+                let b0 = domainBoost(for: $0.1), b1 = domainBoost(for: $1.1)
+                if b0 != b1 { return b0 > b1 }
+                return $0.0 < $1.0
+            }.map { $0.1 }
         }
 
         // Region variant: demote opposite-region terms to end

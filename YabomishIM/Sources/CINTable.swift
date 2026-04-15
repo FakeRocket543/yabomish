@@ -177,7 +177,7 @@ final class CINTable {
     private func parseBinHeader(_ d: Data) {
         entryCount = Int(d.u32(4))
         let skLen = Int(d[8])
-        if skLen > 0, 9 + skLen <= d.count { selKeys = (0..<skLen).map { Character(UnicodeScalar(d[9 + $0])) } }
+        if skLen > 0, skLen <= 20, 9 + skLen <= d.count { selKeys = (0..<skLen).map { Character(UnicodeScalar(d[9 + $0])) } }
         let cnLen = Int(d.u16(20))
         if cnLen > 0, 22 + cnLen <= d.count, let s = String(data: d[22..<(22+cnLen)], encoding: .utf8) { cinName = s }
         codesOff = Int(d.u32(96))
@@ -201,14 +201,18 @@ final class CINTable {
 
     @inline(__always) private func readChars(_ d: Data, at i: Int) -> [String] {
         let entryOff = valsOff + i * 4
-        guard entryOff + 3 <= d.count else { return [] }
+        guard entryOff >= 0, entryOff + 3 <= d.count else { return [] }
         let vOff = Int(d.u16(entryOff))
         let vCnt = Int(d[entryOff + 2])
+        guard vCnt > 0 else { return [] }
+        // Validate that all values fit within charsOff region
+        let firstOff = charsOff + vOff * 4
+        let lastOff = charsOff + (vOff + vCnt - 1) * 4 + 4
+        guard firstOff >= charsOff, lastOff <= d.count else { return [] }
         var r: [String] = []
         r.reserveCapacity(vCnt)
         for j in 0..<vCnt {
             let off = charsOff + (vOff + j) * 4
-            guard off + 4 <= d.count else { break }
             let cp = d.u32(off)
             if let s = Unicode.Scalar(cp) { r.append(String(s)) }
         }
@@ -242,8 +246,10 @@ final class CINTable {
     }
 
     @inline(__always) private func compareCode(_ d: Data, at i: Int, with target: String.UTF8View) -> Int {
-        let off = stringsOff + Int(d.u32(codesOff + i * 6))
-        let len = Int(d.u16(codesOff + i * 6 + 4))
+        let idxOff = codesOff + i * 6
+        guard idxOff >= 0, idxOff + 6 <= d.count else { return -1 }
+        let off = stringsOff + Int(d.u32(idxOff))
+        let len = Int(d.u16(idxOff + 4))
         guard off >= 0, off + len <= d.count else { return -1 }
         var ti = target.startIndex
         for j in 0..<len {
@@ -257,8 +263,10 @@ final class CINTable {
     }
 
     @inline(__always) private func comparePrefixCode(_ d: Data, at i: Int, with prefix: String.UTF8View) -> Int {
-        let off = stringsOff + Int(d.u32(codesOff + i * 6))
-        let len = Int(d.u16(codesOff + i * 6 + 4))
+        let idxOff = codesOff + i * 6
+        guard idxOff >= 0, idxOff + 6 <= d.count else { return -1 }
+        let off = stringsOff + Int(d.u32(idxOff))
+        let len = Int(d.u16(idxOff + 4))
         guard off >= 0, off + len <= d.count else { return -1 }
         var ti = prefix.startIndex
         for j in 0..<min(len, prefix.count) {
@@ -272,8 +280,10 @@ final class CINTable {
     }
 
     @inline(__always) private func codeHasPrefix(_ d: Data, at i: Int, _ prefix: String.UTF8View) -> Bool {
-        let off = stringsOff + Int(d.u32(codesOff + i * 6))
-        let len = Int(d.u16(codesOff + i * 6 + 4))
+        let idxOff = codesOff + i * 6
+        guard idxOff >= 0, idxOff + 6 <= d.count else { return false }
+        let off = stringsOff + Int(d.u32(idxOff))
+        let len = Int(d.u16(idxOff + 4))
         guard off >= 0, off + len <= d.count else { return false }
         guard len >= prefix.count else { return false }
         var ti = prefix.startIndex

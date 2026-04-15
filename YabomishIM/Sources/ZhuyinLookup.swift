@@ -20,7 +20,6 @@ final class ZhuyinLookup {
     private func ensureLoaded() {
         guard !loaded else { return }
         guard MemoryBudget.canAfford(MemoryBudget.zhuyinLookup) else { return }
-        loaded = true
         guard let p = dataPath("zhuyin_data", "json") else {
             DebugLog.log("ZhuyinLookup: zhuyin_data.json not found"); return
         }
@@ -33,6 +32,7 @@ final class ZhuyinLookup {
             DebugLog.log("ZhuyinLookup: zhuyin_data.json parse failed"); return
         }
         zhuyinToChars = z2c; charToZhuyins = c2z
+        loaded = true
         if let fp = dataPath("char_freq", "json") {
             do {
                 let fd = try Data(contentsOf: URL(fileURLWithPath: fp))

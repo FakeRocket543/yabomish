@@ -106,11 +106,15 @@ final class FreqTracker {
 
     func flushAll() { bgQueue.sync { flushFreq(); flushBigram() } }
 
-    // MARK: - Query
+    // MARK: - Query (thread-safe: all SQLite access routed through bgQueue)
+
+    private func syncQuery(_ key: String, _ stmt: OpaquePointer?) -> [String: Int] {
+        bgQueue.sync { queryMap(stmt, key) }
+    }
 
     func sorted(_ candidates: [String], forCode code: String) -> [String] {
         if code.hasPrefix(",") { return candidates }
-        let counts = queryMap(stmtQueryFreq, code)
+        let counts = syncQuery(code, stmtQueryFreq)
         guard !counts.isEmpty else { return candidates }
         return candidates.sorted { (counts[$0] ?? 0) > (counts[$1] ?? 0) }
     }
@@ -118,37 +122,30 @@ final class FreqTracker {
     func sortedWithContext(_ candidates: [String], forCode code: String, prev: String) -> [String] {
         if code.hasPrefix(",") { return candidates }
         guard !prev.isEmpty else { return sorted(candidates, forCode: code) }
-        let uni = queryMap(stmtQueryFreq, code)
-        let bi = queryMap(stmtQueryBigram, prev)
+        let uni = syncQuery(code, stmtQueryFreq)
+        let bi = syncQuery(prev, stmtQueryBigram)
         guard !uni.isEmpty || !bi.isEmpty else { return candidates }
         let uniT = max(1.0, Double(uni.values.reduce(0, +)))
         let biT = max(1.0, Double(bi.values.reduce(0, +)))
-        return candidates.sorted {
-            backoffScore($0, uni, bi, uniT, biT) > backoffScore($1, uni, bi, uniT, biT)
+        // Pre-compute scores to keep sort comparator pure
+        let biCount = bi.count
+        let total = biCount + candidates.count
+        let alpha: Double = total < 100 ? 0.4 : Double(candidates.count) / Double(total)
+        var scores: [String: Double] = [:]
+        for c in candidates {
+            if let b = bi[c] {
+                scores[c] = Double(b) / biT
+            } else {
+                scores[c] = alpha * Double(uni[c] ?? 0) / uniT
+            }
         }
-    }
-
-    // MARK: - Adaptive backoff
-
-    private var bigramHits = 0
-    private var bigramMisses = 0
-
-    private func backoffScore(_ char: String, _ uni: [String: Int], _ bi: [String: Int],
-                              _ uniT: Double, _ biT: Double) -> Double {
-        if let b = bi[char] {
-            bigramHits += 1
-            return Double(b) / biT
-        }
-        bigramMisses += 1
-        let total = bigramHits + bigramMisses
-        let alpha: Double = total < 100 ? 0.4 : Double(bigramMisses) / Double(total)
-        return alpha * Double(uni[char] ?? 0) / uniT
+        return candidates.sorted { (scores[$0] ?? 0) > (scores[$1] ?? 0) }
     }
 
     /// Top N learned bigram suggestions for a given prev char
     func topBigrams(prev: String, limit: Int = 3) -> [String] {
         guard !prev.isEmpty else { return [] }
-        let counts = queryMap(stmtQueryBigram, prev)
+        let counts = syncQuery(prev, stmtQueryBigram)
         guard !counts.isEmpty else { return [] }
         return counts.sorted { $0.value > $1.value }.prefix(limit).map { $0.key }
     }
@@ -157,7 +154,7 @@ final class FreqTracker {
     /// Stable: only moves candidates with recorded bigram to front; rest keep original order.
     func bigramBoost(prev: String, candidates: [String]) -> [String] {
         guard !prev.isEmpty else { return candidates }
-        let counts = queryMap(stmtQueryBigram, prev)
+        let counts = syncQuery(prev, stmtQueryBigram)
         guard !counts.isEmpty else { return candidates }
         var boosted = candidates.filter { counts[$0] != nil }.sorted { (counts[$0] ?? 0) > (counts[$1] ?? 0) }
         let rest = candidates.filter { counts[$0] == nil }
@@ -175,12 +172,15 @@ final class FreqTracker {
             sqlite3_finalize(stmt)
         }
         exec("DELETE FROM freq WHERE n<1")
+        // Prune entries that have decayed to minimum (n=1) to prevent unbounded growth
+        exec("DELETE FROM freq WHERE n<=1 AND rowid NOT IN (SELECT rowid FROM freq ORDER BY n DESC LIMIT 5000)")
         if sqlite3_prepare_v2(db, "UPDATE bigram SET n=MAX(1,CAST(n*?1 AS INTEGER))", -1, &stmt, nil) == SQLITE_OK {
             sqlite3_bind_double(stmt, 1, factor)
             sqlite3_step(stmt)
             sqlite3_finalize(stmt)
         }
         exec("DELETE FROM bigram WHERE n<1")
+        exec("DELETE FROM bigram WHERE n<=1 AND rowid NOT IN (SELECT rowid FROM bigram ORDER BY n DESC LIMIT 5000)")
     }
 
     func reset() {

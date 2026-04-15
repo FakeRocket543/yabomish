@@ -419,7 +419,7 @@ extension YabomishInputController {
     private static var _engineKey = 0
     var engine: InputEngine {
         if let e = objc_getAssociatedObject(self, &Self._engineKey) as? InputEngine { return e }
-        let e = InputEngine()
+        let e = InputEngine(cinTable: Self.cinTable)
         e.delegate = self
         e.loadTable()
         objc_setAssociatedObject(self, &Self._engineKey, e, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)

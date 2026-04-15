@@ -108,6 +108,7 @@ final class WikiCorpus {
         self.prefs = prefs
         loadTrigram()
         loadWordBigram()
+        loadChengyu()
         loadWordNews()
         loadJingjing()
         loadEmojiMap()
