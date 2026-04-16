@@ -543,6 +543,9 @@ final class InputEngine {
         if cmd == "rs" { freqTracker.reset(); delegate?.engineDidShowToast("字頻已重置"); return }
         if cmd == "rl" { cinTable.reload(); delegate?.engineDidShowToast("字表已重載"); return }
         if cmd == "pin" {
+            _isZhuyinMode = false; _clearZhuyinSlots()
+            _isSameSoundMode = false; _sameSoundBase = ""
+            _isPinyinMode = false; _pinyinBuffer = ""
             _isPinMode = true; _pinCode = ""; _pinPicked = []
             _composing = "PIN:"; _currentCandidates = []
             _notifyComposing(); _notifyCandidates()
@@ -650,6 +653,12 @@ final class InputEngine {
         guard let mode = modeMap[cmd] else {
             delegate?.engineDidShowToast("未知命令 ,,\(cmd.uppercased())\n輸入 ,,H 查看說明"); return
         }
+        // 清除所有查詢模式旗標
+        _isZhuyinMode = false; _clearZhuyinSlots()
+        _isSameSoundMode = false; _sameSoundBase = ""
+        _isPinyinMode = false; _pinyinBuffer = ""
+        _isPinMode = false; _pinCode = ""; _pinPicked = []
+        _currentCandidates = []; _notifyCandidates()
         _inputMode = mode
         delegate?.engineDidShowToast(Self.modeLabels[mode] ?? "繁中")
     }
