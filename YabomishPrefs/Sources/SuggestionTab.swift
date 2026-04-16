@@ -80,6 +80,7 @@ struct SuggestionTab: View {
                 }
 
                 // 3. Word corpus source
+                SectionDivider()
                 Label("詞級語料來源", systemImage: "text.book.closed").font(Typo.h2)
                 LazyVGrid(columns: threeColumns, spacing: 8) {
                     ForEach(corpusEntries) { entry in
@@ -88,10 +89,12 @@ struct SuggestionTab: View {
                 }
 
                 // 4. General domains
+                SectionDivider()
                 Label("一般詞庫", systemImage: "books.vertical").font(Typo.h2)
                 domainGrid(entries: $generalOrder, color: Typo.cyan)
 
                 // 5. Pro domains — compact chip layout, collapsed by default
+                SectionDivider()
                 DisclosureGroup {
                     Text("點擊啟用／停用。拖拉調整建議優先順序。")
                         .font(Typo.hint).foregroundStyle(.secondary)

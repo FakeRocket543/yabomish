@@ -26,37 +26,51 @@ struct ShortcutTab: View {
     }
 
     private static var cinCodes: Set<String>?
-    private static let dir = NSHomeDirectory() + "/Library/YabomishIM/tables/"
+    private static let dir: String = {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return appSupport.appendingPathComponent("Yabomish/tables").path + "/"
+    }()
     private static let filePath = dir + "user_shortcuts.txt"
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Corpus search — top of page
+            VStack(alignment: .leading, spacing: 20) {
+
+                // ── 詞庫查詢 ──
+                Label("詞庫查詢", systemImage: "magnifyingglass").font(Typo.h2)
                 corpusSearchSection
 
-                // Hint
+                // ── 快捷碼說明 ──
+                SectionDivider()
+                Label("快捷碼", systemImage: "bolt.fill").font(Typo.h2)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("把空碼變成你的快捷碼 skill — 打 2–4 碼直接輸出整段文字。")
+                    Text("把空碼變成你的快捷碼 — 打 2–4 碼直接輸出整段文字。")
                         .font(Typo.hint)
                     Text("適合綁定 agent 指令、prompt template、常用片語、簽名檔。")
                         .font(Typo.hint).foregroundStyle(.secondary)
                 }
 
                 // Demo examples
-                GroupBox("範例") {
-                    VStack(alignment: .leading, spacing: 4) {
+                SectionDivider()
+                Label("範例", systemImage: "lightbulb").font(Typo.h2)
+                VStack(alignment: .leading, spacing: 4) {
                         demoRow("agpt", "請用繁體中文回答，並附上參考來源")
                         demoRow("amtg", "@channel 今天的 standup 更新如下：")
                         demoRow("acmd", "cd ~/Projects && git status")
                         demoRow("asig", "Best regards, — your name")
                     }
-                    .padding(4)
-                }
 
+                // ── 新增 ──
+                SectionDivider()
+                Label("新增快捷碼", systemImage: "plus.circle").font(Typo.h2)
                 addSection
+
+                // ── 列表 ──
+                SectionDivider()
+                Label("已建立", systemImage: "list.bullet").font(Typo.h2)
                 listSection
-                Text("檔案路徑：~/Library/YabomishIM/tables/user_shortcuts.txt\n修改後輸入 ,,RL + 空白鍵 即時重載。")
+
+                Text("檔案路徑：~/Library/Application Support/Yabomish/tables/user_shortcuts.txt\n# 開頭為註解，可用來分類。修改後輸入 ,,RL + 空白鍵 即時重載。")
                     .font(Typo.caption).foregroundStyle(.secondary)
             }
             .padding(20)
@@ -80,29 +94,26 @@ struct ShortcutTab: View {
     }
 
     private var addSection: some View {
-        GroupBox("新增快捷碼") {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("編碼")
-                    TextField("2–4 碼", text: $code)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 100)
-                        .font(Typo.bodyMono)
-                        .onChange(of: code) { validateCode() }
-                    statusView
-                }
-                Text("內容")
-                TextEditor(text: $content)
-                    .font(.body)
-                    .frame(height: 60)
-                    .border(Typo.strokeOff)
-                HStack {
-                    Spacer()
-                    Button("＋ 新增") { addShortcut() }
-                        .disabled(code.count < 2 || content.isEmpty)
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("編碼")
+                TextField("2–4 碼", text: $code)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 100)
+                    .font(Typo.bodyMono)
+                    .onChange(of: code) { validateCode() }
+                statusView
             }
-            .padding(4)
+            Text("內容")
+            TextEditor(text: $content)
+                .font(.body)
+                .frame(height: 60)
+                .border(Typo.strokeOff)
+            HStack {
+                Spacer()
+                Button("＋ 新增") { addShortcut() }
+                    .disabled(code.count < 2 || content.isEmpty)
+            }
         }
     }
 
@@ -120,38 +131,39 @@ struct ShortcutTab: View {
     // MARK: - List Section
 
     private var listSection: some View {
-        GroupBox("已建立的快捷碼") {
-            VStack(spacing: 8) {
-                HStack {
-                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("搜尋", text: $search)
-                        .textFieldStyle(.roundedBorder)
-                    Spacer()
-                    Button("匯入⋯") { importShortcuts() }
-                    Button("匯出⋯") { exportShortcuts() }
-                }
-                List {
-                    ForEach(filtered, id: \.code) { sc in
-                        HStack {
-                            Text(sc.code)
-                                .font(Typo.bodyMono)
-                                .frame(width: 80, alignment: .leading)
-                            Text(sc.content).lineLimit(1)
-                            Spacer()
-                            Button("🗑") { deleteShortcut(code: sc.code) }
-                                .buttonStyle(.borderless)
-                        }
-                    }
-                }
-                .frame(minHeight: 200)
-                HStack {
-                    Text("\(shortcuts.count) 筆快捷碼")
-                    Spacer()
-                    Text("4碼空碼剩餘 \(freeCount)")
-                }
-                .font(Typo.caption).foregroundStyle(.secondary)
+        VStack(spacing: 8) {
+            HStack {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("搜尋", text: $search)
+                    .textFieldStyle(.roundedBorder)
+                Spacer()
+                Button("匯入⋯") { importShortcuts() }
+                Button("匯出⋯") { exportShortcuts() }
             }
-            .padding(4)
+            List {
+                ForEach(filtered, id: \.code) { sc in
+                    HStack {
+                        Text(sc.code)
+                            .font(Typo.bodyMono)
+                            .frame(width: 80, alignment: .leading)
+                        Text(sc.content).lineLimit(1)
+                        Spacer()
+                        Button("✎") { code = sc.code; content = sc.content }
+                            .buttonStyle(.borderless)
+                        Button("🗑") { deleteShortcut(code: sc.code) }
+                            .buttonStyle(.borderless)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { code = sc.code; content = sc.content }
+                }
+            }
+            .frame(minHeight: 200)
+            HStack {
+                Text("\(shortcuts.count) 筆快捷碼")
+                Spacer()
+                Text("4碼空碼剩餘 \(freeCount)")
+            }
+            .font(Typo.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -164,9 +176,18 @@ struct ShortcutTab: View {
     // MARK: - Data
 
     private func loadShortcuts() {
+        // Migrate from old path if needed
+        let oldPath = NSHomeDirectory() + "/Library/YabomishIM/tables/user_shortcuts.txt"
+        if !FileManager.default.fileExists(atPath: Self.filePath),
+           FileManager.default.fileExists(atPath: oldPath) {
+            try? FileManager.default.createDirectory(atPath: Self.dir, withIntermediateDirectories: true)
+            try? FileManager.default.copyItem(atPath: oldPath, toPath: Self.filePath)
+        }
         guard let text = try? String(contentsOfFile: Self.filePath, encoding: .utf8) else { return }
         shortcuts = text.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
-            let parts = line.split(separator: "\t", maxSplits: 1)
+            let s = line.trimmingCharacters(in: .whitespaces)
+            if s.isEmpty || s.hasPrefix("#") { return nil }
+            let parts = s.split(separator: "\t", maxSplits: 1)
             guard parts.count == 2 else { return nil }
             return (code: String(parts[0]), content: String(parts[1]))
         }
@@ -174,7 +195,16 @@ struct ShortcutTab: View {
 
     private func saveShortcuts() {
         try? FileManager.default.createDirectory(atPath: Self.dir, withIntermediateDirectories: true)
-        let text = shortcuts.map { "\($0.code)\t\($0.content)" }.joined(separator: "\n")
+        // Preserve comment lines from existing file
+        var comments: [String] = []
+        if let existing = try? String(contentsOfFile: Self.filePath, encoding: .utf8) {
+            comments = existing.split(separator: "\n", omittingEmptySubsequences: false)
+                .map(String.init)
+                .filter { $0.hasPrefix("#") }
+        }
+        var lines = comments
+        lines.append(contentsOf: shortcuts.map { "\($0.code)\t\($0.content)" })
+        let text = lines.joined(separator: "\n")
         try? text.write(toFile: Self.filePath, atomically: true, encoding: .utf8)
         DistributedNotificationCenter.default().post(name: .init("com.yabomish.reloadTables"), object: nil)
     }
@@ -286,7 +316,13 @@ struct ShortcutTab: View {
         panel.nameFieldStringValue = "yabomish_快捷碼.txt"
         panel.allowedContentTypes = [.plainText]
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        let text = shortcuts.map { "\($0.code)\t\($0.content)" }.joined(separator: "\n")
+        var lines = [
+            "# Yabomish 快捷碼",
+            "# 格式：編碼<Tab>內容（# 開頭為註解，可用來分類）",
+            "#",
+        ]
+        lines.append(contentsOf: shortcuts.map { "\($0.code)\t\($0.content)" })
+        let text = lines.joined(separator: "\n")
         try? text.write(to: url, atomically: true, encoding: .utf8)
     }
 

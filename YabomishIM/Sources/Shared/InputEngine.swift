@@ -74,6 +74,11 @@ final class InputEngine {
     private var _pinyinSimplified = true
     private var _pinyinBuffer = ""
 
+    // Pin mode: user picks candidates to fix their order
+    private var _isPinMode = false
+    private var _pinCode = ""
+    private var _pinPicked: [String] = []
+
     // ,, command
     private var _commaCommandBuffer = ""
     private var _isInCommaCommand = false
@@ -127,6 +132,14 @@ final class InputEngine {
     func handleLetter(_ char: String) { sync {
         _snapComposing = _composing; _snapCandidates = _currentCandidates; _snapIsWildcard = _isWildcard
         _lastWasEmptySpace = false
+
+        // Pin mode: letters build the code to pin
+        if _isPinMode {
+            _pinCode += char; _composing = "PIN:" + _pinCode
+            let raw = cinTable.lookup(_pinCode)
+            _currentCandidates = raw
+            _notifyComposing(); _notifyCandidates(); return
+        }
 
         // Same-sound mode: direct code input (no ' prefix)
         if _isSameSoundMode && _composing.isEmpty && _sameSoundBase.isEmpty {
@@ -182,6 +195,19 @@ final class InputEngine {
     func handleSpace() { sync {
         if _composing.isEmpty { return }
         if _eatNextSpace { _eatNextSpace = false; return }
+        // Pin mode: space confirms the pinned order
+        if _isPinMode {
+            if !_pinCode.isEmpty && !_pinPicked.isEmpty {
+                freqTracker.pin(code: _pinCode, chars: _pinPicked)
+                delegate?.engineDidShowToast("已固定 \(_pinCode) → \(_pinPicked.joined())")
+            } else if !_pinCode.isEmpty && _pinPicked.isEmpty {
+                // No picks yet — treat as "show candidates"
+                _notifyCandidates(); return
+            }
+            _isPinMode = false; _pinCode = ""; _pinPicked = []
+            _resetComposing(); _currentCandidates = []; _notifyCandidates()
+            delegate?.engineDidClearComposing(); return
+        }
         // Double-space = escape (clear composing)
         if _lastWasEmptySpace && _currentCandidates.isEmpty {
             _lastWasEmptySpace = false
@@ -200,6 +226,28 @@ final class InputEngine {
     } }
 
     func handleBackspace() { sync {
+        // Pin mode: backspace removes last picked char, or last code char, or exits
+        if _isPinMode {
+            if !_pinPicked.isEmpty {
+                _pinPicked.removeLast()
+                _composing = "PIN:" + _pinCode + (_pinPicked.isEmpty ? "" : " → " + _pinPicked.joined())
+                _notifyComposing()
+            } else if !_pinCode.isEmpty {
+                _pinCode = String(_pinCode.dropLast())
+                if _pinCode.isEmpty {
+                    _isPinMode = false; _resetComposing()
+                    delegate?.engineDidClearComposing()
+                } else {
+                    _composing = "PIN:" + _pinCode
+                    _currentCandidates = cinTable.lookup(_pinCode)
+                    _notifyComposing(); _notifyCandidates()
+                }
+            } else {
+                _isPinMode = false; _resetComposing()
+                delegate?.engineDidClearComposing()
+            }
+            return
+        }
         if _isInCommaCommand {
             if _commaCommandBuffer.isEmpty {
                 _isInCommaCommand = false; _composing = ","
@@ -242,6 +290,7 @@ final class InputEngine {
     } }
 
     func handleEscape() { sync {
+        if _isPinMode { _isPinMode = false; _pinCode = ""; _pinPicked = [] }
         if _isInCommaCommand { _isInCommaCommand = false; _commaCommandBuffer = "" }
         _isSameSoundMode = false
         _resetComposing()
@@ -274,6 +323,16 @@ final class InputEngine {
     func selectCandidate(at index: Int) { sync {
         DebugLog.log("YabomishKB: selectCandidate idx=\(index) count=\(_currentCandidates.count) composing='\(_composing)' zhuyin=\(_isZhuyinMode ? 1 : 0)")
         guard index < _currentCandidates.count else { return }
+        // Pin mode: pick candidate into pinned list
+        if _isPinMode && !_pinCode.isEmpty {
+            let ch = _currentCandidates[index]
+            if !_pinPicked.contains(ch) {
+                _pinPicked.append(ch)
+                _composing = "PIN:" + _pinCode + " → " + _pinPicked.joined()
+                _notifyComposing()
+            }
+            return
+        }
         if _isZhuyinMode {
             let full = _currentCandidates[index]
             let char = String(full.prefix(1))
@@ -483,6 +542,25 @@ final class InputEngine {
         ]
         if cmd == "rs" { freqTracker.reset(); delegate?.engineDidShowToast("字頻已重置"); return }
         if cmd == "rl" { cinTable.reload(); delegate?.engineDidShowToast("字表已重載"); return }
+        if cmd == "pin" {
+            _isPinMode = true; _pinCode = ""; _pinPicked = []
+            _composing = "PIN:"; _currentCandidates = []
+            _notifyComposing(); _notifyCandidates()
+            delegate?.engineDidShowToast("固定排序：輸入碼→選字→空白確認")
+            return
+        }
+        if cmd.hasPrefix("unpin") {
+            let arg = String(cmd.dropFirst(5))  // e.g. "unpina" → "a"
+            if arg.isEmpty {
+                delegate?.engineDidShowToast("用法：,,UNPIN + 碼（如 ,,UNPINa）")
+            } else if freqTracker.pinnedChars(forCode: arg) != nil {
+                freqTracker.unpin(code: arg)
+                delegate?.engineDidShowToast("已解除 \(arg) 的固定排序")
+            } else {
+                delegate?.engineDidShowToast("\(arg) 無固定排序")
+            }
+            return
+        }
         if cmd == "c" { delegate?.engineDidShowToast(_currentModeLabel); return }
         if cmd == "zh" {
             _isZhuyinMode.toggle()
@@ -521,6 +599,7 @@ final class InputEngine {
             • ,,ZH 注音查碼  ,,TO 同音字
             • ,,PYS 拼音(簡)  ,,PYT 拼音(繁)
             • ,,RS 重置字頻  ,,RL 重載字表
+            • ,,PIN 固定同碼字排序  ,,UNPINx 解除
             • ,,C 顯示目前模式
             • ,,H 顯示本說明
 
@@ -569,7 +648,7 @@ final class InputEngine {
             return
         }
         guard let mode = modeMap[cmd] else {
-            delegate?.engineDidShowToast("未知命令 ,,\(cmd.uppercased())"); return
+            delegate?.engineDidShowToast("未知命令 ,,\(cmd.uppercased())\n輸入 ,,H 查看說明"); return
         }
         _inputMode = mode
         delegate?.engineDidShowToast(Self.modeLabels[mode] ?? "繁中")

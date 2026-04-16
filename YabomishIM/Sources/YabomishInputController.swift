@@ -66,6 +66,7 @@ class YabomishInputController: IMKInputController {
     private static var lastDeactivateTime: Date = .distantPast
     private var lastCommittedLength: Int = 0
     private static var hasPromptedImport = false
+    private static var showFirstUseTip = false
     private static var yabomishWasActive = false
 
     private static let inputSourceObserver: Void = {
@@ -221,7 +222,10 @@ class YabomishInputController: IMKInputController {
         if FileManager.default.fileExists(atPath: appURL.path) {
             NSWorkspace.shared.openApplication(at: appURL, configuration: .init())
         } else {
-            PrefsWindow.shared.showWindow()
+            let a = NSAlert()
+            a.messageText = "找不到設定程式"
+            a.informativeText = "請執行 yabomish.sh 安裝 YabomishPrefs.app 到 /Applications。"
+            a.runModal()
         }
     }
 
@@ -236,6 +240,7 @@ class YabomishInputController: IMKInputController {
         }
         if Self.cinTable.isEmpty && !Self.hasPromptedImport {
             Self.hasPromptedImport = true
+            panel.showGuide("尚未匯入字表 — 右鍵狀態列圖示 → 偏好設定 → 匯入字表")
             DispatchQueue.main.async { Self.promptImportCIN() }
         }
         let fromOtherIM = !Self.yabomishWasActive
@@ -259,6 +264,12 @@ class YabomishInputController: IMKInputController {
         engine.clearCandidates()
         if fromOtherIM && YabomishPrefs.showActivateToast {
             showModeToast(engine.currentModeLabel)
+        }
+        if Self.showFirstUseTip {
+            Self.showFirstUseTip = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                self?.showModeToast("空白鍵送字 ｜ Shift 切英文 ｜ ,,H 說明")
+            }
         }
         if !DataDownloader.isDataAvailable {
             DataDownloader.ensureData { ok in
@@ -366,6 +377,7 @@ class YabomishInputController: IMKInputController {
             try? FileManager.default.removeItem(atPath: dst + ".cache")
             cinTable.reload()
             hasPromptedImport = false
+            showFirstUseTip = true
             DebugLog.log("YabomishIM: Imported CIN table from \(src.path)")
             showImportAlert(
                 messageText: "字表匯入成功",

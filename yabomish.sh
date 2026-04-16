@@ -96,29 +96,16 @@ install_im() {
     sudo cp -R "$IM_APP" "$INSTALL_DIR/"
     sudo chmod -R a+rX "$INSTALL_DIR/YabomishIM.app"
 
-    # 蝦頭方向
+    # 套用已有的蝦頭方向設定（不詢問，可從管理程式調整）
     local DIR="$INSTALL_DIR/YabomishIM.app/Contents/Resources"
     local ICON; ICON=$(defaults read $IM_BUNDLE_ID iconDirection 2>/dev/null || echo "left")
-    local CUR="<- 向左"; [ "$ICON" = "right" ] && CUR="-> 向右"
-    echo ""
-    echo "蝦頭方向 (目前: $CUR):  1) <- 向左  2) -> 向右"
-    printf "選擇 [1/2, Enter 保持]: "; read -r c
-    case "$c" in 1) ICON="left";; 2) ICON="right";; esac
-    defaults write $IM_BUNDLE_ID iconDirection "$ICON"
     [ "$ICON" = "right" ] && [ -f "$DIR/icon_right.tiff" ] && sudo cp "$DIR/icon_right.tiff" "$DIR/icon.tiff"
 
-    # 狀態列名稱
+    # 套用已有的狀態列名稱設定
     local PLIST="$INSTALL_DIR/YabomishIM.app/Contents/Info.plist"
     local LBL; LBL=$(defaults read $IM_BUNDLE_ID menuBarLabel 2>/dev/null || echo "yabomish")
-    local LCUR="Yabomish"; [ "$LBL" = "yabo" ] && LCUR="Yabo"
-    echo ""
-    echo "狀態列名稱 (目前: $LCUR):  1) Yabo  2) Yabomish"
-    printf "選擇 [1/2, Enter 保持]: "; read -r c
-    case "$c" in 1) LBL="yabo";; 2) LBL="yabomish";; esac
-    defaults write $IM_BUNDLE_ID menuBarLabel "$LBL"
     case "$LBL" in
         yabo) sudo /usr/libexec/PlistBuddy -c "Set :CFBundleName Yabo" "$PLIST";;
-        *)    sudo /usr/libexec/PlistBuddy -c "Set :CFBundleName Yabomish" "$PLIST";;
     esac
 
     # 字表
@@ -162,7 +149,8 @@ do_uninstall() {
 }
 
 ask_mode() {
-    printf "  1) 完整（含 28 專業詞典，~98MB）  2) 精簡（基礎聯想，~18MB）\n"
+    printf "  1) 完整（含 28 專業詞典，~98MB）\n"
+    printf "  2) 精簡（省空間，無專業詞典，仍有成語、用語、兩岸用詞聯想，~18MB）\n"
     printf "  選擇 [1/2, Enter=完整]: "; read -r m
     case "$m" in 2) BUILD_MODE="lite";; *) BUILD_MODE="full";; esac
 }

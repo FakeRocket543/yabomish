@@ -13,6 +13,14 @@ final class CandidatePanel: NSPanel {
     private static var fontCache: [CGFloat: NSFont] = [:]
     private static var monoFontCache: [CGFloat: NSFont] = [:]
 
+    private static let hcShadow: NSShadow = {
+        let s = NSShadow()
+        s.shadowColor = .black.withAlphaComponent(0.6)
+        s.shadowBlurRadius = 2
+        s.shadowOffset = NSSize(width: 0, height: -1)
+        return s
+    }()
+
     private static func cachedFont(size: CGFloat) -> NSFont {
         if let f = fontCache[size] { return f }
         let f = NSFont.systemFont(ofSize: size)
@@ -33,6 +41,7 @@ final class CandidatePanel: NSPanel {
     ]
 
     private var cachedFixedFont: NSFont?
+    private var cachedHC: Bool?
     private var cachedNormalAttrs: [NSAttributedString.Key: Any]?
     private var cachedHighlightAttrs: [NSAttributedString.Key: Any]?
 
@@ -220,6 +229,22 @@ final class CandidatePanel: NSPanel {
         }
     }
 
+    /// Show a one-line guide message in the fixed-mode panel
+    func showGuide(_ message: String) {
+        onMain {
+            self.showGeneration += 1
+            self.candidates = []
+            self.switchToFixedLayout()
+            self.fixedLabel.stringValue = message
+            self.fixedLabel.font = Self.cachedFont(size: 14)
+            self.fixedLabel.textColor = .secondaryLabelColor
+            self.fixedLabel.sizeToFit()
+            self.repositionFixed()
+            self.alphaValue = 0.9
+            self.orderFront(nil)
+        }
+    }
+
     func hide() {
         onMain {
             let gen = self.showGeneration
@@ -325,13 +350,17 @@ final class CandidatePanel: NSPanel {
 
     private func rebuildLabels() {
         let fontSize = YabomishPrefs.fontSize
+        let hc = YabomishPrefs.highContrast
         let start = pageStart
         let end = min(start + pageSize, candidates.count)
 
 
         for i in 0..<pageSize {
             let label = labels[i]
-            label.font = Self.cachedMonoFont(size: fontSize)
+            label.font = hc
+                ? NSFont.boldSystemFont(ofSize: fontSize)
+                : Self.cachedMonoFont(size: fontSize)
+            label.shadow = hc ? Self.hcShadow : nil
             if start + i < end {
                 let candIdx = start + i
                 let keyChar = i < selKeys.count ? keyLabel(selKeys[i]) : " "
@@ -436,11 +465,16 @@ final class CandidatePanel: NSPanel {
         let font = Self.cachedFont(size: fontSize)
         fixedLabel.font = font
 
-        if cachedFixedFont !== font {
+        if cachedFixedFont !== font || cachedHC != YabomishPrefs.highContrast {
             cachedFixedFont = font
-            cachedNormalAttrs = [.font: font, .foregroundColor: NSColor.labelColor]
+            let hc = YabomishPrefs.highContrast
+            cachedHC = hc
+            let boldFont = hc ? NSFont.boldSystemFont(ofSize: fontSize) : font
+            var normal: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: NSColor.labelColor]
+            if hc { normal[.shadow] = Self.hcShadow }
+            cachedNormalAttrs = normal
             cachedHighlightAttrs = [
-                .font: font,
+                .font: boldFont,
                 .foregroundColor: NSColor.selectedMenuItemTextColor,
                 .backgroundColor: NSColor.selectedContentBackgroundColor,
             ]

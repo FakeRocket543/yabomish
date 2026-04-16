@@ -2,6 +2,31 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.3.51] — 2026-04-16
+
+### 新功能
+- **固定同碼字排序** — 新增 `,,PIN` / `,,UNPINx` 命令，指定同碼字的候選順序（如固定「手」排在「乎」前面），不受字頻 decay 影響。FreqTracker 新增 `pinned` 表，InputEngine 新增 pin mode 狀態機
+- **高對比模式** — 新增 `highContrast` 偏好設定，候選字加粗＋文字陰影，方便視覺辨識
+- **首次使用提示** — 匯入字表後顯示「空白鍵送字 ｜ Shift 切英文 ｜ ,,H 說明」引導訊息
+- **候選字面板引導** — 新增 `showGuide()` 方法，尚未匯入字表時顯示引導訊息
+- **設定程式 Edit menu** — 加入 Undo/Redo/Cut/Copy/Paste/Select All，Cmd+C/V/X/A 在文字欄位中正常運作
+
+### 改進
+- **設定程式 UI 大改版**
+  - 外觀分頁：GroupBox 改為卡片式 UI（字型滑桿＋即時預覽＋功能卡片＋蝦頭方向卡片）
+  - 輸入分頁：新增選字窗 demo 預覽、固定同碼字排序區塊（PinnedOrderSection）
+  - 快捷碼分頁：移除 GroupBox 改用 SectionDivider＋Label 分區、新增快捷碼編輯按鈕（✎）、支援 `#` 註解行、路徑遷移至 `~/Library/Application Support/Yabomish/tables/`
+  - 聯想與詞庫分頁：加入 SectionDivider 分區
+- **擴充表載入改善** — CINTable 載入擴充表時跳過空行和 `#` 註解行
+- **未知命令提示** — 顯示「未知命令」時建議輸入 `,,H` 查看說明
+- **安裝腳本簡化** — `yabomish.sh` 不再詢問蝦頭方向和狀態列名稱（改從設定程式調整），精簡安裝說明
+
+### 移除
+- **PrefsWindow** — 刪除輸入法內建的偏好設定視窗，改為引導使用者開啟 YabomishPrefs.app
+- **DomainCardView / DomainCollectionController** — 舊的 AppKit 詞庫卡片 UI 刪除，DomainOrderManager 獨立為新檔案
+
+---
+
 ## [0.3.50] — 2026-04-15
 
 ### 新功能

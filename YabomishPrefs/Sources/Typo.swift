@@ -6,7 +6,7 @@ enum Typo {
 
     // Headings
     static let h1 = Font.title3.bold()              // 頁面大標題
-    static let h2 = Font.headline                    // 區塊標題
+    static let h2 = Font.system(size: 16, weight: .bold)  // 區塊標題
     static let h3 = Font.system(size: 13, weight: .bold) // 子標題
 
     // Body
@@ -39,4 +39,11 @@ enum Typo {
     static let warn    = Color.orange                 // 警告 ⚠️
     static let cardOff = Color.primary.opacity(0.05)  // 卡片停用背景
     static let strokeOff = Color.primary.opacity(0.15) // 卡片停用邊框
+}
+
+/// 區塊分隔線：上下 padding + 橫線，用在每個 Label(.h2) 前面
+struct SectionDivider: View {
+    var body: some View {
+        Divider().padding(.vertical, 6)
+    }
 }

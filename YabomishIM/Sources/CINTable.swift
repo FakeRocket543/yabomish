@@ -357,7 +357,9 @@ final class CINTable {
             guard let data = FileManager.default.contents(atPath: path),
                   let content = String(data: data, encoding: .utf8) else { continue }
             content.enumerateLines { line, _ in
-                let parts = line.split(separator: "\t", maxSplits: 1).map(String.init)
+                let t = line.trimmingCharacters(in: .whitespaces)
+                if t.isEmpty || t.hasPrefix("#") { return }
+                let parts = t.split(separator: "\t", maxSplits: 1).map(String.init)
                 guard parts.count == 2 else { return }
                 let code = parts[0].lowercased()
                 self.overlay[code, default: []].append(parts[1])

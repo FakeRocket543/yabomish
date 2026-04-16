@@ -72,6 +72,7 @@ struct InputTab: View {
                     }
                 }
 
+                SectionDivider()
                 Label("選字窗", systemImage: "keyboard").font(Typo.h2)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     ForEach(panelOptions) { opt in
@@ -79,12 +80,44 @@ struct InputTab: View {
                     }
                 }
 
+                // 選字窗 demo — 只顯示選中的模式
+                Group {
+                    if store.panelPosition == "cursor" {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("1蝦").font(.system(size: 16))
+                            Text("2米").font(.system(size: 16)).foregroundStyle(.secondary)
+                            Text("3蟹").font(.system(size: 16)).foregroundStyle(.secondary)
+                        }
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Typo.gold.opacity(0.7), lineWidth: 1.5))
+                    } else {
+                        HStack(spacing: 10) {
+                            Text("1蝦").font(.system(size: 16))
+                            Text("2米").font(.system(size: 16)).foregroundStyle(.secondary)
+                            Text("3蟹").font(.system(size: 16)).foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Typo.gold.opacity(0.7), lineWidth: 1.5))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+
+                SectionDivider()
                 Label("輸入功能", systemImage: "character.cursor.ibeam").font(Typo.h2)
                 LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(inputOptions) { opt in
                         toggleCard(opt)
                     }
                 }
+
+                // ── 固定排序 ──
+                SectionDivider()
+                Label("固定同碼字排序", systemImage: "pin.fill").font(Typo.h2)
+                Text("指定某碼的候選字固定順序，不受學習排序影響。")
+                    .font(Typo.hint).foregroundStyle(.secondary)
+                PinnedOrderSection()
 
             }
             .padding(20)

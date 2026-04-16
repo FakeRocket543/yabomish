@@ -16,6 +16,7 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 - **多螢幕支援** — 自動偵測所在螢幕，GPU 終端無效座標時 fallback 固定模式
 - **全螢幕 App 相容** — cmux/Ghostty 中正常顯示
 - **VoiceOver 無障礙** — 候選字窗支援螢幕朗讀
+- **高對比模式** — 候選字加粗＋文字陰影，方便視覺辨識（設定程式開啟）
 
 ### 輸入模式（`,,` 命令系統）
 
@@ -36,6 +37,8 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 | `,,TO` | 同音字查詢模式 |
 | `,,RS` | 重置字頻統計 |
 | `,,RL` | 重載字表＋擴充表 |
+| `,,PIN` | 固定同碼字排序 |
+| `,,UNPINx` | 解除碼 x 的固定排序 |
 | `,,C` | 顯示當前模式 |
 | `,,H` | 命令說明 |
 
@@ -62,6 +65,7 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 - **Unigram** — 字頻學習（SQLite，每 500 次自動 decay）
 - **Bigram** — 自適應 stupid backoff（bigram 命中用機率，未命中 fallback unigram × α，α 根據 session 內命中率自動調整）
 - **Trigram** — 複合鍵 `prev2|prev1` 存入 bigram 表
+- **固定排序** — `,,PIN` 指定同碼字的固定順序，不受 decay 影響（如固定「手」排在「乎」前面）
 - **用詞習慣** — 臺灣用詞 / 中式用詞切換（NAER 兩岸對照表），對側用詞降權
 
 ### 輸入功能
@@ -87,10 +91,10 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 
 獨立 GUI 設定 App，五個分頁：
 
-- **輸入** — 用詞習慣、選字窗模式、聯想輸入、自動送字、拆碼提示、注音反查、模糊匹配、標點配對等開關
+- **輸入** — 用詞習慣、選字窗模式（含 demo 預覽）、聯想輸入、自動送字、拆碼提示、注音反查、模糊匹配、標點配對、固定同碼字排序
 - **聯想與詞庫** — 三層順序拖拉、詞級語料來源切換、一般詞庫與專業詞典啟用／排序
 - **快捷碼** — 空碼綁定自訂文字／指令，匯入匯出
-- **外觀** — 字體大小、透明度、模式提示大小、蝦頭方向、Debug 模式
+- **外觀** — 字體大小（滑桿+即時預覽）、透明度、高對比模式、蝦頭方向、Debug 模式
 - **關於** — 使用方法、快捷鍵速查、語料來源與授權
 
 | 輸入 | 聯想與詞庫 | 專業詞典（28 本） |
@@ -120,17 +124,16 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | 模式 | 說明 | 大小 |
 |------|------|------|
 | 完整安裝 | 含聯想語料（28 專業詞典 + bigram/trigram + 詞庫） | ~105MB |
-| 精簡安裝 | 僅核心輸入引擎，不含聯想 | ~3MB |
+| 精簡安裝 | 無專業詞典，仍有成語、用語、兩岸用詞聯想，省空間 | ~3MB |
 
 安裝過程會：
 1. 編譯輸入法（YabomishIM.app）和設定程式（YabomishPrefs.app）
 2. 安裝到 `/Library/Input Methods/` 和 `/Applications/`
-3. 詢問蝦頭方向和狀態列名稱
-4. 詢問蝦頭方向和狀態列名稱
 
 安裝完成後：
 1. 系統設定 → 鍵盤 → 輸入方式 → 加入「Yabomish」
 2. 首次切換會引導匯入 `liu.cin`
+3. 匯入完成後顯示「空白鍵送字 ｜ Shift 切英文 ｜ ,,H 說明」提示
 
 ### 手動匯入字表
 
@@ -187,14 +190,12 @@ YabomishIM/Sources/
 ├── YabomishInputController.swift  # 按鍵處理、IMK 整合、session 管理
 ├── CINTable.swift                 # CIN 字表載入（mmap .bin + text fallback）
 ├── CandidatePanel.swift           # 選字窗（游標/固定雙模式、VoiceOver）
-├── FreqTracker.swift              # 字頻學習（unigram + bigram + trigram、SQLite）
+├── FreqTracker.swift              # 字頻學習（unigram + bigram + trigram + pinned、SQLite）
 ├── ZhuyinLookup.swift             # 注音反查 + 同音字 + 拼音查碼
 ├── PhraseLookup.swift             # NER 詞組 + 社群上下文（SQLite）
 ├── DataDownloader.swift           # 語料下載（GitHub Release）
 ├── Prefs.swift                    # UserDefaults 偏好設定
-├── PrefsWindow.swift              # GUI 偏好設定視窗（macOS AppKit）
-├── DomainCardView.swift           # 詞庫卡片 UI
-├── DomainCollectionController.swift # 詞庫拖拉排序
+├── DomainOrderManager.swift       # 詞庫排序管理
 ├── DebugLog.swift                 # Debug 日誌
 └── Shared/                        # macOS / iOS 共用引擎
     ├── InputEngine.swift          # 輸入引擎（狀態機、命令分派）
@@ -216,9 +217,11 @@ YabomishPrefs/Sources/             # 獨立設定程式（SwiftUI）
 ├── InputTab.swift                 # 用詞習慣、選字窗、輸入功能開關
 ├── SuggestionTab.swift            # 聯想層順序、詞級語料、詞庫管理
 ├── ShortcutTab.swift              # 空碼快捷碼綁定、匯入匯出
-├── AppearanceTab.swift            # 字型、透明度、模式提示、Debug
+├── AppearanceTab.swift            # 字型、透明度、高對比、蝦頭方向、Debug
 ├── HelpTab.swift                  # 使用方法＋快捷鍵速查＋語料授權
 ├── WelcomeView.swift              # 首次使用引導
+├── Typo.swift                     # 設計 token（字型、色彩、SectionDivider）
+├── PinnedOrderSection.swift       # 固定同碼字排序 UI
 ├── DomainCardView.swift           # 詞庫卡片元件
 └── DomainData.swift               # 詞庫定義（6 一般 + 28 專業）
 ```

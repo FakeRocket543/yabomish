@@ -15,6 +15,8 @@ final class FreqTracker {
     private var stmtUpsertBigram: OpaquePointer?
     private var stmtQueryBigram: OpaquePointer?
 
+    private var prefsObserver: Any?
+
     init() {
         // SQLite DB always in local App Support (never in iCloud/sync folder —
         // WAL mode is incompatible with cloud sync)
@@ -29,6 +31,11 @@ final class FreqTracker {
            FileManager.default.fileExists(atPath: sync + "/freq.json") {
             migrateFromJSON(dir: sync)
         }
+        #if os(macOS)
+        prefsObserver = DistributedNotificationCenter.default().addObserver(
+            forName: .init("com.yabomish.prefsChanged"), object: nil, queue: .main
+        ) { [weak self] _ in self?.reloadPinned() }
+        #endif
     }
 
     deinit {
@@ -36,10 +43,18 @@ final class FreqTracker {
         sqlite3_finalize(stmtQueryFreq)
         sqlite3_finalize(stmtUpsertBigram)
         sqlite3_finalize(stmtQueryBigram)
+        sqlite3_finalize(stmtQueryPinned)
+        sqlite3_finalize(stmtUpsertPinned)
+        sqlite3_finalize(stmtDeletePinned)
         sqlite3_close(db)
     }
 
     // MARK: - DB Setup
+
+    private var stmtQueryPinned: OpaquePointer?
+    private var stmtUpsertPinned: OpaquePointer?
+    private var stmtDeletePinned: OpaquePointer?
+    private var pinnedCache: [String: [String]] = [:]
 
     private func openDB() {
         guard sqlite3_open(path, &db) == SQLITE_OK else {
@@ -50,10 +65,17 @@ final class FreqTracker {
         exec("PRAGMA synchronous=NORMAL")
         exec("CREATE TABLE IF NOT EXISTS freq(code TEXT, char TEXT, n INTEGER, PRIMARY KEY(code,char))")
         exec("CREATE TABLE IF NOT EXISTS bigram(prev TEXT, char TEXT, n INTEGER, PRIMARY KEY(prev,char))")
+        exec("CREATE TABLE IF NOT EXISTS pinned(code TEXT PRIMARY KEY, chars TEXT NOT NULL)")
+        // 預設固定排序（常見同碼字衝突）
+        exec("INSERT OR IGNORE INTO pinned(code,chars) VALUES('hj','手乎')")
         prepare("INSERT INTO freq(code,char,n) VALUES(?1,?2,1) ON CONFLICT(code,char) DO UPDATE SET n=n+1", &stmtUpsertFreq)
         prepare("SELECT char,n FROM freq WHERE code=?1 ORDER BY n DESC", &stmtQueryFreq)
         prepare("INSERT INTO bigram(prev,char,n) VALUES(?1,?2,1) ON CONFLICT(prev,char) DO UPDATE SET n=n+1", &stmtUpsertBigram)
         prepare("SELECT char,n FROM bigram WHERE prev=?1 ORDER BY n DESC", &stmtQueryBigram)
+        prepare("SELECT chars FROM pinned WHERE code=?1", &stmtQueryPinned)
+        prepare("INSERT OR REPLACE INTO pinned(code,chars) VALUES(?1,?2)", &stmtUpsertPinned)
+        prepare("DELETE FROM pinned WHERE code=?1", &stmtDeletePinned)
+        loadPinnedCache()
     }
 
     // MARK: - Record
@@ -114,32 +136,51 @@ final class FreqTracker {
 
     func sorted(_ candidates: [String], forCode code: String) -> [String] {
         if code.hasPrefix(",") { return candidates }
+        let pinned = pinnedCache[code]
         let counts = syncQuery(code, stmtQueryFreq)
-        guard !counts.isEmpty else { return candidates }
-        return candidates.sorted { (counts[$0] ?? 0) > (counts[$1] ?? 0) }
+        var result: [String]
+        if !counts.isEmpty {
+            result = candidates.sorted { (counts[$0] ?? 0) > (counts[$1] ?? 0) }
+        } else {
+            result = candidates
+        }
+        guard let pinned, !pinned.isEmpty else { return result }
+        let pinSet = Set(pinned)
+        let rest = result.filter { !pinSet.contains($0) }
+        let front = pinned.filter { result.contains($0) }
+        return front + rest
     }
 
     func sortedWithContext(_ candidates: [String], forCode code: String, prev: String) -> [String] {
         if code.hasPrefix(",") { return candidates }
         guard !prev.isEmpty else { return sorted(candidates, forCode: code) }
+        let pinned = pinnedCache[code]
         let uni = syncQuery(code, stmtQueryFreq)
         let bi = syncQuery(prev, stmtQueryBigram)
-        guard !uni.isEmpty || !bi.isEmpty else { return candidates }
-        let uniT = max(1.0, Double(uni.values.reduce(0, +)))
-        let biT = max(1.0, Double(bi.values.reduce(0, +)))
-        // Pre-compute scores to keep sort comparator pure
-        let biCount = bi.count
-        let total = biCount + candidates.count
-        let alpha: Double = total < 100 ? 0.4 : Double(candidates.count) / Double(total)
-        var scores: [String: Double] = [:]
-        for c in candidates {
-            if let b = bi[c] {
-                scores[c] = Double(b) / biT
-            } else {
-                scores[c] = alpha * Double(uni[c] ?? 0) / uniT
+        var result: [String]
+        if uni.isEmpty && bi.isEmpty {
+            result = candidates
+        } else {
+            let uniT = max(1.0, Double(uni.values.reduce(0, +)))
+            let biT = max(1.0, Double(bi.values.reduce(0, +)))
+            let biCount = bi.count
+            let total = biCount + candidates.count
+            let alpha: Double = total < 100 ? 0.4 : Double(candidates.count) / Double(total)
+            var scores: [String: Double] = [:]
+            for c in candidates {
+                if let b = bi[c] {
+                    scores[c] = Double(b) / biT
+                } else {
+                    scores[c] = alpha * Double(uni[c] ?? 0) / uniT
+                }
             }
+            result = candidates.sorted { (scores[$0] ?? 0) > (scores[$1] ?? 0) }
         }
-        return candidates.sorted { (scores[$0] ?? 0) > (scores[$1] ?? 0) }
+        guard let pinned, !pinned.isEmpty else { return result }
+        let pinSet = Set(pinned)
+        let rest = result.filter { !pinSet.contains($0) }
+        let front = pinned.filter { result.contains($0) }
+        return front + rest
     }
 
     /// Top N learned bigram suggestions for a given prev char
@@ -160,6 +201,53 @@ final class FreqTracker {
         let rest = candidates.filter { counts[$0] == nil }
         boosted.append(contentsOf: rest)
         return boosted
+    }
+
+    // MARK: - Pinned order
+
+    /// Reload pinned cache from DB (called when prefs change from external app).
+    func reloadPinned() {
+        bgQueue.sync { pinnedCache.removeAll(); loadPinnedCache() }
+    }
+
+    private func loadPinnedCache() {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT code, chars FROM pinned", -1, &stmt, nil) == SQLITE_OK else { return }
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            let code = String(cString: sqlite3_column_text(stmt, 0))
+            let chars = String(cString: sqlite3_column_text(stmt, 1))
+            pinnedCache[code] = Array(chars).map(String.init)
+        }
+        sqlite3_finalize(stmt)
+    }
+
+    /// Set pinned order for a code. chars is the ordered list of characters.
+    func pin(code: String, chars: [String]) {
+        let joined = chars.joined()
+        bgQueue.sync {
+            guard let stmt = stmtUpsertPinned else { return }
+            sqlite3_reset(stmt)
+            sqlite3_bind_text(stmt, 1, code, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(stmt, 2, joined, -1, SQLITE_TRANSIENT)
+            sqlite3_step(stmt)
+        }
+        pinnedCache[code] = chars
+    }
+
+    /// Remove pinned order for a code.
+    func unpin(code: String) {
+        bgQueue.sync {
+            guard let stmt = stmtDeletePinned else { return }
+            sqlite3_reset(stmt)
+            sqlite3_bind_text(stmt, 1, code, -1, SQLITE_TRANSIENT)
+            sqlite3_step(stmt)
+        }
+        pinnedCache.removeValue(forKey: code)
+    }
+
+    /// Get pinned chars for a code (from cache).
+    func pinnedChars(forCode code: String) -> [String]? {
+        pinnedCache[code]
     }
 
     // MARK: - Maintenance

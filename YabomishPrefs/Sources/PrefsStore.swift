@@ -83,6 +83,10 @@ import Foundation
         get { access(keyPath: \.debugMode); return ud.object(forKey: "debugMode") as? Bool ?? false }
         set { withMutation(keyPath: \.debugMode) { ud.set(newValue, forKey: "debugMode") }; postChange() }
     }
+    var highContrast: Bool {
+        get { access(keyPath: \.highContrast); return ud.object(forKey: "highContrast") as? Bool ?? false }
+        set { withMutation(keyPath: \.highContrast) { ud.set(newValue, forKey: "highContrast") }; postChange() }
+    }
     var useNewEngine: Bool {
         get { access(keyPath: \.useNewEngine); return ud.object(forKey: "useNewEngine") as? Bool ?? true }
         set { withMutation(keyPath: \.useNewEngine) { ud.set(newValue, forKey: "useNewEngine") }; postChange() }

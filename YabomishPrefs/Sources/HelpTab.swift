@@ -59,8 +59,17 @@ struct HelpTab: View {
 
                 guide("擴充表", icon: "doc.text", steps: [
                     "擴充表放在 ~/Library/Application Support/Yabomish/tables/",
-                    "格式：編碼<Tab>內容，一行一筆",
+                    "格式：編碼<Tab>內容，一行一筆（# 開頭為註解）",
                     "修改後打 ,,RL + Space 即時重載",
+                ])
+
+                guide("固定同碼字排序", icon: "pin.fill", steps: [
+                    "打 ,,PIN + Space 進入固定排序模式",
+                    "輸入碼（如 hj），候選字列表出現",
+                    "按數字鍵依序選擇要固定的字（如先選「手」再選「乎」）",
+                    "按 Space 確認，該碼的候選順序即固定",
+                    "打 ,,UNPINx + Space 解除（x 為碼，如 ,,UNPINhj）",
+                    "也可在設定程式 →「輸入」→「固定同碼字排序」中操作",
                 ])
 
                 Divider()
@@ -98,6 +107,8 @@ struct HelpTab: View {
                     (",,TO", "同音字查詢模式"),
                     (",,RS", "重置字頻統計"),
                     (",,RL", "重載字表＋擴充表"),
+                    (",,PIN", "固定同碼字排序"),
+                    (",,UNPINx", "解除碼 x 的固定排序"),
                     (",,C", "顯示當前模式"),
                     (",,H", "命令說明"),
                 ])
