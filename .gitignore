@@ -3,8 +3,9 @@ build/
 llm-poc/
 pocs/
 .kiro/
-doc/poc/
-doc/20*
+doc/
+docs/
+doct/
 liu.cin
 *.dmg
 dmg_staging/
