@@ -141,7 +141,7 @@ const base = import.meta.env.BASE_URL;
       <nav class="flex-1 py-5 px-3">
         <a href={base}
            class:list={[
-             "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13.5px] mb-1.5 transition-all",
+             "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[15px] mb-1.5 transition-all",
              !currentSlug
                ? 'sb-active text-ink-800 dark:text-ink-50 font-semibold'
                : 'text-ink-500 dark:text-ink-300 hover:text-mazu-cyan dark:hover:text-mazu-cyan hover:bg-paper-200/60 dark:hover:bg-abyss-700/50'
@@ -158,7 +158,7 @@ const base = import.meta.env.BASE_URL;
           {chapters.map(ch => (
             <a href={`${base}chapters/${ch.slug}/`}
                class:list={[
-                 "flex items-center gap-2 px-3 py-[8px] rounded-xl text-[13.5px] transition-all",
+                 "flex items-center gap-2 px-3 py-[8px] rounded-xl text-[15px] transition-all",
                  ch.slug === currentSlug
                    ? 'sb-active text-ink-800 dark:text-ink-50 font-semibold'
                    : 'text-ink-500 dark:text-ink-300 hover:text-mazu-cyan dark:hover:text-mazu-cyan hover:bg-paper-200/60 dark:hover:bg-abyss-700/50'
