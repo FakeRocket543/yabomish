@@ -34,7 +34,8 @@ const base = import.meta.env.BASE_URL;
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{title} — Yabomish 使用手冊</title>
   <style>
-    html { scroll-behavior: smooth; font-size: 16.5px; }
+    html { scroll-behavior: smooth; font-size: 17px; }
+    @media (max-width: 640px) { html { font-size: 16px; } }
 
     /* Scrollbar */
     ::-webkit-scrollbar { width: 5px; }
@@ -217,7 +218,7 @@ const base = import.meta.env.BASE_URL;
           prose-h4:text-ink-700
           dark:prose-h4:text-ink-100
 
-          prose-p:text-[16.5px] prose-p:leading-[1.85]
+          prose-p:text-[17.5px] prose-p:leading-[1.9]
           prose-p:text-ink-600
           dark:prose-p:text-ink-200
 
@@ -278,8 +279,8 @@ const base = import.meta.env.BASE_URL;
           prose-hr:border-paper-300
           dark:prose-hr:border-abyss-700
 
-          prose-ul:text-[16px] prose-ol:text-[16px]
-          prose-li:leading-[1.85]
+          prose-ul:text-[17px] prose-ol:text-[17px]
+          prose-li:leading-[1.9]
           prose-li:text-ink-600
           dark:prose-li:text-ink-200
           prose-li:marker:text-mazu-orange/40
