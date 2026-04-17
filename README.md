@@ -2,7 +2,7 @@
 
 macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 
-📖 **[使用手冊](https://fakerocket543.github.io/yabomish/)** · 🐙 **[GitHub](https://github.com/FakeRocket543/yabomish)**
+📖 **[使用手冊](https://fakerocket543.github.io/yabomish/)**
 
 ## 需求
 
