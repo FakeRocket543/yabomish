@@ -318,6 +318,8 @@ macOS 版暫時告一段落後，因為想用 iOS 版的 Yabomish，在處理的
 
 以上，希望大家會喜歡這次的更新。野心很大，token 不夠，時間更少。若有任何 bug，請發 issue 或直接提 PR。
 
+> 咦，那 Yabomish iOS 呢？——做了，但還沒準備好。敬請期待。
+
 </details>
 
 ## 授權
