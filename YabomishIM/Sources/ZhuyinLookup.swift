@@ -70,17 +70,18 @@ final class ZhuyinLookup {
     func lookup(_ char: String) -> [(zhuyin: String, chars: [String])] {
         ensureLoaded()
         guard let zhuyins = charToZhuyins[char] else { return [] }
-        let all = zhuyins.compactMap { zy -> (zhuyin: String, chars: [String], freq: Int)? in
+        // char_to_zhuyins 的順序 = 常用讀音在前，直接保留
+        let all = zhuyins.compactMap { zy -> (zhuyin: String, chars: [String])? in
             guard let raw = zhuyinToChars[zy] else { return nil }
             let filtered = raw.filter { $0 != char }
             guard !filtered.isEmpty else { return nil }
-            return (zy, filtered, filtered.reduce(0) { $0 + (charFreq[$1] ?? 0) })
-        }.sorted { $0.freq > $1.freq }
+            return (zy, filtered)
+        }
         if YabomishPrefs.homophoneMultiReading {
-            return all.map { ($0.zhuyin, $0.chars) }
+            return all
         }
         guard let best = all.first else { return [] }
-        return [(best.zhuyin, best.chars)]
+        return [best]
     }
 
     /// Backward-compat overload — prevChar no longer used
