@@ -1,0 +1,366 @@
+---
+export interface Props {
+  title: string;
+  currentSlug?: string;
+}
+
+const { title, currentSlug } = Astro.props;
+
+const chapters = [
+  { slug: '01-installation', num: '01', title: '安裝與設定', icon: '⚙️' },
+  { slug: '02-basic-typing', num: '02', title: '基本打字', icon: '⌨️' },
+  { slug: '03-candidate-panel', num: '03', title: '選字窗', icon: '🪟' },
+  { slug: '04-modes-and-commands', num: '04', title: '模式與命令', icon: '🎛️' },
+  { slug: '05-suggestion-engine', num: '05', title: '聯想引擎', icon: '🧠' },
+  { slug: '06-lookup-modes', num: '06', title: '查碼模式', icon: '🔍' },
+  { slug: '07-shortcuts-and-extensions', num: '07', title: '快捷碼與擴充表', icon: '⚡' },
+  { slug: '08-preferences', num: '08', title: '偏好設定', icon: '🎨' },
+  { slug: '09-data-and-files', num: '09', title: '資料與檔案', icon: '📁' },
+  { slug: '10-faq', num: '10', title: '常見問題', icon: '❓' },
+  { slug: '11-domain-glossary', num: '11', title: '詞庫介紹', icon: '📚' },
+];
+
+const currentIdx = chapters.findIndex(c => c.slug === currentSlug);
+const prev = currentIdx > 0 ? chapters[currentIdx - 1] : null;
+const next = currentIdx >= 0 && currentIdx < chapters.length - 1 ? chapters[currentIdx + 1] : null;
+const currentChapter = currentIdx >= 0 ? chapters[currentIdx] : null;
+const base = import.meta.env.BASE_URL;
+---
+
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title} — Yabomish 使用手冊</title>
+  <style>
+    html { scroll-behavior: smooth; font-size: 16.5px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #c4bda8; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a89e88; }
+    @media (prefers-color-scheme: dark) {
+      ::-webkit-scrollbar-thumb { background: #333358; }
+      ::-webkit-scrollbar-thumb:hover { background: #404060; }
+    }
+
+    /* Sidebar active — gradient bar */
+    .sb-active {
+      position: relative;
+      background: linear-gradient(135deg, rgba(143,173,191,0.08) 0%, rgba(242,211,121,0.06) 100%);
+    }
+    .sb-active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 3px; bottom: 3px; width: 3px;
+      background: linear-gradient(180deg, #8FADBF, #F2D479);
+      border-radius: 0 3px 3px 0;
+    }
+    @media (prefers-color-scheme: dark) {
+      .sb-active {
+        background: linear-gradient(135deg, rgba(143,173,191,0.08) 0%, rgba(242,211,121,0.04) 100%);
+      }
+    }
+
+    /* Prose code fix */
+    .prose code::before, .prose code::after { content: none !important; }
+
+    /* Fade in */
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .anim-in { animation: slideUp 0.35s ease-out both; }
+  </style>
+</head>
+
+<body class="min-h-screen antialiased font-sans
+  bg-paper-50 text-ink-700
+  dark:bg-abyss-950 dark:text-ink-200
+  transition-colors duration-150">
+
+  <!-- ═══ Header ═══ -->
+  <header class="fixed top-0 left-0 right-0 z-40 h-14 backdrop-blur-2xl border-b
+    bg-paper-50/90 border-paper-300/60
+    dark:bg-abyss-950/90 dark:border-abyss-700/40">
+    <div class="h-full flex items-center px-5 gap-4">
+      <!-- Logo -->
+      <a href={base} class="flex items-center gap-2 shrink-0 group">
+        <span class="text-2xl group-hover:scale-110 transition-transform">🦐</span>
+        <span class="font-bold text-[15px] tracking-tight
+          text-ink-800 group-hover:text-mazu-orange
+          dark:text-ink-50 dark:group-hover:text-mazu-gold transition-colors">Yabomish</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full
+          text-mazu-deep bg-mazu-orange/10
+          dark:text-mazu-gold dark:bg-mazu-gold/10">MANUAL</span>
+      </a>
+
+      <!-- Breadcrumb -->
+      {currentChapter && (
+        <div class="hidden sm:flex items-center gap-1.5 text-[13px] text-ink-400">
+          <svg class="w-3.5 h-3.5 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+          <span class="text-ink-600 dark:text-ink-300">{currentChapter.title}</span>
+        </div>
+      )}
+
+      <div class="flex-1" />
+
+      <a href="https://github.com/FakeRocket543/yabomish" target="_blank"
+         class="hidden sm:inline-flex items-center gap-1.5 text-[13px]
+           text-ink-400 hover:text-mazu-cyan
+           dark:text-ink-300 dark:hover:text-mazu-cyan transition-colors">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        GitHub
+      </a>
+
+      <!-- Mobile toggle -->
+      <button id="menu-toggle"
+        class="lg:hidden p-2 -mr-2 rounded-lg
+          text-ink-500 hover:text-ink-700 hover:bg-paper-200
+          dark:text-ink-300 dark:hover:text-ink-100 dark:hover:bg-abyss-700"
+        aria-label="選單">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="flex pt-14">
+
+    <!-- ═══ Sidebar ═══ -->
+    <aside id="sidebar"
+      class="hidden lg:flex flex-col fixed top-14 left-0 bottom-0 w-[256px] overflow-y-auto z-30 border-r
+        bg-paper-100/50 border-paper-300/50
+        dark:bg-abyss-900/80 dark:border-abyss-700/30">
+      <nav class="flex-1 py-5 px-3">
+        <a href={base}
+           class:list={[
+             "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13.5px] mb-1.5 transition-all",
+             !currentSlug
+               ? 'sb-active text-ink-800 dark:text-ink-50 font-semibold'
+               : 'text-ink-500 dark:text-ink-300 hover:text-mazu-cyan dark:hover:text-mazu-cyan hover:bg-paper-200/60 dark:hover:bg-abyss-700/50'
+           ]}>
+          <span class="text-sm">🏠</span>
+          <span>首頁</span>
+        </a>
+
+        <div class="h-px my-3 mx-3 bg-paper-300/50 dark:bg-abyss-700/40" />
+        <p class="px-3 text-[10px] font-bold uppercase tracking-[0.14em] mb-2.5
+          text-mazu-deep/50 dark:text-mazu-gold/30">章節</p>
+
+        <div class="space-y-px">
+          {chapters.map(ch => (
+            <a href={`${base}chapters/${ch.slug}/`}
+               class:list={[
+                 "flex items-center gap-2 px-3 py-[8px] rounded-xl text-[13.5px] transition-all",
+                 ch.slug === currentSlug
+                   ? 'sb-active text-ink-800 dark:text-ink-50 font-semibold'
+                   : 'text-ink-500 dark:text-ink-300 hover:text-mazu-cyan dark:hover:text-mazu-cyan hover:bg-paper-200/60 dark:hover:bg-abyss-700/50'
+               ]}>
+              <span class="text-[11px] w-4 opacity-60">{ch.icon}</span>
+              <span class="font-mono text-[10.5px] w-5 text-ink-400 dark:text-ink-400">{ch.num}</span>
+              <span class="truncate">{ch.title}</span>
+            </a>
+          ))}
+        </div>
+      </nav>
+
+      <div class="px-5 py-3.5 border-t text-[10.5px]
+        border-paper-300/40 text-ink-400
+        dark:border-abyss-700/30 dark:text-ink-400">
+        v0.3.51 · MIT
+      </div>
+    </aside>
+
+    <!-- ═══ Main ═══ -->
+    <main class="flex-1 lg:ml-[256px] min-w-0">
+      <div class="max-w-3xl mx-auto px-6 sm:px-10 py-10 sm:py-16">
+
+        <!-- Chapter header -->
+        {currentChapter && (
+          <div class="mb-12 anim-in">
+            <span class="inline-block px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-widest
+              bg-mazu-orange/10 text-mazu-deep
+              dark:bg-mazu-gold/10 dark:text-mazu-gold">
+              第 {currentChapter.num} 章
+            </span>
+            <h1 class="mt-4 text-[32px] sm:text-[40px] font-bold tracking-tight leading-[1.15]
+              text-ink-900 dark:text-ink-50">
+              {currentChapter.icon} {title}
+            </h1>
+          </div>
+        )}
+
+        <!-- ═══ Article (prose) ═══ -->
+        <article class="
+          prose max-w-none
+          dark:prose-invert
+
+          prose-headings:font-bold prose-headings:tracking-tight
+          prose-headings:text-ink-900
+          dark:prose-headings:text-ink-50
+
+          prose-h2:text-[23px] prose-h2:mt-14 prose-h2:mb-5 prose-h2:pb-3
+          prose-h2:border-b prose-h2:border-mazu-deep/20
+          dark:prose-h2:border-mazu-gold/15
+
+          prose-h3:text-[18px] prose-h3:mt-10 prose-h3:mb-3
+          prose-h3:text-mazu-cyan
+          dark:prose-h3:text-mazu-cyan
+
+          prose-h4:text-[16px] prose-h4:mt-8
+          prose-h4:text-ink-700
+          dark:prose-h4:text-ink-100
+
+          prose-p:text-[16.5px] prose-p:leading-[1.85]
+          prose-p:text-ink-600
+          dark:prose-p:text-ink-200
+
+          prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+          prose-a:text-mazu-cyan
+          dark:prose-a:text-mazu-cyan
+
+          prose-strong:font-semibold
+          prose-strong:text-ink-800
+          dark:prose-strong:text-ink-50
+
+          prose-code:font-mono prose-code:font-semibold prose-code:text-[13.5px]
+          prose-code:px-2 prose-code:py-[3px] prose-code:rounded-md
+          prose-code:text-mazu-deep
+          prose-code:bg-mazu-orange/8
+          prose-code:border prose-code:border-mazu-orange/15
+          dark:prose-code:text-mazu-gold
+          dark:prose-code:bg-mazu-gold/10
+          dark:prose-code:border-mazu-gold/15
+
+          prose-pre:rounded-xl prose-pre:text-[13.5px] prose-pre:shadow-sm
+          prose-pre:bg-ink-800 prose-pre:border prose-pre:border-ink-700
+          dark:prose-pre:bg-abyss-850 dark:prose-pre:border-abyss-700
+
+          prose-blockquote:rounded-r-xl prose-blockquote:py-3 prose-blockquote:px-5
+          prose-blockquote:not-italic prose-blockquote:text-[15px]
+          prose-blockquote:border-l-[3px] prose-blockquote:border-mazu-orange
+          prose-blockquote:bg-mazu-orange/5
+          prose-blockquote:text-ink-600
+          dark:prose-blockquote:border-mazu-orange/60
+          dark:prose-blockquote:bg-mazu-orange/5
+          dark:prose-blockquote:text-ink-200
+
+          prose-table:text-[14.5px]
+          prose-thead:bg-paper-200/60
+          dark:prose-thead:bg-abyss-800
+
+          prose-th:text-left prose-th:font-bold
+          prose-th:text-[12px] prose-th:uppercase prose-th:tracking-wider
+          prose-th:py-3 prose-th:px-4
+          prose-th:text-ink-500
+          prose-th:border-paper-300
+          dark:prose-th:text-ink-300
+          dark:prose-th:border-abyss-700
+
+          prose-td:py-3 prose-td:px-4
+          prose-td:text-ink-600
+          prose-td:border-paper-200
+          dark:prose-td:text-ink-200
+          dark:prose-td:border-abyss-700
+
+          prose-tr:border-paper-200
+          dark:prose-tr:border-abyss-700
+          even:prose-tr:bg-paper-100/50
+          dark:even:prose-tr:bg-abyss-900/40
+
+          prose-hr:my-12
+          prose-hr:border-paper-300
+          dark:prose-hr:border-abyss-700
+
+          prose-ul:text-[16px] prose-ol:text-[16px]
+          prose-li:leading-[1.85]
+          prose-li:text-ink-600
+          dark:prose-li:text-ink-200
+          prose-li:marker:text-mazu-orange/40
+          dark:prose-li:marker:text-mazu-gold/30
+
+          prose-img:rounded-xl prose-img:shadow-lg
+          prose-img:border prose-img:border-paper-300
+          dark:prose-img:border-abyss-700
+        ">
+          <slot />
+        </article>
+
+        <!-- ═══ Prev / Next ═══ -->
+        {(prev || next) && (
+          <nav class="mt-20 pt-8 grid grid-cols-2 gap-4
+            border-t border-paper-300 dark:border-abyss-700">
+            {prev ? (
+              <a href={`${base}chapters/${prev.slug}/`}
+                 class="group p-5 rounded-2xl transition-all
+                   border border-paper-300 bg-white/40
+                   hover:border-mazu-cyan/40 hover:shadow-md hover:shadow-mazu-cyan/5
+                   dark:border-abyss-700 dark:bg-abyss-800/40
+                   dark:hover:border-mazu-cyan/30">
+                <p class="text-[11px] mb-1.5 flex items-center gap-1
+                  text-ink-400 dark:text-ink-400">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                  上一章
+                </p>
+                <p class="text-[14px] font-semibold
+                  text-ink-700 group-hover:text-mazu-cyan
+                  dark:text-ink-100 dark:group-hover:text-mazu-cyan transition-colors">{prev.title}</p>
+              </a>
+            ) : <div />}
+            {next ? (
+              <a href={`${base}chapters/${next.slug}/`}
+                 class="group p-5 rounded-2xl transition-all text-right
+                   border border-paper-300 bg-white/40
+                   hover:border-mazu-orange/40 hover:shadow-md hover:shadow-mazu-orange/5
+                   dark:border-abyss-700 dark:bg-abyss-800/40
+                   dark:hover:border-mazu-orange/30">
+                <p class="text-[11px] mb-1.5 flex items-center gap-1 justify-end
+                  text-ink-400 dark:text-ink-400">
+                  下一章
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </p>
+                <p class="text-[14px] font-semibold
+                  text-ink-700 group-hover:text-mazu-orange
+                  dark:text-ink-100 dark:group-hover:text-mazu-orange transition-colors">{next.title}</p>
+              </a>
+            ) : <div />}
+          </nav>
+        )}
+
+        <footer class="mt-20 pt-6 border-t text-center text-[11px]
+          border-paper-300/60 text-ink-400
+          dark:border-abyss-700/40 dark:text-ink-400">
+          Yabomish 使用手冊 · v0.3.51 · MIT License
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <!-- Mobile overlay -->
+  <div id="mobile-overlay" class="hidden fixed inset-0 backdrop-blur-sm z-20 lg:hidden
+    bg-ink-900/20 dark:bg-black/50" />
+
+  <script>
+    const toggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    function openMenu() {
+      sidebar?.classList.remove('hidden'); sidebar?.classList.add('flex');
+      overlay?.classList.remove('hidden'); document.body.style.overflow = 'hidden';
+    }
+    function closeMenu() {
+      sidebar?.classList.add('hidden'); sidebar?.classList.remove('flex');
+      overlay?.classList.add('hidden'); document.body.style.overflow = '';
+    }
+    toggle?.addEventListener('click', () => sidebar?.classList.contains('hidden') ? openMenu() : closeMenu());
+    overlay?.addEventListener('click', closeMenu);
+    sidebar?.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMenu));
+  </script>
+</body>
+</html>

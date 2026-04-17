@@ -1,0 +1,16 @@
+{
+  "name": "yabomish-manual",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "4.2.6",
+    "@astrojs/tailwind": "6.0.2",
+    "@tailwindcss/typography": "^0.5.19",
+    "astro": "5.7.10",
+    "tailwindcss": "3.4.17"
+  }
+}

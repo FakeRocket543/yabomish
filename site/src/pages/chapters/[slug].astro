@@ -1,0 +1,21 @@
+---
+import { getCollection } from 'astro:content';
+import Manual from '../../layouts/Manual.astro';
+
+export async function getStaticPaths() {
+  const chapters = await getCollection('chapters');
+  return chapters.map(ch => ({
+    params: { slug: ch.id.replace(/\.md$/, '') },
+    props: { chapter: ch },
+  }));
+}
+
+const { chapter } = Astro.props;
+const { Content } = await chapter.render();
+const slug = chapter.id.replace(/\.md$/, '');
+---
+
+<Manual title={chapter.data.title} currentSlug={slug}>
+  <h1>{chapter.data.title}</h1>
+  <Content />
+</Manual>
