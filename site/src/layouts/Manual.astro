@@ -93,14 +93,14 @@ const base = import.meta.env.BASE_URL;
         <span class="font-bold text-[15px] tracking-tight
           text-ink-800 group-hover:text-mazu-orange
           dark:text-ink-50 dark:group-hover:text-mazu-gold transition-colors">Yabomish</span>
-        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full
+        <span class="text-[12px] font-semibold px-2 py-0.5 rounded-full
           text-mazu-deep bg-mazu-orange/10
           dark:text-mazu-gold dark:bg-mazu-gold/10">MANUAL</span>
       </a>
 
       <!-- Breadcrumb -->
       {currentChapter && (
-        <div class="hidden sm:flex items-center gap-1.5 text-[13px] text-ink-400">
+        <div class="hidden sm:flex items-center gap-1.5 text-[14px] text-ink-400">
           <svg class="w-3.5 h-3.5 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
           </svg>
@@ -111,7 +111,7 @@ const base = import.meta.env.BASE_URL;
       <div class="flex-1" />
 
       <a href="https://github.com/FakeRocket543/yabomish" target="_blank"
-         class="hidden sm:inline-flex items-center gap-1.5 text-[13px]
+         class="hidden sm:inline-flex items-center gap-1.5 text-[14px]
            text-ink-400 hover:text-mazu-cyan
            dark:text-ink-300 dark:hover:text-mazu-cyan transition-colors">
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
@@ -151,7 +151,7 @@ const base = import.meta.env.BASE_URL;
         </a>
 
         <div class="h-px my-3 mx-3 bg-paper-300/50 dark:bg-abyss-700/40" />
-        <p class="px-3 text-[10px] font-bold uppercase tracking-[0.14em] mb-2.5
+        <p class="px-3 text-[12px] font-bold uppercase tracking-[0.14em] mb-2.5
           text-mazu-deep/50 dark:text-mazu-gold/30">章節</p>
 
         <div class="space-y-px">
@@ -163,15 +163,15 @@ const base = import.meta.env.BASE_URL;
                    ? 'sb-active text-ink-800 dark:text-ink-50 font-semibold'
                    : 'text-ink-500 dark:text-ink-300 hover:text-mazu-cyan dark:hover:text-mazu-cyan hover:bg-paper-200/60 dark:hover:bg-abyss-700/50'
                ]}>
-              <span class="text-[11px] w-4 opacity-60">{ch.icon}</span>
-              <span class="font-mono text-[10.5px] w-5 text-ink-400 dark:text-ink-400">{ch.num}</span>
+              <span class="text-[12px] w-4 opacity-60">{ch.icon}</span>
+              <span class="font-mono text-[12px] w-5 text-ink-400 dark:text-ink-400">{ch.num}</span>
               <span class="truncate">{ch.title}</span>
             </a>
           ))}
         </div>
       </nav>
 
-      <div class="px-5 py-3.5 border-t text-[10.5px]
+      <div class="px-5 py-3.5 border-t text-[12px]
         border-paper-300/40 text-ink-400
         dark:border-abyss-700/30 dark:text-ink-400">
         v0.3.51 · MIT
@@ -185,7 +185,7 @@ const base = import.meta.env.BASE_URL;
         <!-- Chapter header -->
         {currentChapter && (
           <div class="mb-12 anim-in">
-            <span class="inline-block px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-widest
+            <span class="inline-block px-2.5 py-1 rounded-lg text-[12px] font-bold tracking-widest
               bg-mazu-orange/10 text-mazu-deep
               dark:bg-mazu-gold/10 dark:text-mazu-gold">
               第 {currentChapter.num} 章
@@ -230,7 +230,7 @@ const base = import.meta.env.BASE_URL;
           prose-strong:text-ink-800
           dark:prose-strong:text-ink-50
 
-          prose-code:font-mono prose-code:font-semibold prose-code:text-[13.5px]
+          prose-code:font-mono prose-code:font-semibold prose-code:text-[14.5px]
           prose-code:px-2 prose-code:py-[3px] prose-code:rounded-md
           prose-code:text-mazu-deep
           prose-code:bg-mazu-orange/8
@@ -239,7 +239,7 @@ const base = import.meta.env.BASE_URL;
           dark:prose-code:bg-mazu-gold/10
           dark:prose-code:border-mazu-gold/15
 
-          prose-pre:rounded-xl prose-pre:text-[13.5px] prose-pre:shadow-sm
+          prose-pre:rounded-xl prose-pre:text-[14.5px] prose-pre:shadow-sm
           prose-pre:bg-ink-800 prose-pre:border prose-pre:border-ink-700
           dark:prose-pre:bg-abyss-850 dark:prose-pre:border-abyss-700
 
@@ -252,12 +252,12 @@ const base = import.meta.env.BASE_URL;
           dark:prose-blockquote:bg-mazu-orange/5
           dark:prose-blockquote:text-ink-200
 
-          prose-table:text-[14.5px]
+          prose-table:text-[15.5px]
           prose-thead:bg-paper-200/60
           dark:prose-thead:bg-abyss-800
 
           prose-th:text-left prose-th:font-bold
-          prose-th:text-[12px] prose-th:uppercase prose-th:tracking-wider
+          prose-th:text-[13px] prose-th:uppercase prose-th:tracking-wider
           prose-th:py-3 prose-th:px-4
           prose-th:text-ink-500
           prose-th:border-paper-300
@@ -304,12 +304,12 @@ const base = import.meta.env.BASE_URL;
                    hover:border-mazu-cyan/40 hover:shadow-md hover:shadow-mazu-cyan/5
                    dark:border-abyss-700 dark:bg-abyss-800/40
                    dark:hover:border-mazu-cyan/30">
-                <p class="text-[11px] mb-1.5 flex items-center gap-1
+                <p class="text-[12px] mb-1.5 flex items-center gap-1
                   text-ink-400 dark:text-ink-400">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                   上一章
                 </p>
-                <p class="text-[14px] font-semibold
+                <p class="text-[15px] font-semibold
                   text-ink-700 group-hover:text-mazu-cyan
                   dark:text-ink-100 dark:group-hover:text-mazu-cyan transition-colors">{prev.title}</p>
               </a>
@@ -321,12 +321,12 @@ const base = import.meta.env.BASE_URL;
                    hover:border-mazu-orange/40 hover:shadow-md hover:shadow-mazu-orange/5
                    dark:border-abyss-700 dark:bg-abyss-800/40
                    dark:hover:border-mazu-orange/30">
-                <p class="text-[11px] mb-1.5 flex items-center gap-1 justify-end
+                <p class="text-[12px] mb-1.5 flex items-center gap-1 justify-end
                   text-ink-400 dark:text-ink-400">
                   下一章
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </p>
-                <p class="text-[14px] font-semibold
+                <p class="text-[15px] font-semibold
                   text-ink-700 group-hover:text-mazu-orange
                   dark:text-ink-100 dark:group-hover:text-mazu-orange transition-colors">{next.title}</p>
               </a>
@@ -334,7 +334,7 @@ const base = import.meta.env.BASE_URL;
           </nav>
         )}
 
-        <footer class="mt-20 pt-6 border-t text-center text-[11px]
+        <footer class="mt-20 pt-6 border-t text-center text-[12px]
           border-paper-300/60 text-ink-400
           dark:border-abyss-700/40 dark:text-ink-400">
           Yabomish 使用手冊 · v0.3.51 · MIT License
