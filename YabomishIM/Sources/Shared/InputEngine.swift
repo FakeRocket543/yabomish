@@ -285,6 +285,12 @@ final class InputEngine {
 
     func handleEnter() { sync {
         if _isInCommaCommand { _dispatchCommaCommand(); return }
+        if _isSameSoundMode && !_sameSoundBase.isEmpty {
+            // Same-sound: Enter dismisses homophone candidates, stay in mode
+            _sameSoundBase = ""; _composing = ""; _currentCandidates = []
+            delegate?.engineDidClearComposing(); _notifyCandidates()
+            return
+        }
         if _composing.isEmpty { return }
         _commitText(_composing)
     } }
