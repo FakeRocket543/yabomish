@@ -1,6 +1,60 @@
-# Yabomish
+# Yabomish 🦐
 
 macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
+
+📖 **[使用手冊](https://fakerocket543.github.io/yabomish/)** · 🐙 **[GitHub](https://github.com/FakeRocket543/yabomish)**
+
+## 需求
+
+- macOS 14.0+（Apple Silicon）
+- Xcode Command Line Tools
+- 嘸蝦米 CIN 字表（`liu.cin`，使用者自行取得）
+
+## 安裝
+
+```bash
+git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabomish.sh
+```
+
+選擇 `1) 完整安裝` 或 `2) 精簡安裝`。
+
+| 模式 | 說明 | 大小 |
+|------|------|------|
+| 完整安裝 | 含聯想語料（28 專業詞典 + bigram/trigram + 詞庫） | ~98MB |
+| 精簡安裝 | 無專業詞典，仍有成語、用語、兩岸用詞聯想 | ~18MB |
+
+安裝過程會：
+1. 編譯輸入法（YabomishIM.app）和設定程式（YabomishPrefs.app）
+2. 安裝到 `/Library/Input Methods/` 和 `/Applications/`
+
+安裝完成後：
+1. 系統設定 → 鍵盤 → 輸入方式 → 加入「Yabomish」
+2. 首次切換會引導匯入 `liu.cin`
+3. 匯入完成後顯示「空白鍵送字 ｜ Shift 切英文 ｜ ,,H 說明」提示
+
+### 手動匯入字表
+
+設定程式 → 匯入字表⋯ → 選擇 `liu.cin`（裝置端編譯為 `.bin`，不上傳、不外流）
+
+## 快速參考
+
+| 操作 | 按鍵 |
+|------|------|
+| 送字 | 空白鍵 |
+| 選字 | 1–9 |
+| 補碼 | `v`/`r`/`s`/`f`（第 2–5 候選） |
+| 萬用碼 | `*`（Shift+8） |
+| 頓號 | `vv` + 空白鍵 |
+| 中英切換 | 快按 Shift |
+| 暫時英文 | 按住 Shift |
+| 全型空格 | Shift+Space |
+| 命令模式 | `,,` + 命令碼 + Space |
+| 注音查碼 | `,,ZH` |
+| 拼音查碼 | `,,PYS` / `,,PYT` |
+| 同音字 | `,,TO` |
+| 送出原始碼 | Enter |
+
+完整使用說明見 [docs/usage.md](docs/usage.md)。
 
 ## 特色
 
@@ -14,9 +68,9 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 - **游標跟隨模式** — 毛玻璃垂直列表，跟隨輸入游標
 - **固定位置模式** — 水平列，可拖曳、右鍵調整對齊/透明度
 - **多螢幕支援** — 自動偵測所在螢幕，GPU 終端無效座標時 fallback 固定模式
-- **全螢幕 App 相容** — cmux/Ghostty 中正常顯示
+- **全螢幕 App 相容** — tmux/Ghostty 中正常顯示
 - **VoiceOver 無障礙** — 候選字窗支援螢幕朗讀
-- **高對比模式** — 候選字加粗＋文字陰影，方便視覺辨識（設定程式開啟）
+- **高對比模式** — 候選字加粗＋文字陰影（設定程式開啟）
 
 ### 輸入模式（`,,` 命令系統）
 
@@ -42,17 +96,12 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 | `,,C` | 顯示當前模式 |
 | `,,H` | 命令說明 |
 
-### 查詢功能
-- **同音字查詢** — `,,TO` 進入同音字模式，直接打碼送字後列同音字
-- **注音反查** — `,,ZH` 切換，輸入注音查嘸蝦米碼
-- **拼音查碼** — `,,PYS` / `,,PYT`，輸入拼音字母 + 聲調數字（空白鍵 = 一聲）
-
 ### 聯想輸入
 
 三層架構，送字後自動建議下一個字／詞：
 
 1. **詞級語料** — 可切換萌典（教育部辭典）、維基百科斷詞、新聞斷詞
-2. **詞庫** — 一般詞庫（NER 詞組、萌典詞組、成語、晶晶體、中國流行語、歇後語、台灣俗諺、客語辭典、台灣地名、學科術語、韓語漢字詞、日本熟語）＋ 28 個專業詞典（資訊、商業、醫學、法律⋯⋯，資料來源為樂詞網 NAER＋維基百科）
+2. **詞庫** — 12 一般詞庫（NER 詞組、萌典詞組、成語、晶晶體、中國流行語、歇後語、台灣俗諺、客語辭典、台灣地名、學科術語、韓語漢字詞、日本熟語）＋ 28 個專業詞典（資訊、商業、醫學、法律⋯⋯，資料來源為樂詞網 NAER＋維基百科）
 3. **字級聯想** — bigram / trigram 預測下一字
 
 - 三層順序可拖拉調整（詞級優先 / 詞庫優先 / 字級優先）
@@ -65,29 +114,22 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 - **Unigram** — 字頻學習（SQLite，每 500 次自動 decay）
 - **Bigram** — 自適應 stupid backoff（bigram 命中用機率，未命中 fallback unigram × α，α 根據 session 內命中率自動調整）
 - **Trigram** — 複合鍵 `prev2|prev1` 存入 bigram 表
-- **固定排序** — `,,PIN` 指定同碼字的固定順序，不受 decay 影響（如固定「手」排在「乎」前面）
+- **固定排序** — `,,PIN` 指定同碼字的固定順序，不受 decay 影響
 - **用詞習慣** — 臺灣用詞 / 中式用詞切換（NAER 兩岸對照表），對側用詞降權
 
-### 輸入功能
+### 其他輸入功能
 - **萬用碼** `*`（Shift+8）— prefix 預過濾加速
 - **補碼** `v`/`r`/`s`/`f` — 選第 2–5 候選字
 - **滿碼自動送字** — 可選，碼打滿且唯一候選時自動送出
-- **`/` 穿透** — 空閒時直送 App（slash command）
-- **`'` `;` 直送** — 空閒時不攔截，直送 App（方便寫程式）
-- **頓號** — 嘸蝦米碼 `vv` + 空白鍵（字表內建）
-- **全型空格** — Shift+Space 或 `,,` + Space
-- **Shift 快按** — 中英切換（0.3 秒內）
-- **Shift 按住** — 暫時英文模式
+- **`'` `;` `/` 直送** — 空閒時不攔截，方便寫程式和 slash command
 - **標點配對** — 打「自動補」（可選，macOS 預設關）
-- **Enter** — 送出原始碼文字
 
 ### 擴充表系統
 - `~/Library/Application Support/Yabomish/tables/*.txt` — tab-separated `編碼<Tab>內容`
-- 安裝時預設 Emoji 聯想（送字後自動建議相關 emoji）
 - 修改後打 `,,RL` + Space 即時重載
 - 支援 iCloud 同步資料夾共用
 
-### 設定程式（YabomishPrefs.app）
+## 設定程式（YabomishPrefs.app）
 
 獨立 GUI 設定 App，五個分頁：
 
@@ -106,59 +148,6 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 | ![快捷碼](images/prefs-shortcuts.webp) | ![外觀](images/prefs-appearance.webp) | ![關於](images/prefs-about.webp) |
 
 首次開啟有三頁引導（匯入字表 → 加入輸入方式 → 常用快捷鍵）。
-
-## 需求
-
-- macOS 14.0+（Apple Silicon）
-- Xcode Command Line Tools
-- 嘸蝦米 CIN 字表（`liu.cin`，使用者自行取得）
-
-## 安裝
-
-```bash
-git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabomish.sh
-```
-
-選擇 `1) 完整安裝` 或 `2) 精簡安裝`。
-
-| 模式 | 說明 | 大小 |
-|------|------|------|
-| 完整安裝 | 含聯想語料（28 專業詞典 + bigram/trigram + 詞庫） | ~105MB |
-| 精簡安裝 | 無專業詞典，仍有成語、用語、兩岸用詞聯想，省空間 | ~3MB |
-
-安裝過程會：
-1. 編譯輸入法（YabomishIM.app）和設定程式（YabomishPrefs.app）
-2. 安裝到 `/Library/Input Methods/` 和 `/Applications/`
-
-安裝完成後：
-1. 系統設定 → 鍵盤 → 輸入方式 → 加入「Yabomish」
-2. 首次切換會引導匯入 `liu.cin`
-3. 匯入完成後顯示「空白鍵送字 ｜ Shift 切英文 ｜ ,,H 說明」提示
-
-### 手動匯入字表
-
-設定程式 → 匯入字表⋯ → 選擇 `liu.cin`（裝置端編譯為 `.bin`，不上傳、不外流）
-
-## 使用
-
-詳見 [docs/usage.md](docs/usage.md)。
-
-### 快速參考
-
-| 操作 | 按鍵 |
-|------|------|
-| 送字 | 空白鍵 |
-| 選字 | 1–9 |
-| 補碼 | `v`/`r`/`s`/`f`（第 2–5 候選） |
-| 萬用碼 | `*`（Shift+8） |
-| 頓號 | `vv` + 空白鍵 |
-| 同音字 | `,,TO` |
-| 注音查碼 | `,,ZH` |
-| 中英切換 | 快按 Shift |
-| 暫時英文 | 按住 Shift |
-| 全型空格 | Shift+Space |
-| 命令模式 | `,,` + 命令碼 + Space |
-| 送出原始碼 | Enter |
 
 ## 移除
 
@@ -182,7 +171,32 @@ cd yabomish && ./yabomish.sh
 | `user_phrases.txt` | 使用者自訂詞組 |
 | `debug.log` | Debug 日誌（開啟時） |
 
+## 資料來源
+
+| 資料 | 來源 | 授權 |
+|------|------|------|
+| 注音對照表 | [威注音 VanguardLexicon](https://atomgit.com/vChewing/vChewing-VanguardLexicon) | MIT |
+| 繁簡對照表 | [OpenCC](https://github.com/BYVoid/OpenCC) | Apache 2.0 |
+| 成語 | 教育部成語典 | 政府開放資料 |
+| 台灣俗諺 | [教育部台灣閩南語常用詞辭典](https://sutian.moe.edu.tw/) | 政府開放資料 |
+| 客語辭典 | [教育部臺灣客語辭典](https://hakkadict.moe.edu.tw/)（六腔） | 政府開放資料 |
+| 台灣地名 | [教育部本土語言標注臺灣地名](https://language.moe.gov.tw/) | CC-BY 3.0 TW |
+| 台語學科 | [教育部臺灣台語學科術語](https://stti.moe.edu.tw/) | CC-BY 3.0 TW |
+| 兩岸用詞對照 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
+| 專業詞典 ×28 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
+| 歇後語 | [chinese-xinhua](https://github.com/pwxcoo/chinese-xinhua) | MIT |
+| 韓語漢字詞 | [Kengdic](https://github.com/garfieldnate/kengdic) | MPL 2.0 / LGPL 2.0+ |
+| 維基語料 | 中文維基百科 zhwiki dump | CC-BY-SA 3.0 |
+| 新聞詞頻 | 國家教育研究院 新聞語料庫 | 政府開放資料 |
+| 萌典字頻 | [萌典](https://www.moedict.tw/) | CC0 |
+| Emoji | [Unicode CLDR](https://cldr.unicode.org/) | Unicode License |
+
+明碼語料及各自的授權、格式、build 指令詳見 [`yabomish_data/README.md`](yabomish_data/README.md)。
+
 ## 架構
+
+<details>
+<summary>展開看程式碼架構</summary>
 
 ```
 YabomishIM/Sources/
@@ -224,50 +238,26 @@ YabomishPrefs/Sources/             # 獨立設定程式（SwiftUI）
 ├── PinnedOrderSection.swift       # 固定同碼字排序 UI
 ├── DomainCardView.swift           # 詞庫卡片元件
 └── DomainData.swift               # 詞庫定義（6 一般 + 28 專業）
+
+tools/                             # 知識挖掘 Pipeline
+├── wiki_ngram_pipeline.py         # 維基 → ckip 斷詞 → n-gram 統計
+├── wiki_ner_pipeline.py           # 維基 → ckip NER → 實體抽取
+├── wiki_kg_pipeline.py            # NER × 條目標題 → 知識圖譜
+├── wiki_word_bigram.py            # 維基 → 詞級 bigram
+├── wiki_category_extract.py       # 維基分類抽取
+├── build_ime_db.py                # 組裝 → yabomish_ime.db
+├── build_wbmm.py                  # 詞頻 → WBMM 二進位格式
+├── build_zhuyin_tables.py         # 萌典 + 字頻 → 注音候選排序
+├── build_bigram_boost.py          # bigram 加權表
+├── build_jingjing.py              # 晶晶體詞典
+├── build_region_sets.py           # NAER 兩岸對照 → region_tw/cn.txt
+├── emoji_cin_patch.py             # Emoji 擴充表
+├── gen_pinyin_data.py             # 拼音對照表
+├── ime_prototype.py               # 排序引擎原型測試
+└── poc_char_embedding.py          # 字向量 PoC
 ```
 
-## 知識挖掘 Pipeline
-
-```
-tools/
-├── wiki_ngram_pipeline.py    # 維基 → ckip 斷詞 → n-gram 統計
-├── wiki_ner_pipeline.py      # 維基 → ckip NER → 實體抽取
-├── wiki_kg_pipeline.py       # NER × 條目標題 → 知識圖譜
-├── wiki_word_bigram.py       # 維基 → 詞級 bigram
-├── wiki_category_extract.py  # 維基分類抽取
-├── build_ime_db.py           # 組裝 → yabomish_ime.db
-├── build_wbmm.py             # 詞頻 → WBMM 二進位格式
-├── build_zhuyin_tables.py    # 萌典 + 字頻 → 注音候選排序
-├── build_bigram_boost.py     # bigram 加權表
-├── build_jingjing.py         # 晶晶體詞典
-├── build_region_sets.py      # NAER 兩岸對照 → region_tw/cn.txt
-├── emoji_cin_patch.py        # Emoji 擴充表
-├── gen_pinyin_data.py        # 拼音對照表
-├── ime_prototype.py          # 排序引擎原型測試
-└── poc_char_embedding.py     # 字向量 PoC
-```
-
-## 資料來源
-
-| 資料 | 來源 | 授權 |
-|------|------|------|
-| 注音對照表 | [威注音 VanguardLexicon](https://atomgit.com/vChewing/vChewing-VanguardLexicon) | MIT |
-| 繁簡對照表 | [OpenCC](https://github.com/BYVoid/OpenCC) | Apache 2.0 |
-| 成語 | 教育部成語典 | 政府開放資料 |
-| 台灣俗諺 | [教育部台灣閩南語常用詞辭典](https://sutian.moe.edu.tw/) | 政府開放資料 |
-| 客語辭典 | [教育部臺灣客語辭典](https://hakkadict.moe.edu.tw/)（六腔） | 政府開放資料 |
-| 台灣地名 | [教育部本土語言標注臺灣地名](https://language.moe.gov.tw/) | CC-BY 3.0 TW |
-| 台語學科 | [教育部臺灣台語學科術語](https://stti.moe.edu.tw/) | CC-BY 3.0 TW |
-| 兩岸用詞對照 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
-| 專業詞典 ×28 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
-| 歇後語 | [chinese-xinhua](https://github.com/pwxcoo/chinese-xinhua) | MIT |
-| 韓語漢字詞 | [Kengdic](https://github.com/garfieldnate/kengdic) | MPL 2.0 / LGPL 2.0+ |
-| 維基語料 | 中文維基百科 zhwiki dump | CC-BY-SA 3.0 |
-| 新聞詞頻 | 國家教育研究院 新聞語料庫 | 政府開放資料 |
-| 萌典字頻 | [萌典](https://www.moedict.tw/) | CC0 |
-| Emoji | [Unicode CLDR](https://cldr.unicode.org/) | Unicode License |
-
-明碼語料及各自的授權、格式、build 指令詳見 [`yabomish_data/README.md`](yabomish_data/README.md)。
+</details>
 
 ## 開發者的碎碎念
 
@@ -304,7 +294,7 @@ macOS 版暫時告一段落後，因為想用 iOS 版的 Yabomish，在處理的
 
 三層順序可拖拉調整，詞庫可逐一啟停。你的文化傾向與需求，由自己來排序。
 
-當然，你可以完全不用這些東西——安裝時選擇編譯 Lite 版本，跟上一版幾乎完全一樣，想打什麼就打什麼，不會跳出聯想詞，完全不會被語料攻擊。
+當然，你可以完全不用這些東西——安裝時選擇精簡版，跟上一版幾乎完全一樣，想打什麼就打什麼，不會跳出聯想詞，完全不會被語料攻擊。
 
 ---
 
