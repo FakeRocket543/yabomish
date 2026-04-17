@@ -545,6 +545,11 @@ extension YabomishInputController {
             engine.handleEscape()
             return true
         case 36: // Enter
+            if panel.isVisible_, let sel = panel.selectedCandidate() {
+                let idx = engine.currentCandidates.firstIndex(of: sel) ?? 0
+                engine.selectCandidate(at: idx)
+                return true
+            }
             if engine.composing.isEmpty { return false }
             engine.handleEnter()
             return true

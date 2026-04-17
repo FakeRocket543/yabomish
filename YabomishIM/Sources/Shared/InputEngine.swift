@@ -342,6 +342,14 @@ final class InputEngine {
             _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates()
             // Auto-exit zhuyin after committing
             _exitZhuyinModeImpl()
+        } else if _isSameSoundMode && !_sameSoundBase.isEmpty {
+            // Same-sound step 2: user picked a homophone
+            let char = _currentCandidates[index]
+            let codes = cinTable.reverseLookup(char)
+            delegate?.engineDidCommit(char)
+            if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
+            _sameSoundBase = ""; _composing = ""; _currentCandidates = []
+            delegate?.engineDidClearComposing(); _notifyCandidates()
         } else if _composing.isEmpty {
             // Bigram suggestion — commit directly
             _commitText(_currentCandidates[index])
@@ -740,6 +748,13 @@ final class InputEngine {
             if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
             _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates()
             _exitZhuyinModeImpl()
+        } else if _isSameSoundMode && !_sameSoundBase.isEmpty {
+            let char = _currentCandidates[index]
+            let codes = cinTable.reverseLookup(char)
+            delegate?.engineDidCommit(char)
+            if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
+            _sameSoundBase = ""; _composing = ""; _currentCandidates = []
+            delegate?.engineDidClearComposing(); _notifyCandidates()
         } else if _composing.isEmpty {
             _commitText(_currentCandidates[index])
         } else {
