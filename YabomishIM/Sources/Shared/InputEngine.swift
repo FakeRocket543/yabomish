@@ -221,7 +221,9 @@ final class InputEngine {
             }
             _dispatchCommaCommand(); return
         }
-        if _currentCandidates.isEmpty { return }
+        if _currentCandidates.isEmpty {
+            _resetComposing(); delegate?.engineDidClearComposing(); return
+        }
         _commitText(_currentCandidates[0])
     } }
 

@@ -650,8 +650,8 @@ extension YabomishInputController {
             newEngineLastShiftDown = event.timestamp
             newEngineShiftUsed = false
         } else if newEngineLastShiftDown > 0 {
-            if event.timestamp - newEngineLastShiftDown < 0.3 && !newEngineShiftUsed
-                && engine.composing.isEmpty {
+            if event.timestamp - newEngineLastShiftDown < 0.3 && !newEngineShiftUsed {
+                if !engine.composing.isEmpty { engine.handleEscape() }
                 engine.toggleEnglishMode()
             }
             newEngineLastShiftDown = 0
