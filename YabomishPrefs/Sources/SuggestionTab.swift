@@ -44,6 +44,9 @@ struct SuggestionTab: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                Label("語境切換", systemImage: "arrow.triangle.swap").font(Typo.h2)
+                ContextBar(store: store)
+                SectionDivider()
                 if !hasProDomains {
                     VStack(spacing: 8) {
                         Image(systemName: "shippingbox").font(.system(size: 32)).foregroundStyle(.secondary)

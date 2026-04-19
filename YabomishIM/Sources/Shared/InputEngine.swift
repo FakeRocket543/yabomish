@@ -578,6 +578,49 @@ final class InputEngine {
             }
             return
         }
+        if cmd == "sg" {
+            let on = !YabomishPrefs.suggestEnabled
+            YabomishPrefs.suggestEnabled = on
+            delegate?.engineDidShowToast(on ? "聯想 ON" : "聯想 OFF"); return
+        }
+        if cmd.hasPrefix("x") {
+            let sub = String(cmd.dropFirst())
+            if sub == "s" {
+                guard let code = YabomishPrefs.currentContext,
+                      var profile = ContextProfile.load(code: code) else {
+                    delegate?.engineDidShowToast("尚未選擇語境，無法儲存"); return
+                }
+                let snap = ContextProfile.snapshotCurrent()
+                profile.inputMode = _inputMode.rawValue
+                profile.suggestEnabled = snap.suggestEnabled
+                profile.suggestStrategy = snap.suggestStrategy
+                profile.charSuggest = snap.charSuggest
+                profile.wordCorpus = snap.wordCorpus
+                profile.regionVariant = snap.regionVariant
+                profile.fuzzyMatch = snap.fuzzyMatch
+                profile.autoCommit = snap.autoCommit
+                profile.domainOrder = snap.domainOrder
+                profile.domainEnabled = snap.domainEnabled
+                profile.save()
+                delegate?.engineDidShowToast("\(profile.icon) \(profile.name) 已儲存"); return
+            }
+            if sub == "i" {
+                if let code = YabomishPrefs.currentContext,
+                   let profile = ContextProfile.load(code: code) {
+                    delegate?.engineDidShowToast("\(profile.icon) \(profile.name)")
+                } else {
+                    delegate?.engineDidShowToast("無語境（使用預設設定）")
+                }
+                return
+            }
+            if sub.count == 2, let profile = ContextProfile.load(code: sub) {
+                YabomishPrefs.applyProfile(profile)
+                if let mode = InputMode(rawValue: profile.inputMode) { _inputMode = mode }
+                DomainOrderManager.shared.saveOrder(profile.domainOrder)
+                delegate?.engineDidShowToast("\(profile.icon) \(profile.name)"); return
+            }
+            delegate?.engineDidShowToast(sub.count == 2 ? "未知語境 ,,X\(sub.uppercased())" : "語境碼需 2 字母"); return
+        }
         if cmd == "c" { delegate?.engineDidShowToast(_currentModeLabel); return }
         if cmd == "zh" {
             _isZhuyinMode.toggle()
@@ -617,6 +660,8 @@ final class InputEngine {
             • ,,PYS 拼音(簡)  ,,PYT 拼音(繁)
             • ,,RS 重置字頻  ,,RL 重載字表
             • ,,PIN 固定同碼字排序  ,,UNPINx 解除
+            • ,,SG 聯想開關
+            • ,,Xxx 切換語境  ,,XS 儲存  ,,XI 顯示
             • ,,C 顯示目前模式
             • ,,H 顯示本說明
 

@@ -120,6 +120,13 @@ import Foundation
         set { withMutation(keyPath: \.syncFolder) { ud.set(newValue, forKey: "syncFolder") }; postChange() }
     }
 
+    // MARK: - Context Switcher
+
+    var currentContext: String? {
+        get { access(keyPath: \.currentContext); return ud.string(forKey: "currentContext") }
+        set { withMutation(keyPath: \.currentContext) { ud.set(newValue, forKey: "currentContext") }; postChange() }
+    }
+
     // MARK: - Domain enable/disable (dynamic keys, tracked)
 
     var domainStates: [String: Bool] = [:] {

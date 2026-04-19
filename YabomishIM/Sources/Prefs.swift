@@ -198,4 +198,26 @@ struct YabomishPrefs {
         get { defaults.string(forKey: "syncFolder") }
         set { defaults.set(newValue, forKey: "syncFolder") }
     }
+
+    // MARK: - Context Switcher
+
+    static var currentContext: String? {
+        get { defaults.string(forKey: "currentContext") }
+        set { defaults.set(newValue, forKey: "currentContext") }
+    }
+
+    static func applyProfile(_ profile: ContextProfile) {
+        suggestEnabled = profile.suggestEnabled
+        suggestStrategy = profile.suggestStrategy
+        charSuggest = profile.charSuggest
+        wordCorpus = profile.wordCorpus
+        regionVariant = profile.regionVariant
+        fuzzyMatch = profile.fuzzyMatch
+        autoCommit = profile.autoCommit
+        defaults.set(profile.domainOrder, forKey: "domainOrder")
+        for (key, val) in profile.domainEnabled {
+            setDomainEnabled(key, val)
+        }
+        currentContext = profile.code
+    }
 }
