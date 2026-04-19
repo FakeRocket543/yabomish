@@ -19,9 +19,10 @@ struct ShortcutTab: View {
     @State private var freeCount = 0
     @State private var corpusQuery = ""
     @State private var corpusResults: [CorpusHit] = []
+    @State private var importAlert: String?
 
     enum CodeStatus {
-        case empty, tooShort, available
+        case empty, tooShort, tooLong, available
         case existsInCIN(String), existsInShortcuts(String)
     }
 
@@ -79,6 +80,11 @@ struct ShortcutTab: View {
             loadShortcuts()
             countFreeCodes()
         }
+        .alert("匯入結果", isPresented: Binding(get: { importAlert != nil }, set: { if !$0 { importAlert = nil } })) {
+            Button("好") { importAlert = nil }
+        } message: {
+            Text(importAlert ?? "")
+        }
     }
 
     // MARK: - Add Section
@@ -112,7 +118,7 @@ struct ShortcutTab: View {
             HStack {
                 Spacer()
                 Button("＋ 新增") { addShortcut() }
-                    .disabled(code.count < 2 || content.isEmpty)
+                    .disabled(code.count < 2 || code.count > 4 || content.isEmpty)
             }
         }
     }
@@ -122,6 +128,7 @@ struct ShortcutTab: View {
         switch codeStatus {
         case .empty: EmptyView()
         case .tooShort: Text("至少 2 碼").foregroundStyle(.secondary).font(Typo.caption)
+        case .tooLong: Text("最多 4 碼").foregroundStyle(.secondary).font(Typo.caption)
         case .available: Text("✓ 可用").foregroundStyle(Typo.ok).font(Typo.caption)
         case .existsInCIN(let s): Text("字表已有：\(s)").foregroundStyle(Typo.warn).font(Typo.caption)
         case .existsInShortcuts(let s): Text("已有快捷碼，將覆蓋：\(s)").foregroundStyle(Typo.warn).font(Typo.caption)
@@ -235,6 +242,7 @@ struct ShortcutTab: View {
         let c = code.lowercased().trimmingCharacters(in: .whitespaces)
         guard !c.isEmpty else { codeStatus = .empty; return }
         guard c.count >= 2 else { codeStatus = .tooShort; return }
+        guard c.count <= 4 else { codeStatus = .tooLong; return }
         if let existing = shortcuts.first(where: { $0.code == c }) {
             codeStatus = .existsInShortcuts(existing.content)
             return
@@ -255,22 +263,26 @@ struct ShortcutTab: View {
     }
 
     static func loadCINCodes() -> Set<String> {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Yabomish").path
         let paths = [
+            appSupport + "/liu.bin",
             "/Library/Input Methods/YabomishIM.app/Contents/Resources/liu.bin",
             NSHomeDirectory() + "/Library/YabomishIM/liu.bin",
         ]
         guard let path = paths.first(where: { FileManager.default.fileExists(atPath: $0) }),
               let data = try? Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe),
-              data.count >= 16,
-              data[0] == 0x43, data[1] == 0x49, data[2] == 0x4E, data[3] == 0x42
+              data.count >= 128,
+              data[0] == 0x43, data[1] == 0x49, data[2] == 0x4E, data[3] == 0x4D
         else { return [] }
         let entryCount = Int(data.u32(4))
-        let codesOff = Int(data.u32(8))
+        let codesOff = Int(data.u32(96))
+        let stringsOff = Int(data.u32(104))
         var codes = Set<String>()
         for i in 0..<entryCount {
             let eo = codesOff + i * 6
             guard eo + 6 <= data.count else { break }
-            let so = Int(data.u32(eo))
+            let so = stringsOff + Int(data.u32(eo))
             let sl = Int(data.u16(eo + 4))
             guard so + sl <= data.count else { continue }
             if let s = String(data: data[so..<so+sl], encoding: .ascii) {
@@ -296,19 +308,36 @@ struct ShortcutTab: View {
         guard panel.runModal() == .OK, let url = panel.url,
               let text = try? String(contentsOf: url, encoding: .utf8) else { return }
         let incoming = text.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line -> (String, String)? in
-            let parts = line.split(separator: "\t", maxSplits: 1)
+            let s = line.trimmingCharacters(in: .whitespaces)
+            if s.isEmpty || s.hasPrefix("#") { return nil }
+            let parts = s.split(separator: "\t", maxSplits: 1)
             guard parts.count == 2 else { return nil }
-            return (String(parts[0]), String(parts[1]))
+            return (String(parts[0]).lowercased(), String(parts[1]))
         }
+        let cin = Self.getCINCodes()
+        var added = 0, updated = 0, skippedLen: [String] = [], skippedCIN: [String] = []
         for (c, v) in incoming {
+            if c.count < 2 || c.count > 4 { skippedLen.append(c); continue }
+            if cin.contains(c) { skippedCIN.append(c); continue }
             if let idx = shortcuts.firstIndex(where: { $0.code == c }) {
-                shortcuts[idx] = (code: c, content: v)
+                shortcuts[idx] = (code: c, content: v); updated += 1
             } else {
-                shortcuts.append((code: c, content: v))
+                shortcuts.append((code: c, content: v)); added += 1
             }
         }
         saveShortcuts()
         countFreeCodes()
+        // Build summary
+        var msg = "新增 \(added) 筆、覆蓋 \(updated) 筆"
+        if !skippedLen.isEmpty {
+            msg += "\n略過（長度不符）：\(skippedLen.prefix(5).joined(separator: "、"))"
+            if skippedLen.count > 5 { msg += " 等 \(skippedLen.count) 筆" }
+        }
+        if !skippedCIN.isEmpty {
+            msg += "\n略過（字表衝突）：\(skippedCIN.prefix(5).joined(separator: "、"))"
+            if skippedCIN.count > 5 { msg += " 等 \(skippedCIN.count) 筆" }
+        }
+        importAlert = msg
     }
 
     private func exportShortcuts() {
