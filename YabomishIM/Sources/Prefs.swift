@@ -215,6 +215,10 @@ struct YabomishPrefs {
         fuzzyMatch = profile.fuzzyMatch
         autoCommit = profile.autoCommit
         defaults.set(profile.domainOrder, forKey: "domainOrder")
+        // Clear all domain toggles first, then apply profile's
+        for (key, _) in defaults.dictionaryRepresentation() where key.hasPrefix("domain_") && !key.hasSuffix("_pri") {
+            defaults.set(false, forKey: key)
+        }
         for (key, val) in profile.domainEnabled {
             setDomainEnabled(key, val)
         }

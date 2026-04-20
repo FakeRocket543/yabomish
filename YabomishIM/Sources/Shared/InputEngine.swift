@@ -9,6 +9,7 @@ protocol InputEngineDelegate: AnyObject {
     func engineDidCommitPair(_ left: String, _ right: String)
     func engineDidClearComposing()
     func engineDidShowToast(_ text: String)
+    func engineDidShowCodeHint(_ text: String, duration: Double)
     func engineDidDeleteBack()
     func engineDidSuggest(_ suggestions: [String])
 }
@@ -151,7 +152,7 @@ final class InputEngine {
         }
 
         // ,, command: second comma
-        if _composing == "," && char == "," && !_isSameSoundMode {
+        if _composing == "," && char == "," {
             _isInCommaCommand = true; _commaCommandBuffer = ""; _composing = ",,"
             _notifyComposing(); return
         }
@@ -346,7 +347,7 @@ final class InputEngine {
             let char = String(full.prefix(1))
             let codes = cinTable.reverseLookup(char)
             _commitText(char)
-            if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
+            if !codes.isEmpty { delegate?.engineDidShowCodeHint("\(char) → \(codes.joined(separator: " / "))", duration: 3.0) }
             _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates()
             // Auto-exit zhuyin after committing
             _exitZhuyinModeImpl()
@@ -355,7 +356,7 @@ final class InputEngine {
             let char = _currentCandidates[index]
             let codes = cinTable.reverseLookup(char)
             delegate?.engineDidCommit(char)
-            if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
+            if !codes.isEmpty { delegate?.engineDidShowCodeHint("\(char) → \(codes.joined(separator: " / "))", duration: 3.0) }
             _sameSoundBase = ""; _composing = ""; _currentCandidates = []
             delegate?.engineDidClearComposing(); _notifyCandidates()
         } else if _composing.isEmpty {
@@ -612,6 +613,19 @@ final class InputEngine {
                     delegate?.engineDidShowToast("\(profile.icon) \(profile.name)")
                 } else {
                     delegate?.engineDidShowToast("無語境（使用預設設定）")
+                }
+                return
+            }
+            if sub == "rs" {
+                if let profile = ContextProfile.load(code: "df") {
+                    YabomishPrefs.applyProfile(profile)
+                    _inputMode = .t
+                    DomainOrderManager.shared.saveOrder(profile.domainOrder)
+                    delegate?.engineDidShowToast("\(profile.icon) \(profile.name)")
+                } else {
+                    YabomishPrefs.currentContext = nil
+                    _inputMode = .t
+                    delegate?.engineDidShowToast("語境已重置")
                 }
                 return
             }
@@ -920,7 +934,11 @@ final class InputEngine {
 
         if text.count == 1 && prefs.showCodeHint && MemoryBudget.canAfford(MemoryBudget.reverseTable) {
             let codes = cinTable.reverseLookup(text)
-            if !codes.isEmpty { delegate?.engineDidShowToast("\(text) → \(codes.joined(separator: " / "))") }
+            if !codes.isEmpty {
+                let hint = "\(text) → \(codes.joined(separator: " / "))"
+                let dur = (_isSameSoundMode || _isZhuyinMode) ? 3.0 : 1.5
+                delegate?.engineDidShowCodeHint(hint, duration: dur)
+            }
         }
 
         // 聯想

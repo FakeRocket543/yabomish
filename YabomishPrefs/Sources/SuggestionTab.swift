@@ -45,7 +45,22 @@ struct SuggestionTab: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Label("語境切換", systemImage: "arrow.triangle.swap").font(Typo.h2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("一鍵切換輸入模式、聯想策略、詞庫組合與地區用詞。")
+                        .font(Typo.body)
+                    Text("點擊切換 ｜ 右鍵編輯或複製 ｜ 輸入法中 ,,X + 碼 切換（如 ,,XTW）")
+                        .font(Typo.hint).foregroundStyle(.secondary)
+                    Text(",,XRS 重置為預設 ｜ ,,XS 儲存當前設定 ｜ ,,XI 顯示當前語境")
+                        .font(Typo.hint).foregroundStyle(.secondary)
+                }
                 ContextBar(store: store)
+                SectionDivider()
+                Label("用詞習慣", systemImage: "map").font(Typo.h2)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    regionCard("tw", label: "臺灣用詞", icon: "漢", desc: "臺灣慣用詞優先")
+                    regionCard("cn", label: "中式用詞", icon: "汉", desc: "中式慣用詞優先")
+                }
+
                 SectionDivider()
                 if !hasProDomains {
                     VStack(spacing: 8) {
@@ -342,5 +357,28 @@ struct SuggestionTab: View {
         loadOrder()
         generalOrder = DomainData.generalDomains
         proOrder = DomainData.proDomains
+    }
+
+    @ViewBuilder
+    private func regionCard(_ id: String, label: String, icon: String, desc: String) -> some View {
+        let selected = store.regionVariant == id
+        Button { store.regionVariant = id } label: {
+            VStack(spacing: 5) {
+                Text(icon)
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundStyle(selected ? Typo.orange : .secondary)
+                Text(label).font(Typo.cardTitle)
+                    .foregroundStyle(selected ? .primary : .secondary).lineLimit(1)
+                Text(desc).font(Typo.cardDesc)
+                    .foregroundStyle(selected ? .secondary : .tertiary).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, minHeight: 90)
+            .background(RoundedRectangle(cornerRadius: 10)
+                .fill(selected ? Typo.orange.opacity(0.18) : Typo.cardOff))
+            .overlay(RoundedRectangle(cornerRadius: 10)
+                .stroke(selected ? Typo.orange.opacity(0.7) : Typo.strokeOff,
+                        lineWidth: selected ? 1.5 : 1))
+        }
+        .buttonStyle(.plain)
     }
 }

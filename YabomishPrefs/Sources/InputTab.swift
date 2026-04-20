@@ -23,11 +23,6 @@ private let panelOptions: [InputOption] = [
     .init(id: "fixed",  label: "固定位置", icon: "rectangle.bottomhalf.filled", desc: "選字窗固定底部"),
 ]
 
-private let regionOptions: [InputOption] = [
-    .init(id: "tw", label: "臺灣用詞", icon: "漢", desc: "臺灣慣用詞優先"),
-    .init(id: "cn", label: "中式用詞", icon: "汉", desc: "中式慣用詞優先"),
-]
-
 struct InputTab: View {
     @Bindable var store: PrefsStore
 
@@ -65,14 +60,6 @@ struct InputTab: View {
                 Text("點擊卡片啟用／停用功能。")
                     .font(Typo.hint).foregroundStyle(.secondary)
 
-                Label("用詞習慣", systemImage: "map").font(Typo.h2)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    ForEach(regionOptions) { opt in
-                        regionCard(opt)
-                    }
-                }
-
-                SectionDivider()
                 Label("選字窗", systemImage: "keyboard").font(Typo.h2)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     ForEach(panelOptions) { opt in
@@ -171,33 +158,6 @@ struct InputTab: View {
                 .fill(selected ? Typo.gold.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
                 .stroke(selected ? Typo.gold.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: selected ? 1.5 : 1))
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private func regionCard(_ opt: InputOption) -> some View {
-        let selected = store.regionVariant == opt.id
-        Button { store.regionVariant = opt.id } label: {
-            VStack(spacing: 5) {
-                Text(opt.icon)
-                    .font(.system(size: 28, weight: .bold, design: .serif))
-                    .foregroundStyle(selected ? Typo.orange : .secondary)
-                Text(opt.label)
-                    .font(Typo.cardTitle)
-                    .foregroundStyle(selected ? .primary : .secondary)
-                    .lineLimit(1)
-                Text(opt.desc)
-                    .font(Typo.cardDesc)
-                    .foregroundStyle(selected ? .secondary : .tertiary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, minHeight: 90)
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.orange.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.orange.opacity(0.7) : Typo.strokeOff,
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)

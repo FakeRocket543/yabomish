@@ -822,6 +822,10 @@ extension YabomishInputController: InputEngineDelegate {
         showModeToast(text)
     }
 
+    func engineDidShowCodeHint(_ text: String, duration: Double) {
+        showCodeHintToast(text, duration: duration)
+    }
+
     func engineDidDeleteBack() {
         guard let client = engineClient else { return }
         let sel = client.selectedRange()

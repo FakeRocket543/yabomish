@@ -57,7 +57,7 @@ enum DomainData {
         .init(id: "domain_eng", file: "terms_eng", label: "土木水利", icon: "wrench.and.screwdriver", desc: "土木水利工業", group: .professional, category: .infoEng),
         .init(id: "domain_aero", file: "terms_aero", label: "航太", icon: "airplane", desc: "航空太空", group: .professional, category: .infoEng),
         .init(id: "domain_nuclear", file: "terms_nuclear", label: "核能", icon: "bolt.trianglebadge.exclamationmark", desc: "核能工程", group: .professional, category: .infoEng),
-        .init(id: "domain_textile", file: "terms_textile", label: "紡織食品", icon: "tshirt", desc: "紡織食品輕工", group: .professional, category: .infoEng),
+        .init(id: "domain_textile", file: "terms_textile", label: "輕工業", icon: "tshirt", desc: "紡織食品輕工", group: .professional, category: .infoEng),
         .init(id: "domain_mech", file: "terms_mech", label: "機械", icon: "gearshape.2", desc: "機械工程製造", group: .professional, category: .infoEng),
         // 自然科學
         .init(id: "domain_math", file: "terms_math", label: "數學", icon: "function", desc: "代數幾何統計", group: .professional, category: .science),

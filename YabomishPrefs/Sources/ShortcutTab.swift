@@ -393,9 +393,14 @@ struct ShortcutTab: View {
                         Divider()
                         // Rows
                         ForEach(found, id: \.label) { item in
-                            HStack(spacing: 0) {
+                            HStack(alignment: .top, spacing: 0) {
                                 Text(item.label).font(Typo.caption).frame(width: 120, alignment: .leading).lineLimit(1)
-                                Text(item.words.joined(separator: "、")).font(Typo.body).frame(maxWidth: .infinity, alignment: .leading).lineLimit(2)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    ForEach(item.words, id: \.self) { w in
+                                        Text(w).font(Typo.body)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             Divider()

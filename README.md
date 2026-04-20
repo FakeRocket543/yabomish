@@ -95,9 +95,10 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | `,,UNPINx` | 解除碼 x 的固定排序 |
 | `,,C` | 顯示當前模式 |
 | `,,SG` | 聯想開關 |
-| `,,Xxx` | 語境切換（x = 自訂碼） |
+| `,,Xxx` | 語境切換（預設：df/tw/ch/tc） |
 | `,,XS` | 儲存當前語境 |
 | `,,XI` | 顯示當前語境 |
+| `,,XRS` | 重置語境（= ,,XDF） |
 | `,,H` | 命令說明 |
 
 ### 聯想輸入
@@ -137,15 +138,19 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 
 獨立 GUI 設定 App，五個分頁：
 
-- **輸入** — 用詞習慣、選字窗模式（含 demo 預覽）、聯想輸入、自動送字、拆碼提示、注音反查、模糊匹配、標點配對、固定同碼字排序
-- **聯想與詞庫** — 語境切換器、三層順序拖拉、詞級語料來源切換、一般詞庫與專業詞典啟用／排序
+- **輸入** — 選字窗模式（含 demo 預覽）、聯想輸入、自動送字、拆碼提示、注音反查、模糊匹配、標點配對、固定同碼字排序
+- **聯想與詞庫** — 語境切換器、用詞習慣、三層順序拖拉、詞級語料來源切換、一般詞庫與專業詞典啟用／排序
 - **快捷碼** — 空碼綁定自訂文字／指令，新增與匯入時自動驗證碼長度（2–4 碼）及字表衝突
 - **外觀** — 字體大小（滑桿+即時預覽）、透明度、高對比模式、蝦頭方向、Debug 模式
 - **關於** — 使用方法、快捷鍵速查、語料來源與授權
 
-| 輸入 | 聯想與詞庫 | 專業詞典（28 本） |
-|:---:|:---:|:---:|
-| ![輸入](images/prefs-input.webp) | ![聯想與詞庫](images/prefs-suggestion.webp) | ![專業詞典](images/prefs-domains.webp) |
+| 輸入 | 聯想與詞庫 |
+|:---:|:---:|
+| ![輸入](docs/images/prefs-input.webp) | ![聯想與詞庫](docs/images/prefs-suggest-top.webp) |
+
+| 一般詞庫 + 專業詞典 | 專業詞典展開（28 本） |
+|:---:|:---:|
+| ![詞庫](docs/images/prefs-suggest-bottom.webp) | ![專業詞典](docs/images/prefs-pro-domains.webp) |
 
 | 快捷碼 | 外觀 | 關於 |
 |:---:|:---:|:---:|

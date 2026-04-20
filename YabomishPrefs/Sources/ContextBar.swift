@@ -5,6 +5,7 @@ struct ContextBar: View {
     @State private var profiles: [ContextProfile] = []
     @State private var showAdd = false
     @State private var deleteTarget: ContextProfile?
+    @State private var editTarget: ContextProfile?
     @State private var importAlert: String?
 
     // New profile form
@@ -32,6 +33,9 @@ struct ContextBar: View {
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
+                            Button("編輯⋯") { editTarget = p }
+                            Button("複製⋯") { copyProfile(p) }
+                            Divider()
                             Button("刪除「\(p.name)」", role: .destructive) { deleteTarget = p }
                         }
                     }
@@ -52,6 +56,7 @@ struct ContextBar: View {
             HStack(spacing: 12) {
                 Text(",,X + 碼切換").font(Typo.caption).foregroundStyle(.secondary)
                 Spacer()
+                Button("重置") { resetContext() }.font(Typo.caption)
                 Button("匯入⋯") { importProfile() }.font(Typo.caption)
                 Button("匯出⋯") { exportProfile() }.font(Typo.caption)
                     .disabled(store.currentContext == nil)
@@ -74,6 +79,12 @@ struct ContextBar: View {
             get: { importAlert != nil }, set: { if !$0 { importAlert = nil } }
         )) { Button("好") {} } message: { Text(importAlert ?? "") }
         .sheet(isPresented: $showAdd) { addSheet }
+        .sheet(item: $editTarget) { p in
+            ContextProfileEditor(profile: p, isActive: store.currentContext == p.code) { updated in
+                if store.currentContext == updated.code { applyProfile(updated) }
+                reload()
+            }
+        }
     }
 
     private var addSheet: some View {
@@ -130,13 +141,32 @@ struct ContextBar: View {
         store.fuzzyMatch = p.fuzzyMatch
         store.autoCommit = p.autoCommit
         store.domainOrder = p.domainOrder
+        for d in DomainData.allDomains { store.setDomainEnabled(d.id, false) }
         for (key, val) in p.domainEnabled { store.setDomainEnabled(key, val) }
         store.currentContext = p.code
     }
 
+    private func resetContext() {
+        if let p = ContextProfile.load(code: "df") { applyProfile(p) }
+        else { store.currentContext = nil }
+    }
+
+    private func copyProfile(_ p: ContextProfile) {
+        guard profiles.count < ContextProfile.maxProfiles else { return }
+        newName = p.name + " 副本"
+        newIcon = p.icon
+        newCode = ""
+        showAdd = true
+    }
+
     private func reload() {
         ContextProfile.createDefaults()
-        profiles = ContextProfile.loadAll().sorted { $0.code < $1.code }
+        profiles = ContextProfile.loadAll().sorted {
+            let order = ["df", "tw", "ch", "tc"]
+            let a = order.firstIndex(of: $0.code) ?? Int.max
+            let b = order.firstIndex(of: $1.code) ?? Int.max
+            return a == b ? $0.code < $1.code : a < b
+        }
     }
 
     private func exportProfile() {

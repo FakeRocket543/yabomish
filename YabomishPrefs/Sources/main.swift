@@ -29,6 +29,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
         editItem.submenu = editMenu
         let mainMenu = NSMenu()
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "關於 Yabomish 設定", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "結束 Yabomish 設定", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let appItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        appItem.submenu = appMenu
+        mainMenu.addItem(appItem)
         mainMenu.addItem(editItem)
         NSApp.mainMenu = mainMenu
 

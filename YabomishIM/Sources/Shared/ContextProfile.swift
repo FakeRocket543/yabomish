@@ -19,7 +19,7 @@ struct ContextProfile: Codable, Identifiable {
     var domainOrder: [String] = []
     var domainEnabled: [String: Bool] = [:]
 
-    static let reservedCodes: Set<String> = ["xs", "xi"]
+    static let reservedCodes: Set<String> = ["xs", "xi", "rs"]
     static let maxProfiles = 10
 
     // MARK: - Paths
@@ -95,18 +95,23 @@ struct ContextProfile: Codable, Identifiable {
         guard files.isEmpty else { return }
 
         let defaults: [ContextProfile] = [
-            ContextProfile(name: "一般", icon: "💬", code: "gn",
+            ContextProfile(name: "預設", icon: "⌨️", code: "df",
                            suggestStrategy: "general",
-                           domainOrder: ["domain_phrases", "domain_chengyu", "domain_ner"],
-                           domainEnabled: ["domain_phrases": true, "domain_chengyu": true, "domain_ner": true]),
-            ContextProfile(name: "工作", icon: "🏢", code: "wk",
-                           suggestStrategy: "domain",
-                           domainOrder: ["domain_jingjing", "domain_biz", "domain_it"],
-                           domainEnabled: ["domain_jingjing": true, "domain_biz": true, "domain_it": true]),
-            ContextProfile(name: "簡中", icon: "🇨🇳", code: "sc", inputMode: "s",
+                           domainOrder: [],
+                           domainEnabled: [:]),
+            ContextProfile(name: "台式", icon: "🇹🇼", code: "tw",
+                           suggestStrategy: "general",
+                           domainOrder: ["domain_phrases", "domain_chengyu", "domain_ner", "domain_kautian", "domain_placename", "domain_jingjing"],
+                           domainEnabled: ["domain_phrases": true, "domain_chengyu": true, "domain_ner": true, "domain_kautian": true, "domain_placename": true, "domain_jingjing": true]),
+            ContextProfile(name: "中式", icon: "🇨🇳", code: "ch", inputMode: "s",
+                           suggestStrategy: "general",
                            regionVariant: "cn",
-                           domainOrder: ["domain_cn_slang"],
-                           domainEnabled: ["domain_cn_slang": true]),
+                           domainOrder: ["domain_phrases", "domain_cn_slang", "domain_ner"],
+                           domainEnabled: ["domain_phrases": true, "domain_cn_slang": true, "domain_ner": true]),
+            ContextProfile(name: "科技", icon: "💻", code: "tc",
+                           suggestStrategy: "domain",
+                           domainOrder: ["domain_it", "domain_ee", "domain_math", "domain_jingjing", "domain_ner"],
+                           domainEnabled: ["domain_it": true, "domain_ee": true, "domain_math": true, "domain_jingjing": true, "domain_ner": true]),
         ]
         for p in defaults { p.save() }
     }
