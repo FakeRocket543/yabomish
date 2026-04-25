@@ -8,6 +8,10 @@ MODE="${1:-screen}"
 SHOT_DIR="$HOME/Desktop"
 FILE="$SHOT_DIR/shot-$(date +%Y%m%d-%H%M%S).png"
 
+notify() {
+    osascript -e "display notification \"$1\" with title \"Yabomish\"" 2>/dev/null
+}
+
 case "$MODE" in
     screen)
         screencapture -x "$FILE"
@@ -22,13 +26,20 @@ for w in wl:
     if w.get('kCGWindowOwnerPID') == pid and w.get('kCGWindowLayer', 999) == 0:
         print(w['kCGWindowNumber']); break
 " 2>/dev/null)
-        if [[ -z "$WID" ]]; then echo "ERR: no window" >&2; exit 1; fi
+        if [[ -z "$WID" ]]; then notify "找不到當前視窗"; exit 1; fi
         screencapture -x -l"$WID" "$FILE"
         ;;
     select)
         screencapture -i "$FILE"
-        [[ -f "$FILE" ]] || exit 0
+        [[ -f "$FILE" ]] || exit 0  # user cancelled with Esc
         ;;
 esac
 
-[[ -f "$FILE" ]] && osascript -e "set the clipboard to (read POSIX file \"$FILE\" as «class PNGf»)"
+if [[ -f "$FILE" ]]; then
+    osascript -e "set the clipboard to (read POSIX file \"$FILE\" as «class PNGf»)"
+    notify "截圖已存到桌面"
+else
+    # screencapture failed silently — likely no screen recording permission
+    notify "截圖失敗 — 請到 系統設定 → 隱私權 → 螢幕錄製 開啟權限"
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+fi
