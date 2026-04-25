@@ -1,6 +1,5 @@
 {
-  "sf": { "type": "open", "app": "Safari" },
-  "gh": { "type": "open", "app": "Ghostty" },
-  "li": { "type": "open", "app": "LINE" },
-  "ob": { "type": "open", "app": "Obsidian" }
+  "ss": { "type": "shell", "run": "~/Library/Application\\ Support/Yabomish/yabomish_capture.sh screen" },
+  "ws": { "type": "shell", "run": "~/Library/Application\\ Support/Yabomish/yabomish_capture.sh window" },
+  "cs": { "type": "shell", "run": "~/Library/Application\\ Support/Yabomish/yabomish_capture.sh select" }
 }
