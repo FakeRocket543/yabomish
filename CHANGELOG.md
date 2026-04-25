@@ -2,6 +2,23 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.3.56] — 2026-04-25
+
+### 新功能
+- **剪貼簿處理指令** — `,,V` 貼上純文字（去格式）、`,,VT` 貼上簡→繁、`,,VS` 貼上繁→簡。透過模擬 Cmd+V 實現，換行正確保留
+- **自訂指令系統** — `commands.json` 外部設定檔，支援 `open`（開啟 app）和 `shell`（執行腳本）兩種類型。`,,RL` 重載時一併載入
+- **截圖指令範例** — `,,SS`（全螢幕）、`,,WS`（當前視窗）、`,,CS`（游標框選），存桌面 + 進剪貼簿
+
+### 修正
+- **CIN 匯入灰掉無法選取** — `.cin` 非系統認識的 UTType，`NSOpenPanel` 的 `allowedContentTypes` 改為 `[.plainText, .data]`，修復啟動引導和設定程式共 4 處
+- **CIN 字表路徑 fallback** — `cinPath` 加入舊路徑 `~/Library/YabomishIM/liu.cin` 的 fallback，避免升級後找不到字表
+- **NSOpenPanel 焦點問題** — 所有 `NSOpenPanel` / `NSSavePanel` 加入 `NSApp.activate(ignoringOtherApps: true)`
+
+### 移除
+- **`,,VM` 貼上轉 Markdown** — 能吃 Markdown 的 app 自己處理 HTML 貼上，不能吃的貼 Markdown 語法更亂，無實際落地場景
+
+---
+
 ## [0.3.55] — 2026-04-20
 
 ### 新功能

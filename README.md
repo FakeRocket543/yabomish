@@ -100,6 +100,9 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | `,,XI` | 顯示當前語境 |
 | `,,XRS` | 重置語境（= ,,XDF） |
 | `,,H` | 命令說明 |
+| `,,V` | 貼上純文字（去格式） |
+| `,,VT` | 貼上簡→繁 |
+| `,,VS` | 貼上繁→簡 |
 
 ### 聯想輸入
 
@@ -133,6 +136,23 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 - `~/Library/Application Support/Yabomish/tables/*.txt` — tab-separated `編碼<Tab>內容`
 - 修改後打 `,,RL` + Space 即時重載
 - 支援 iCloud 同步資料夾共用
+
+### 自訂指令（commands.json）
+
+`~/Library/Application Support/Yabomish/commands.json` 可定義 `,,` 開頭的自訂指令：
+
+```json
+{
+  "sf": { "type": "open", "app": "Safari" },
+  "gh": { "type": "open", "app": "Ghostty" },
+  "ss": { "type": "shell", "run": "screencapture -x ~/Desktop/shot-$(date +%s).png" }
+}
+```
+
+- `open` — 開啟/切換到指定 app
+- `shell` — 執行任意 shell 命令（5 秒超時）
+- `,,RL` 重載字表時一併重載自訂指令
+- 內建指令優先於自訂指令
 
 ## 設定程式（YabomishPrefs.app）
 
@@ -177,6 +197,7 @@ cd yabomish && ./yabomish.sh
 | `freq.db` | 字頻學習資料（SQLite WAL） |
 | `tables/` | 擴充表資料夾 |
 | `tables/user_shortcuts.txt` | 使用者自訂快捷碼 |
+| `commands.json` | 自訂 `,,` 指令設定檔 |
 | `user_phrases.txt` | 使用者自訂詞組 |
 | `debug.log` | Debug 日誌（開啟時） |
 

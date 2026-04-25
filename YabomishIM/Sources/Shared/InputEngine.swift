@@ -12,6 +12,7 @@ protocol InputEngineDelegate: AnyObject {
     func engineDidShowCodeHint(_ text: String, duration: Double)
     func engineDidDeleteBack()
     func engineDidSuggest(_ suggestions: [String])
+    func engineDidPasteText(_ text: String)
 }
 
 final class InputEngine {
@@ -42,6 +43,7 @@ final class InputEngine {
         self.suggestionEngine = suggestionEngine
         self.prefs = prefs
         self.ranker = CandidateRanker(wikiCorpus: wikiCorpus, prefs: prefs)
+        CommaCommandRunner.reload()
     }
 
     // MARK: - State
@@ -558,7 +560,7 @@ final class InputEngine {
             "t": .t, "s": .s, "sp": .sp, "sl": .sl, "ts": .ts, "st": .st, "j": .j
         ]
         if cmd == "rs" { freqTracker.reset(); delegate?.engineDidShowToast("字頻已重置"); return }
-        if cmd == "rl" { cinTable.reload(); delegate?.engineDidShowToast("字表已重載"); return }
+        if cmd == "rl" { cinTable.reload(); CommaCommandRunner.reload(); delegate?.engineDidShowToast("字表已重載"); return }
         if cmd == "pin" {
             _isZhuyinMode = false; _clearZhuyinSlots()
             _isSameSoundMode = false; _sameSoundBase = ""
@@ -637,6 +639,19 @@ final class InputEngine {
             }
             delegate?.engineDidShowToast(sub.count == 2 ? "未知語境 ,,X\(sub.uppercased())" : "語境碼需 2 字母"); return
         }
+        // ── 剪貼簿處理 ,,v 系列 ──
+        if cmd == "v" || cmd == "vt" || cmd == "vs" {
+            guard let text = ClipboardProcessor.plainText(), !text.isEmpty else {
+                delegate?.engineDidShowToast("剪貼簿為空"); return
+            }
+            let result: String
+            switch cmd {
+            case "vt":  result = ClipboardProcessor.toTraditional(text)
+            case "vs":  result = ClipboardProcessor.toSimplified(text)
+            default:    result = text
+            }
+            delegate?.engineDidPasteText(result); return
+        }
         if cmd == "c" { delegate?.engineDidShowToast(_currentModeLabel); return }
         if cmd == "zh" {
             _isZhuyinMode.toggle()
@@ -680,6 +695,14 @@ final class InputEngine {
             • ,,Xxx 切換語境  ,,XS 儲存  ,,XI 顯示
             • ,,C 顯示目前模式
             • ,,H 顯示本說明
+
+            ▎剪貼簿處理
+            • ,,V 貼上純文字（去格式）
+            • ,,VT 貼上簡→繁  ,,VS 貼上繁→簡
+
+            ▎自訂指令
+            • 設定檔：~/Library/Application Support/Yabomish/commands.json
+            • ,,RL 重載字表及自訂指令
 
             ▎候選字區
             • 空閒時顯示目前輸入法模式
@@ -725,6 +748,10 @@ final class InputEngine {
             }
             return
         }
+        // ── 外部指令 commands.json ──
+        if CommaCommandRunner.tryExecute(cmd, toast: { [weak self] msg in
+            DispatchQueue.main.async { self?.delegate?.engineDidShowToast(msg) }
+        }) { return }
         guard let mode = modeMap[cmd] else {
             delegate?.engineDidShowToast("未知命令 ,,\(cmd.uppercased())\n輸入 ,,H 查看說明"); return
         }

@@ -172,6 +172,7 @@ struct ContextBar: View {
     private func exportProfile() {
         guard let code = store.currentContext, let p = ContextProfile.load(code: code),
               let data = try? JSONEncoder().encode(p) else { return }
+        NSApp.activate(ignoringOtherApps: true)
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "yabomish_語境_\(p.name).json"
         panel.allowedContentTypes = [.json]
@@ -180,8 +181,10 @@ struct ContextBar: View {
     }
 
     private func importProfile() {
+        NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
+        panel.allowsOtherFileTypes = true
         guard panel.runModal() == .OK, let url = panel.url,
               let data = try? Data(contentsOf: url),
               let p = try? JSONDecoder().decode(ContextProfile.self, from: data) else { return }

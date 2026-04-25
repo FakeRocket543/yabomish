@@ -302,8 +302,10 @@ struct ShortcutTab: View {
     // MARK: - Import / Export
 
     private func importShortcuts() {
+        NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.plainText]
+        panel.allowedContentTypes = [.plainText, .data]
+        panel.allowsOtherFileTypes = true
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url,
               let text = try? String(contentsOf: url, encoding: .utf8) else { return }
@@ -341,6 +343,7 @@ struct ShortcutTab: View {
     }
 
     private func exportShortcuts() {
+        NSApp.activate(ignoringOtherApps: true)
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "yabomish_快捷碼.txt"
         panel.allowedContentTypes = [.plainText]

@@ -21,7 +21,14 @@ enum AppConstants {
     }
     #endif
 
-    static var cinPath: String { sharedDir + "/liu.cin" }
+    static var cinPath: String {
+        let primary = sharedDir + "/liu.cin"
+        if FileManager.default.fileExists(atPath: primary) { return primary }
+        // Legacy fallback: ~/Library/YabomishIM/liu.cin
+        let legacy = NSHomeDirectory() + "/Library/YabomishIM/liu.cin"
+        if FileManager.default.fileExists(atPath: legacy) { return legacy }
+        return primary
+    }
     static var freqPath: String { sharedDir + "/freq.db" }
     static var tablesDir: String { sharedDir + "/tables" }
 }

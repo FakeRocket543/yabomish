@@ -344,7 +344,9 @@ class YabomishInputController: IMKInputController {
             let panel = NSOpenPanel()
             panel.prompt = "匯入"
             panel.message = "選擇嘸蝦米字表 (.cin)"
-            panel.allowedContentTypes = [.plainText]
+            // FIX: .cin is not a system-recognized UTType — using .plainText alone
+            // causes .cin files to appear grayed-out. Use [.plainText, .data] to allow selection.
+            panel.allowedContentTypes = [.plainText, .data]
             panel.allowsOtherFileTypes = true
             panel.canChooseDirectories = false
             panel.canChooseFiles = true
@@ -831,6 +833,22 @@ extension YabomishInputController: InputEngineDelegate {
         let sel = client.selectedRange()
         if sel.location != NSNotFound && sel.location > 0 {
             client.insertText("", replacementRange: NSRange(location: sel.location - 1, length: 1))
+        }
+    }
+
+    func engineDidPasteText(_ text: String) {
+        // Replace clipboard with processed text, then simulate Cmd+V
+        // This preserves newlines better than insertText through IMK
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            let src = CGEventSource(stateID: .hidSystemState)
+            let vDown = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: true)
+            let vUp = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: false)
+            vDown?.flags = .maskCommand
+            vUp?.flags = .maskCommand
+            vDown?.post(tap: .cghidEventTap)
+            vUp?.post(tap: .cghidEventTap)
         }
     }
 

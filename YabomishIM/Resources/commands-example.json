@@ -1,0 +1,6 @@
+{
+  "sf": { "type": "open", "app": "Safari" },
+  "gh": { "type": "open", "app": "Ghostty" },
+  "li": { "type": "open", "app": "LINE" },
+  "ob": { "type": "open", "app": "Obsidian" }
+}
