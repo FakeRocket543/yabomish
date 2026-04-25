@@ -12,9 +12,7 @@ struct WelcomeView: View {
                     title: "匯入字表",
                     lines: [
                         "首次使用需要匯入嘸蝦米字表（liu.cin）。",
-                        "切換到 Yabomish 時會自動引導匯入，",
-                        "或將 liu.cin 放到以下路徑：",
-                        "~/Library/Application Support/Yabomish/",
+                        "切換到 Yabomish 時會自動引導匯入。",
                     ]
                 ).tag(0)
 
