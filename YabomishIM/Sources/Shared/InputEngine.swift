@@ -146,7 +146,9 @@ final class InputEngine {
 
         // Same-sound mode: direct code input (no ' prefix)
         if _isSameSoundMode && _composing.isEmpty && _sameSoundBase.isEmpty {
-            if char >= "a" && char <= "z" || char == "*" {
+            if char == "," {
+                // Don't intercept comma — let ,, command system handle it
+            } else if char >= "a" && char <= "z" || char == "*" {
                 _composing = String(char)
                 _refreshCandidates()
                 _notifyComposing(); _notifyCandidates(); return
