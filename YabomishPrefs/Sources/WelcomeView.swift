@@ -13,9 +13,20 @@ struct WelcomeView: View {
                     lines: [
                         "首次使用需要匯入嘸蝦米字表（liu.cin）。",
                         "切換到 Yabomish 時會自動引導匯入，",
-                        "或將 liu.cin 放到 ~/Library/YabomishIM/",
+                        "或將 liu.cin 放到以下路徑：",
+                        "~/Library/Application Support/Yabomish/",
                     ]
                 ).tag(0)
+
+                welcomePage(
+                    icon: "arrow.counterclockwise.circle",
+                    title: "登出再登入",
+                    lines: [
+                        "安裝完成後，請先登出再登入，",
+                        "讓系統重新載入輸入法清單。",
+                        "（僅首次安裝需要，之後更新不用）",
+                    ]
+                ).tag(1)
 
                 welcomePage(
                     icon: "keyboard",
@@ -25,7 +36,7 @@ struct WelcomeView: View {
                         "點「+」→ 找到「繁體中文」→「Yabomish」",
                         "加入後即可從狀態列切換使用。",
                     ]
-                ).tag(1)
+                ).tag(2)
 
                 welcomePage(
                     icon: "command",
@@ -37,7 +48,7 @@ struct WelcomeView: View {
                         "Shift+*　　　萬用字元",
                         "Tab / 方向鍵　翻頁選字",
                     ]
-                ).tag(2)
+                ).tag(3)
             }
             .tabViewStyle(.automatic)
 
@@ -49,14 +60,14 @@ struct WelcomeView: View {
                 Spacer()
                 // 頁碼指示
                 HStack(spacing: 6) {
-                    ForEach(0..<3) { i in
+                    ForEach(0..<4) { i in
                         Circle()
                             .fill(i == page ? Color.accentColor : Color.secondary.opacity(0.3))
                             .frame(width: 7, height: 7)
                     }
                 }
                 Spacer()
-                if page < 2 {
+                if page < 3 {
                     Button("下一步") { withAnimation { page += 1 } }
                         .keyboardShortcut(.defaultAction)
                 } else {
