@@ -118,11 +118,22 @@ install_im() {
 
     printf "${C}> 重新啟動輸入法...${N}\n"
     killall YabomishIM 2>/dev/null || true
+    sleep 1
+
+    # Force-register the input method so no logout needed
+    if [ -x /System/Library/Frameworks/InputMethodKit.framework/Versions/A/Resources/imklaunchagent ]; then
+        /System/Library/Frameworks/InputMethodKit.framework/Versions/A/Resources/imklaunchagent 2>/dev/null || true
+    fi
+
+    # Try launching directly
+    open "$INSTALL_DIR/YabomishIM.app" 2>/dev/null || true
     sleep 2
+
     if pgrep -q YabomishIM; then
-        ok "輸入法已重新啟動，不需登出"
+        ok "輸入法已啟動"
+        ok "到 系統設定 → 鍵盤 → 輸入方式 → + → 繁體中文 → Yabomish"
     else
-        warn "系統未自動重啟，請登出再登入"
+        warn "系統未自動啟動，請登出再登入"
     fi
 }
 
