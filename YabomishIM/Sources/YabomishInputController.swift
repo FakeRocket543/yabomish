@@ -378,6 +378,12 @@ class YabomishInputController: IMKInputController {
             try FileManager.default.copyItem(at: src, to: URL(fileURLWithPath: dst))
             try? FileManager.default.removeItem(atPath: dst + ".cache")
             cinTable.reload()
+            // Pre-build lazy caches now to avoid lag on first keystroke
+            DispatchQueue.global(qos: .userInitiated).async {
+                _ = cinTable.shortestCodesTable
+                _ = cinTable.longestCodesTable
+                DebugLog.log("YabomishIM: Pre-built code tables after import")
+            }
             hasPromptedImport = false
             showFirstUseTip = true
             DebugLog.log("YabomishIM: Imported CIN table from \(src.path)")
