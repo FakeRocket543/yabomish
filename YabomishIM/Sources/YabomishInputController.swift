@@ -543,6 +543,11 @@ extension YabomishInputController {
             return true
         case 53: // Escape
             if engine.composing.isEmpty {
+                // Exit special modes (same-sound, zhuyin, pinyin) even when composing is empty
+                if engine.isInSpecialMode {
+                    engine.handleEscape()
+                    return true
+                }
                 if !engine.currentCandidates.isEmpty || panel.isVisible_ {
                     engine.clearCandidates()
                     panel.hide()
