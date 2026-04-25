@@ -101,6 +101,8 @@ final class InputEngine {
     var isEnglishMode: Bool { sync { _isEnglishMode } }
     var isZhuyinMode: Bool { sync { _isZhuyinMode } }
     var isPinyinMode: Bool { sync { _isPinyinMode } }
+    var isSameSoundMode: Bool { sync { _isSameSoundMode } }
+    var isInSpecialMode: Bool { sync { _isZhuyinMode || _isPinyinMode || _isSameSoundMode } }
     var inputMode: InputMode { sync { _inputMode } }
     var selKeys: [Character] { cinTable.selKeys }
     var currentModeLabel: String { sync { _isEnglishMode ? "A" : (Self.modeLabels[_inputMode] ?? "繁中") } }
@@ -303,10 +305,15 @@ final class InputEngine {
     } }
 
     func handleEscape() { sync {
+        let wasSpecial = _isZhuyinMode || _isPinyinMode || _isSameSoundMode
         if _isPinMode { _isPinMode = false; _pinCode = ""; _pinPicked = [] }
         if _isInCommaCommand { _isInCommaCommand = false; _commaCommandBuffer = "" }
+        if _isZhuyinMode { _isZhuyinMode = false; _clearZhuyinSlots() }
+        if _isPinyinMode { _isPinyinMode = false; _pinyinBuffer = "" }
         _isSameSoundMode = false
+        _currentCandidates = []; _notifyCandidates()
         _resetComposing()
+        if wasSpecial { delegate?.engineDidShowToast(_currentModeLabel) }
     } }
 
     func handleWildcard() { sync {
