@@ -9,6 +9,7 @@ class MockEngineDelegate: InputEngineDelegate {
     var toasts: [String] = []
     var deleteBackCount = 0
     var suggestions: [[String]] = []
+    var pastedTexts: [String] = []
 
     func engineDidUpdateComposing(_ text: String) { composingUpdates.append(text) }
     func engineDidUpdateCandidates(_ candidates: [String]) { candidateUpdates.append(candidates) }
@@ -18,6 +19,7 @@ class MockEngineDelegate: InputEngineDelegate {
     func engineDidShowToast(_ text: String) { toasts.append(text) }
     func engineDidDeleteBack() { deleteBackCount += 1 }
     func engineDidSuggest(_ suggestions: [String]) { self.suggestions.append(suggestions) }
+    func engineDidPasteText(_ text: String) { pastedTexts.append(text) }
 
     func reset() {
         composingUpdates = []; candidateUpdates = []; commits = []

@@ -39,8 +39,14 @@ struct InputTab: View {
                             .font(Typo.body).foregroundStyle(.secondary)
                         HStack {
                             Button {
+                                // FIX: .cin is not a system-recognized UTType.
+                                // Using UTType(filenameExtension: "cin") caused .cin files
+                                // to appear grayed-out / unselectable in NSOpenPanel.
+                                // Solution: use broad types [.plainText, .data] + allowsOtherFileTypes.
+                                NSApp.activate(ignoringOtherApps: true)
                                 let panel = NSOpenPanel()
-                                panel.allowedContentTypes = [.init(filenameExtension: "cin")!, .plainText]
+                                panel.allowedContentTypes = [.plainText, .data]
+                                panel.allowsOtherFileTypes = true
                                 panel.message = "選擇嘸蝦米字表（.cin）或擴充表（.txt）"
                                 guard panel.runModal() == .OK, let url = panel.url else { return }
                                 let dest = NSHomeDirectory() + "/Library/YabomishIM/"

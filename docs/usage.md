@@ -72,6 +72,16 @@ Layer 3: 字級（bigram/trigram 預測下一字）
 | `,,C` | 顯示當前模式 |
 | `,,H` | 命令說明 |
 
+### 剪貼簿處理
+
+| 命令 | 功能 |
+|------|------|
+| `,,V` | 貼上純文字（去除所有格式） |
+| `,,VT` | 貼上並簡→繁轉換 |
+| `,,VS` | 貼上並繁→簡轉換 |
+
+透過替換剪貼簿內容後模擬 Cmd+V 實現，換行正確保留，適用於所有 app。
+
 ### 語境切換
 
 | 命令 | 功能 |
@@ -87,6 +97,23 @@ Layer 3: 字級（bigram/trigram 預測下一字）
 
 語境切換會一次替換：輸入模式、聯想策略、詞庫組合、地區用詞。
 在設定程式「聯想與詞庫」分頁中可管理語境（右鍵編輯、複製、刪除、匯入匯出）。
+
+### 自訂指令（commands.json）
+
+在 `~/Library/Application Support/Yabomish/commands.json` 定義自訂 `,,` 指令：
+
+```json
+{
+  "sf": { "type": "open", "app": "Safari" },
+  "gh": { "type": "open", "app": "Ghostty" },
+  "ss": { "type": "shell", "run": "screencapture -x ~/Desktop/shot-$(date +%s).png" }
+}
+```
+
+- `type: "open"` — 開啟/切換到指定 app
+- `type: "shell"` — 執行 shell 命令（5 秒超時，非同步）
+- `,,RL` 重載字表時一併重載自訂指令
+- 內建指令優先於自訂指令
 
 ## 查詢功能
 
