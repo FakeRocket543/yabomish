@@ -113,6 +113,10 @@ install_im() {
     # emoji.txt no longer deployed — emoji handled by emoji_char_map.json suggestion system
     [ -f "$ROOT/liu.cin" ] && [ ! -f "$USER_DIR/liu.cin" ] && cp "$ROOT/liu.cin" "$USER_DIR/"
 
+    # 自訂指令：部署 capture script + 預設 commands.json
+    cp "$IM_RES/yabomish_capture.sh" "$USER_DIR/" && chmod +x "$USER_DIR/yabomish_capture.sh"
+    [ ! -f "$USER_DIR/commands.json" ] && cp "$IM_RES/commands-example.json" "$USER_DIR/commands.json"
+
     ok "輸入法已安裝"
     [ -f "$USER_DIR/liu.cin" ] || [ -f "$USER_DIR/liu.bin" ] && ok "字表就緒" || warn "尚未偵測到字表，首次切換時會引導匯入"
 
