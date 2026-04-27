@@ -558,7 +558,17 @@ extension YabomishInputController {
             engine.handleEscape()
             return true
         case 36: // Enter
-            if engine.composing.isEmpty { return false }
+            if engine.composing.isEmpty && engine.currentCandidates.isEmpty { return false }
+            if engine.composing.isEmpty && !engine.currentCandidates.isEmpty {
+                // Suggestion/emoji mode — confirm highlighted candidate
+                if let selected = panel.selectedCandidate() {
+                    let idx = engine.currentCandidates.firstIndex(of: selected) ?? 0
+                    engine.selectCandidate(at: idx)
+                    return true
+                }
+                engine.clearCandidates(); panel.hide()
+                return true
+            }
             engine.handleEnter()
             return true
         default: break
@@ -566,7 +576,7 @@ extension YabomishInputController {
 
         // Arrow keys
         if panel.isVisible_ && (keyCode >= 123 && keyCode <= 126) {
-            if engine.composing.isEmpty {
+            if engine.composing.isEmpty && engine.currentCandidates.isEmpty {
                 engine.clearCandidates()
                 panel.hide()
                 return false
