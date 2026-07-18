@@ -307,7 +307,7 @@ final class CandidatePanel: NSPanel {
         }
     }
 
-    /// Navigate prev/next — caller uses this for arrow keys matching layout direction
+    /// Navigate prev/next — works for both vertical (up/down) and horizontal (left/right)
     func movePrev() { moveUp() }
     func moveNext() { moveDown() }
 
@@ -330,7 +330,9 @@ final class CandidatePanel: NSPanel {
         if isFixed || fallbackFixed { rebuildFixedLabel() } else { rebuildLabels() }
     }
 
-    // MARK: - Cursor mode (original vertical layout)
+    // MARK: - Cursor mode (vertical or horizontal layout)
+
+    private var cursorIsHorizontal: Bool { YabomishPrefs.cursorHorizontal }
 
     private func showCursor(at origin: NSPoint) {
         switchToCursorLayout()
@@ -342,6 +344,10 @@ final class CandidatePanel: NSPanel {
     private func switchToCursorLayout() {
         stackView.isHidden = false
         fixedLabel.isHidden = true
+        // Update orientation based on preference
+        stackView.orientation = cursorIsHorizontal ? .horizontal : .vertical
+        stackView.alignment = cursorIsHorizontal ? .centerY : .leading
+        stackView.spacing = cursorIsHorizontal ? 4 : 1
         NSLayoutConstraint.activate(stackConstraints)
         alphaValue = 1.0
         (contentView as? NSVisualEffectView)?.material = .popover
@@ -353,7 +359,7 @@ final class CandidatePanel: NSPanel {
         let hc = YabomishPrefs.highContrast
         let start = pageStart
         let end = min(start + pageSize, candidates.count)
-
+        let horizontal = cursorIsHorizontal
 
         for i in 0..<pageSize {
             let label = labels[i]
@@ -376,6 +382,12 @@ final class CandidatePanel: NSPanel {
                     label.backgroundColor = .clear
                     label.textColor = .labelColor
                 }
+                // Horizontal mode: add horizontal padding to each label
+                if horizontal {
+                    label.setContentHuggingPriority(.required, for: .horizontal)
+                } else {
+                    label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+                }
             } else {
                 label.isHidden = true
             }
@@ -384,7 +396,7 @@ final class CandidatePanel: NSPanel {
         let totalPages = (candidates.count + pageSize - 1) / pageSize
         if totalPages > 1 {
             let currentPage = pageStart / pageSize + 1
-            pageIndicator.stringValue = "  \(currentPage)/\(totalPages)"
+            pageIndicator.stringValue = horizontal ? "◀\(currentPage)/\(totalPages)▶" : "  \(currentPage)/\(totalPages)"
             pageIndicator.textColor = .secondaryLabelColor
             pageIndicator.isHidden = false
         } else {
@@ -393,11 +405,16 @@ final class CandidatePanel: NSPanel {
 
         layoutIfNeeded()
         let size = stackView.fittingSize
-        let maxW: CGFloat = 360
-        setContentSize(NSSize(width: min(max(size.width + 12, 80), maxW), height: size.height))
+        if horizontal {
+            let screen = effectiveScreen
+            let maxW = screen.frame.width * 0.8
+            setContentSize(NSSize(width: min(size.width + 16, maxW), height: max(size.height, 28)))
+        } else {
+            let maxW: CGFloat = 360
+            setContentSize(NSSize(width: min(max(size.width + 12, 80), maxW), height: size.height))
+        }
         throttledA11yNotify()
 
-        // 新增：通知 VoiceOver 狀態變更
         if let elem = contentView as? NSVisualEffectView {
             NSAccessibility.post(element: elem, notification: .valueChanged)
         }

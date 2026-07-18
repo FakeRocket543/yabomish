@@ -581,7 +581,7 @@ extension YabomishInputController {
                 panel.hide()
                 return false
             }
-            if panel.isFixedMode {
+            if panel.isFixedMode || YabomishPrefs.cursorHorizontal {
                 switch keyCode {
                 case 123: panel.movePrev(); return true
                 case 124: panel.moveNext(); return true
@@ -701,7 +701,7 @@ extension YabomishInputController {
                 return true
             }
             if keyCode == 49 { panel.pageDown(); return true }
-            if panel.isFixedMode {
+            if panel.isFixedMode || YabomishPrefs.cursorHorizontal {
                 if keyCode == 123 { panel.movePrev(); return true }
                 if keyCode == 124 { panel.moveNext(); return true }
                 if keyCode == 126 { panel.pageUp(); return true }
@@ -749,7 +749,7 @@ extension YabomishInputController {
                 return true
             }
             if keyCode == 49 { panel.pageDown(); return true }
-            if panel.isFixedMode {
+            if panel.isFixedMode || YabomishPrefs.cursorHorizontal {
                 if keyCode == 123 { panel.movePrev(); return true }
                 if keyCode == 124 { panel.moveNext(); return true }
                 if keyCode == 126 { panel.pageUp(); return true }

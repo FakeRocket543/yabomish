@@ -17,6 +17,12 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "panelPosition") }
     }
 
+    /// Cursor mode layout: when true, display candidates horizontally instead of vertically
+    static var cursorHorizontal: Bool {
+        get { defaults.object(forKey: "cursorHorizontal") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "cursorHorizontal") }
+    }
+
     // MARK: - Fixed-mode panel settings
 
     /// Horizontal alignment: "center", "left", "right"
