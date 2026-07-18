@@ -52,19 +52,36 @@ struct AppearanceTab: View {
                     }
                 }
 
-                // 預覽：游標模式（垂直）+ 固定模式（水平）
+                // 預覽：游標模式（垂直/水平）+ 固定模式（水平）
                 HStack(alignment: .top, spacing: 24) {
                     // 游標模式 demo
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("游標模式").font(Typo.caption).foregroundStyle(.secondary)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("1蝦").font(.system(size: store.fontSize))
-                            Text("2米").font(.system(size: store.fontSize)).foregroundStyle(.secondary)
-                            Text("3蟹").font(.system(size: store.fontSize)).foregroundStyle(.secondary)
+                        HStack(spacing: 6) {
+                            Text("游標模式").font(Typo.caption).foregroundStyle(.secondary)
+                            Toggle("橫向", isOn: $store.cursorHorizontal)
+                                .toggleStyle(.switch)
+                                .controlSize(.mini)
+                                .font(Typo.caption)
                         }
-                        .padding(8)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.15)))
+                        if store.cursorHorizontal {
+                            HStack(spacing: 8) {
+                                Text("1蝦").font(.system(size: store.fontSize))
+                                Text("2米").font(.system(size: store.fontSize)).foregroundStyle(.secondary)
+                                Text("3蟹").font(.system(size: store.fontSize)).foregroundStyle(.secondary)
+                            }
+                            .padding(8)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.15)))
+                        } else {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("1蝦").font(.system(size: store.fontSize))
+                                Text("2米").font(.system(size: store.fontSize)).foregroundStyle(.secondary)
+                                Text("3蟹").font(.system(size: store.fontSize)).foregroundStyle(.secondary)
+                            }
+                            .padding(8)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.15)))
+                        }
                     }
 
                     // 固定模式 demo

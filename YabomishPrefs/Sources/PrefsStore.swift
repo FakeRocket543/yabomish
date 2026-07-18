@@ -60,6 +60,10 @@ import Foundation
         get { access(keyPath: \.panelPosition); return ud.string(forKey: "panelPosition") ?? "cursor" }
         set { withMutation(keyPath: \.panelPosition) { ud.set(newValue, forKey: "panelPosition") }; postChange() }
     }
+    var cursorHorizontal: Bool {
+        get { access(keyPath: \.cursorHorizontal); return ud.object(forKey: "cursorHorizontal") as? Bool ?? false }
+        set { withMutation(keyPath: \.cursorHorizontal) { ud.set(newValue, forKey: "cursorHorizontal") }; postChange() }
+    }
     var fixedAlignment: String {
         get { access(keyPath: \.fixedAlignment); return ud.string(forKey: "fixedAlignment") ?? "center" }
         set { withMutation(keyPath: \.fixedAlignment) { ud.set(newValue, forKey: "fixedAlignment") }; postChange() }
