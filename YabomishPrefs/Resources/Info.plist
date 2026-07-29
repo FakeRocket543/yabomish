@@ -10,6 +10,10 @@
     <string>Yabomish 設定</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.3.57</string>
+    <key>CFBundleVersion</key>
+    <string>0.3.57</string>
     <key>CFBundleExecutable</key>
     <string>YabomishPrefs</string>
     <key>CFBundleIconFile</key>
