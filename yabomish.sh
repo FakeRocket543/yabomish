@@ -76,6 +76,12 @@ build_prefs() {
     cp "$PREFS_DIR/Resources/Info.plist" "$PREFS_APP/Contents/"
     cp "$PREFS_DIR/Resources/AppIcon.icns" "$PREFS_APP/Contents/Resources/"
 
+    local VER; VER=$(grep -m1 '^## \[' "$ROOT/CHANGELOG.md" | sed 's/.*\[\(.*\)\].*/\1/')
+    local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    local STAMP; STAMP=$(date +%Y%m%d.%H%M)
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$PREFS_APP/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$PREFS_APP/Contents/Info.plist"
+
     swiftc -module-name YabomishPrefs \
         -target arm64-apple-macos14.0 \
         -sdk "$(xcrun --show-sdk-path)" -O \

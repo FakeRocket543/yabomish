@@ -175,6 +175,14 @@ struct HelpTab: View {
                     .font(Typo.caption).foregroundStyle(.secondary)
 
                 HStack(spacing: 4) {
+                    Text("版本：").font(Typo.caption).foregroundStyle(.secondary)
+                    let info = Bundle.main.infoDictionary
+                    Text("\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))")
+                        .font(Typo.caption).monospacedDigit()
+                    Spacer()
+                }
+
+                HStack(spacing: 4) {
                     Text("原始碼：").font(Typo.caption).foregroundStyle(.secondary)
                     Link("github.com/FakeRocket543/yabomish",
                          destination: URL(string: "https://github.com/FakeRocket543/yabomish")!)
