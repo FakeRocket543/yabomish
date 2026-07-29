@@ -43,6 +43,7 @@ final class InputEngine {
         self.suggestionEngine = suggestionEngine
         self.prefs = prefs
         self.ranker = CandidateRanker(wikiCorpus: wikiCorpus, prefs: prefs)
+        DebugLog.log("YabomishKB: InputEngine init homophoneAutoExit=\(prefs.homophoneAutoExit)")
         CommaCommandRunner.reload()
     }
 
@@ -366,6 +367,7 @@ final class InputEngine {
             // Same-sound step 2: user picked a homophone
             let char = _currentCandidates[index]
             let codes = cinTable.reverseLookup(char)
+            DebugLog.log("YabomishKB: sameSound selectCandidate autoExit=\(prefs.homophoneAutoExit) base='\(_sameSoundBase)' char='\(char)'")
             delegate?.engineDidCommit(char)
             if !codes.isEmpty { delegate?.engineDidShowCodeHint("\(char) → \(codes.joined(separator: " / "))", duration: 3.0) }
             _sameSoundBase = ""; _composing = ""; _currentCandidates = []
@@ -373,6 +375,7 @@ final class InputEngine {
                 _isSameSoundMode = false
                 delegate?.engineDidShowToast(_currentModeLabel)
             }
+            DebugLog.log("YabomishKB: sameSound after select isSameSound=\(_isSameSoundMode)")
             delegate?.engineDidClearComposing(); _notifyCandidates()
         } else if _composing.isEmpty {
             // Bigram suggestion — commit directly
@@ -858,6 +861,7 @@ final class InputEngine {
         } else if _isSameSoundMode && !_sameSoundBase.isEmpty {
             let char = _currentCandidates[index]
             let codes = cinTable.reverseLookup(char)
+            DebugLog.log("YabomishKB: sameSound _selectCandidateImpl autoExit=\(prefs.homophoneAutoExit) base='\(_sameSoundBase)' char='\(char)'")
             delegate?.engineDidCommit(char)
             if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
             _sameSoundBase = ""; _composing = ""; _currentCandidates = []
@@ -865,6 +869,7 @@ final class InputEngine {
                 _isSameSoundMode = false
                 delegate?.engineDidShowToast(_currentModeLabel)
             }
+            DebugLog.log("YabomishKB: sameSound after _selectCandidateImpl isSameSound=\(_isSameSoundMode)")
             delegate?.engineDidClearComposing(); _notifyCandidates()
         } else if _composing.isEmpty {
             _commitText(_currentCandidates[index])
@@ -974,6 +979,7 @@ final class InputEngine {
                 _isSameSoundMode = false
                 delegate?.engineDidShowToast(_currentModeLabel)
             }
+            DebugLog.log("YabomishKB: commitText sameSound after isSameSound=\(_isSameSoundMode) autoExit=\(prefs.homophoneAutoExit)")
             delegate?.engineDidClearComposing()
         } else {
             _sameSoundBase = ""
