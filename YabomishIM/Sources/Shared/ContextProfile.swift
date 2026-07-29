@@ -65,8 +65,10 @@ struct ContextProfile: Codable, Identifiable {
 
     // MARK: - Snapshot current settings
 
+    private static let sharedDefaults = UserDefaults(suiteName: "com.yabomishim.inputmethod.YabomishIM") ?? UserDefaults.standard
+
     static func snapshotCurrent(name: String = "", icon: String = "", code: String = "") -> ContextProfile {
-        let ud = UserDefaults.standard
+        let ud = sharedDefaults
         var p = ContextProfile(name: name, icon: icon, code: code)
         p.suggestEnabled = ud.object(forKey: "suggestEnabled") as? Bool ?? true
         p.suggestStrategy = ud.string(forKey: "suggestStrategy") ?? "general"

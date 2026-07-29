@@ -3,7 +3,10 @@ import Cocoa
 
 /// User preferences stored in UserDefaults
 struct YabomishPrefs {
-    private static let defaults = UserDefaults.standard
+    /// Shared defaults using the same suite as YabomishPrefs, so that the
+    /// input method and the preferences app read/write the same keys.
+    private static let _standard = UserDefaults.standard
+    static let defaults = UserDefaults(suiteName: "com.yabomishim.inputmethod.YabomishIM") ?? _standard
 
     /// Auto-commit when single candidate and code cannot extend further
     static var autoCommit: Bool {
@@ -112,11 +115,38 @@ struct YabomishPrefs {
 
     /// Deprecated — 舊版用 bigramSuggest 控制所有聯想，已遷移。
     static func migrateLegacyPrefs() {
+        // One-time migration: copy old standard-only values into the shared suite
+        // so existing users keep their settings when the IM moves to the suite.
+        let migrationFlag = "yabomishMigratedToSuite_v1"
+        if !_standard.bool(forKey: migrationFlag) {
+            let knownKeys = [
+                "autoCommit", "panelPosition", "fixedAlignment", "fixedAlpha", "fixedYOffset",
+                "fontSize", "fixedFontSize", "showCodeHint", "zhuyinReverseLookup",
+                "toastFontSize", "showActivateToast", "menuBarLabel", "iconDirection",
+                "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
+                "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
+                "punctuationPairing", "debugMode", "highContrast", "syncFolder", "currentContext",
+                "domainOrder"
+            ]
+            for key in knownKeys {
+                if defaults.object(forKey: key) == nil, let value = _standard.object(forKey: key) {
+                    defaults.set(value, forKey: key)
+                }
+            }
+            for (key, value) in _standard.dictionaryRepresentation() where key.hasPrefix("domain_") {
+                if defaults.object(forKey: key) == nil {
+                    defaults.set(value, forKey: key)
+                }
+            }
+            _standard.set(true, forKey: migrationFlag)
+        }
+
         if let old = defaults.object(forKey: "bigramSuggest") as? Bool, old {
             if defaults.object(forKey: "charSuggest") == nil { charSuggest = true }
         }
         for key in ["bigramSuggest", "communityBoost", "contextMode", "wordSuggest", "chengyuFirst"] {
             defaults.removeObject(forKey: key)
+            _standard.removeObject(forKey: key)
         }
     }
 
