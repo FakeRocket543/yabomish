@@ -104,6 +104,12 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "homophoneMultiReading") }
     }
 
+    /// 同音字模式：選字送出後自動退出（預設關閉，維持既有行為）
+    static var homophoneAutoExit: Bool {
+        get { defaults.object(forKey: "homophoneAutoExit") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "homophoneAutoExit") }
+    }
+
     /// Deprecated — 舊版用 bigramSuggest 控制所有聯想，已遷移。
     static func migrateLegacyPrefs() {
         if let old = defaults.object(forKey: "bigramSuggest") as? Bool, old {
