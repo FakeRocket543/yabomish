@@ -2,7 +2,7 @@ import Foundation
 
 final class DomainOrderManager {
     static let shared = DomainOrderManager()
-    private let defaults = UserDefaults.standard
+    private let defaults = YabomishPrefs.defaults
     private let orderKey = "domainOrder"
 
     func orderedKeys(for group: [(key: String, file: String, label: String)]) -> [String] {
