@@ -2,10 +2,14 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [0.3.58] — 2026-07-18
+## [0.3.58] — 2026-07-29
 
 ### 新功能
-- **游標跟隨橫向模式** — 游標跟隨選字窗可切換為水平排列（設定程式 → 外觀 → 「橫向」開關），方向鍵自動適配：←→ 移動候選、↑↓ 翻頁（#7）
+- **同音字模式自動退出** — 新增 `homophoneAutoExit` 偏好設定（預設關閉）。開啟後，同音字查詢選字送出即自動退出同音字模式，符合傳統嘸蝦米「同音字」使用習慣
+- **版本號顯示** — Yabomish 設定程式的「關於」頁與標準 About panel 皆顯示版本號，回報問題時可直接取用
+
+### 改進
+- **版本來源統一** — `build_im` 與 `build_prefs` 皆以 `CHANGELOG.md` 首行版本為單一來源，同時寫入 `CFBundleShortVersionString` 與 `CFBundleVersion`
 
 ---
 
