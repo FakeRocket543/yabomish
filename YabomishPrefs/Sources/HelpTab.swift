@@ -5,6 +5,15 @@ struct HelpTab: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
 
+                // ── 版本資訊 ──
+                HStack(spacing: 4) {
+                    Text("Yabomish").font(Typo.h2)
+                    let info = Bundle.main.infoDictionary
+                    Text("\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))")
+                        .font(Typo.body).monospacedDigit().foregroundStyle(.secondary)
+                    Spacer()
+                }
+
                 // ── 使用方法 ──
 
                 Label("使用方法", systemImage: "book").font(Typo.h1)
@@ -29,6 +38,8 @@ struct HelpTab: View {
                 guide("同音字查詢", icon: "character.phonetic", steps: [
                     "打 ,,TO + Space 進入同音字模式",
                     "進入後每次送字都會列出該字的同音字",
+                    "用數字鍵選擇想送的同音字",
+                    "在「輸入」頁開啟「同音自動退出」後，選字會自動退出同音字模式",
                     "再打 ,,TO + Space 退出同音字模式",
                 ])
 
@@ -173,14 +184,6 @@ struct HelpTab: View {
 
                 Text("本程式碼以 MIT 授權釋出。各語料依其原始授權條款使用。")
                     .font(Typo.caption).foregroundStyle(.secondary)
-
-                HStack(spacing: 4) {
-                    Text("版本：").font(Typo.caption).foregroundStyle(.secondary)
-                    let info = Bundle.main.infoDictionary
-                    Text("\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))")
-                        .font(Typo.caption).monospacedDigit()
-                    Spacer()
-                }
 
                 HStack(spacing: 4) {
                     Text("原始碼：").font(Typo.caption).foregroundStyle(.secondary)
