@@ -12,6 +12,9 @@ struct HelpTab: View {
                     Text("\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))")
                         .font(Typo.body).monospacedDigit().foregroundStyle(.secondary)
                     Spacer()
+                    Link("回報問題",
+                         destination: URL(string: "https://github.com/FakeRocket543/yabomish/issues/new")!)
+                        .font(Typo.body)
                 }
 
                 // ── 使用方法 ──
