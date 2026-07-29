@@ -369,6 +369,10 @@ final class InputEngine {
             delegate?.engineDidCommit(char)
             if !codes.isEmpty { delegate?.engineDidShowCodeHint("\(char) → \(codes.joined(separator: " / "))", duration: 3.0) }
             _sameSoundBase = ""; _composing = ""; _currentCandidates = []
+            if prefs.homophoneAutoExit {
+                _isSameSoundMode = false
+                delegate?.engineDidShowToast(_currentModeLabel)
+            }
             delegate?.engineDidClearComposing(); _notifyCandidates()
         } else if _composing.isEmpty {
             // Bigram suggestion — commit directly
@@ -857,6 +861,10 @@ final class InputEngine {
             delegate?.engineDidCommit(char)
             if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
             _sameSoundBase = ""; _composing = ""; _currentCandidates = []
+            if prefs.homophoneAutoExit {
+                _isSameSoundMode = false
+                delegate?.engineDidShowToast(_currentModeLabel)
+            }
             delegate?.engineDidClearComposing(); _notifyCandidates()
         } else if _composing.isEmpty {
             _commitText(_currentCandidates[index])
@@ -962,6 +970,10 @@ final class InputEngine {
         if _isSameSoundMode {
             // Stay in same-sound mode — reset for next character
             _sameSoundBase = ""; _composing = ""
+            if prefs.homophoneAutoExit {
+                _isSameSoundMode = false
+                delegate?.engineDidShowToast(_currentModeLabel)
+            }
             delegate?.engineDidClearComposing()
         } else {
             _sameSoundBase = ""

@@ -111,6 +111,10 @@ import Foundation
         get { access(keyPath: \.homophoneMultiReading); return ud.object(forKey: "homophoneMultiReading") as? Bool ?? false }
         set { withMutation(keyPath: \.homophoneMultiReading) { ud.set(newValue, forKey: "homophoneMultiReading") }; postChange() }
     }
+    var homophoneAutoExit: Bool {
+        get { access(keyPath: \.homophoneAutoExit); return ud.object(forKey: "homophoneAutoExit") as? Bool ?? false }
+        set { withMutation(keyPath: \.homophoneAutoExit) { ud.set(newValue, forKey: "homophoneAutoExit") }; postChange() }
+    }
     var fuzzyMatch: Bool {
         get { access(keyPath: \.fuzzyMatch); return ud.object(forKey: "fuzzyMatch") as? Bool ?? true }
         set { withMutation(keyPath: \.fuzzyMatch) { ud.set(newValue, forKey: "fuzzyMatch") }; postChange() }
