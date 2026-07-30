@@ -7,15 +7,16 @@ order: 9
 
 ## 資料路徑
 
-Yabomish 的所有使用者資料存放於：
+Yabomish 的使用者資料存放於 `~/Library/Application Support/Yabomish/`。舊版安裝可能遺留 `~/Library/YabomishIM/`，目前仍作為 `liu.cin` 匯入路徑的向後相容 fallback。
 
 ```
-~/Library/YabomishIM/
-├── liu.cin                    # 嘸蝦米字表（使用者匯入）
+~/Library/Application Support/Yabomish/
+├── liu.cin                    # 嘸蝦米字表（使用者匯入，舊版可能位於 ~/Library/YabomishIM/）
 ├── liu.bin                    # 編譯後二進位字表（mmap zero-copy）
 ├── freq.db                    # 字頻學習資料（SQLite WAL）
 ├── tables/                    # 擴充表資料夾
 │   └── user_shortcuts.txt     # 使用者快捷碼
+├── commands.json              # 自訂 ,, 指令
 ├── user_phrases.txt           # 使用者自訂詞組
 └── debug.log                  # Debug 日誌（開啟時才產生）
 ```
@@ -24,13 +25,14 @@ Yabomish 的所有使用者資料存放於：
 
 | 檔案 | 說明 |
 |------|------|
-| `liu.cin` | 使用者自行取得的嘸蝦米 CIN 字表原始檔。透過設定程式匯入。 |
+| `liu.cin` | 使用者自行取得的嘸蝦米 CIN 字表原始檔。透過設定程式匯入；若 `~/Library/Application Support/Yabomish/liu.cin` 不存在，會向後相容 `~/Library/YabomishIM/liu.cin`。 |
 | `liu.bin` | 由 `liu.cin` 在裝置上編譯而成的二進位格式。採用 mmap zero-copy 載入，啟動極快。 |
 | `freq.db` | SQLite 資料庫，記錄 unigram、bigram、trigram 字頻。使用 WAL 模式，每 500 次自動 decay。 |
-| `tables/` | 擴充表資料夾。安裝時預設包含 Emoji 聯想表。可自行新增 tab-separated 格式的 `.txt` 檔。 |
+| `tables/` | 擴充表資料夾。可自行新增 tab-separated 格式的 `.txt` 檔。 |
 | `user_shortcuts.txt` | 空碼快捷碼綁定，由設定程式的「快捷碼」分頁管理。 |
 | `user_phrases.txt` | 使用者自訂詞組。 |
-| `debug.log` | 開啟 Debug 模式後產生的日誌檔。 |
+| `commands.json` | 自訂 `,,` 指令設定檔。 |
+| `debug.log` | 開啟 Debug 模式後產生的日誌檔，位於 `~/Library/Application Support/Yabomish/debug.log`。 |
 
 > **提示**：修改擴充表後，輸入 `,,RL` + 空白鍵即可即時重載，不需重新啟動。
 
