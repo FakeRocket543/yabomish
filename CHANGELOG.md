@@ -2,7 +2,7 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [0.3.58] — 2026-07-29
+## [0.3.58] — 2026-07-30
 
 ### 新功能
 - **同音字模式自動退出** — 新增 `homophoneAutoExit` 偏好設定（預設關閉）。開啟後，同音字查詢選字送出即自動退出同音字模式，符合傳統嘸蝦米「同音字」使用習慣
@@ -10,6 +10,9 @@
 
 ### 改進
 - **版本來源統一** — `build_im` 與 `build_prefs` 皆以 `CHANGELOG.md` 首行版本為單一來源，同時寫入 `CFBundleShortVersionString` 與 `CFBundleVersion`
+
+### 文件
+- **同步使用手冊與使用說明** — 補充 `同音字自動退出`、`Debug 模式` 說明，修正資料路徑為 `~/Library/Application Support/Yabomish/`，並說明舊版 `~/Library/YabomishIM/` 仍作為 `liu.cin` 匯入路徑的向後相容 fallback
 
 ---
 

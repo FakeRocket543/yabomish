@@ -131,7 +131,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 - **滿碼自動送字** — 可選，碼打滿且唯一候選時自動送出
 - **`'` `;` `/` 直送** — 空閒時不攔截，方便寫程式和 slash command
 - **標點配對** — 打「自動補」（可選，macOS 預設關）
-- **同音字自動退出** — 可選，同音字查詢選字後自動退出同音字模式（設定程式「輸入」頁開啟）
+- **同音字自動退出** — 可選，預設關閉。同音字查詢選字後自動退出同音字模式，關閉時則須再次輸入 `,,TO` 離開（設定程式「輸入」頁開啟）
 
 ### 擴充表系統
 - `~/Library/Application Support/Yabomish/tables/*.txt` — tab-separated `編碼<Tab>內容`
