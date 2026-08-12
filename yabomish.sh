@@ -40,19 +40,22 @@ build_im() {
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$IM_APP/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
 
-    # 核心資源（精簡版也包含）
+    # 核心資源（所有版本都包含：打字、查碼、繁簡轉換）
     for f in icon.tiff icon.icns icon_right.tiff icon_left.tiff \
-             zhuyin_data.json pinyin_data.json t2s.json s2t.json emoji_char_map.json \
+             zhuyin_data.json pinyin_data.json t2s.json s2t.json \
              char_freq.json; do
         [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
     done
     [ -d "$IM_RES/tables" ] && cp -R "$IM_RES/tables" "$IM_APP/Contents/Resources/"
 
-    # 基礎語料（精簡版也包含：聯想、成語、兩岸用詞）
-    for f in bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
-             phrases.bin ner_phrases.bin yoji.bin region_tw.txt region_cn.txt; do
-        [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
-    done
+    # 聯想／詞庫基礎語料（極簡版不含）
+    if [ "$MODE" != "min" ]; then
+        for f in emoji_char_map.json \
+                 bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
+                 phrases.bin ner_phrases.bin yoji.bin region_tw.txt region_cn.txt; do
+            [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
+        done
+    fi
 
     # 專業詞典（完整版才包含）
     if [ "$MODE" = "full" ]; then
@@ -60,9 +63,13 @@ build_im() {
     fi
     echo -n "APPL????" > "$IM_APP/Contents/PkgInfo"
 
+    # 極簡版：以編譯旗標把聯想／詞庫程式碼整組移除
+    local FLAGS=""
+    if [ "$MODE" = "min" ]; then FLAGS="-DMINIMAL"; fi
+
     swiftc -module-name YabomishIM \
         -target arm64-apple-macos14.0 \
-        -sdk "$(xcrun --show-sdk-path)" -O \
+        -sdk "$(xcrun --show-sdk-path)" -O $FLAGS \
         -o "$IM_APP/Contents/MacOS/YabomishIM" \
         $(find "$IM_SRC" -name "*.swift" | sort)
 
@@ -70,7 +77,8 @@ build_im() {
 }
 
 build_prefs() {
-    printf "${C}> 編譯偏好設定...${N}\n"
+    local MODE="${1:-full}"
+    printf "${C}> 編譯偏好設定 (%s)...${N}\n" "$MODE"
     rm -rf "$PREFS_APP"
     mkdir -p "$PREFS_APP/Contents/MacOS" "$PREFS_APP/Contents/Resources"
 
@@ -82,10 +90,12 @@ build_prefs() {
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$PREFS_APP/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$PREFS_APP/Contents/Info.plist"
+    local FLAGS=""
+    if [ "$MODE" = "min" ]; then FLAGS="-DMINIMAL"; fi
 
     swiftc -module-name YabomishPrefs \
         -target arm64-apple-macos14.0 \
-        -sdk "$(xcrun --show-sdk-path)" -O \
+        -sdk "$(xcrun --show-sdk-path)" -O $FLAGS \
         -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers \
         -o "$PREFS_APP/Contents/MacOS/YabomishPrefs" \
         "$PREFS_DIR"/Sources/*.swift
@@ -173,8 +183,9 @@ do_uninstall() {
 ask_mode() {
     printf "  1) 完整（含 28 專業詞典，~98MB）\n"
     printf "  2) 精簡（省空間，無專業詞典，仍有成語、用語、兩岸用詞聯想，~18MB）\n"
-    printf "  選擇 [1/2, Enter=完整]: "; read -r m
-    case "$m" in 2) BUILD_MODE="lite";; *) BUILD_MODE="full";; esac
+    printf "  3) 極簡（無聯想、無詞庫，僅打字＋查碼＋繁簡轉換，~2MB）\n"
+    printf "  選擇 [1/2/3, Enter=完整]: "; read -r m
+    case "$m" in 2) BUILD_MODE="lite";; 3) BUILD_MODE="min";; *) BUILD_MODE="full";; esac
 }
 
 show_menu() {
@@ -194,8 +205,8 @@ check_xcode
 while true; do
     show_menu; read -r choice; echo ""
     case "$choice" in
-        1) ask_mode; build_im "$BUILD_MODE"; build_prefs; install_im; install_prefs;;
-        2) ask_mode; build_im "$BUILD_MODE"; build_prefs;;
+        1) ask_mode; build_im "$BUILD_MODE"; build_prefs "$BUILD_MODE"; install_im; install_prefs;;
+        2) ask_mode; build_im "$BUILD_MODE"; build_prefs "$BUILD_MODE";;
         3) install_im; install_prefs;;
         4) build_prefs; install_prefs;;
         5) do_uninstall;;

@@ -14,7 +14,9 @@ struct ContentView: View {
     private var mainView: some View {
         TabView {
             InputTab(store: store).tabItem { Label("輸入", systemImage: "keyboard") }
+            #if !MINIMAL
             SuggestionTab(store: store).tabItem { Label("聯想與詞庫", systemImage: "text.magnifyingglass") }
+            #endif
             ShortcutTab().tabItem { Label("快捷碼", systemImage: "text.cursor") }
             AppearanceTab(store: store).tabItem { Label("外觀", systemImage: "paintbrush") }
             HelpTab().tabItem { Label("關於", systemImage: "info.circle") }

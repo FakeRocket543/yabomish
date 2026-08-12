@@ -1,5 +1,12 @@
 import Foundation
 
+#if MINIMAL
+/// MINIMAL 版：字級聯想移除，保留型別介面。
+final class BigramSuggest {
+    static let shared = BigramSuggest()
+    func suggest(after prev: String, limit: Int = 6) -> [String] { [] }
+}
+#else
 /// Bigram-based next-character suggestion using mmap binary file.
 /// Format: BGMM header + sorted UTF-32LE keys + offsets + counts + UTF-32LE values
 final class BigramSuggest {
@@ -53,3 +60,4 @@ final class BigramSuggest {
         return []
     }
 }
+#endif

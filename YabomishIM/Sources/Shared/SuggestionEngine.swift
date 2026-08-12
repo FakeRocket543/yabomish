@@ -1,5 +1,12 @@
 import Foundation
 
+#if MINIMAL
+/// MINIMAL 版：聯想引擎移除，保留型別介面讓 InputEngine 的 init 簽名不變。
+final class SuggestionEngine {
+    static let shared = SuggestionEngine()
+    func suggest(recentCommitted: String, lastText: String) -> [String] { [] }
+}
+#else
 /// Suggestion engine: generates suggestions after commit.
 final class SuggestionEngine {
     static let shared = SuggestionEngine()
@@ -88,3 +95,4 @@ final class SuggestionEngine {
     }
 
 }
+#endif

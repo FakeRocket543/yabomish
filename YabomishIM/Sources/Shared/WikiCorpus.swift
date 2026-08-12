@@ -1,5 +1,17 @@
 import Foundation
 
+#if MINIMAL
+/// MINIMAL 版：聯想／詞庫（詞級語料、專業詞典、成語、萌典、兩岸用詞、emoji）整組以編譯旗標移除。
+/// 保留最小型別介面（全部回傳空結果），讓 CandidateRanker、AppDelegate 等呼叫端不需逐一加旗標。
+final class WikiCorpus {
+    static let shared = WikiCorpus()
+    static let domainKeys: [(key: String, file: String, label: String)] = []
+    var domainBinCount: Int { 0 }
+    func reloadDomains() {}
+    func isRegionDemoted(_ term: String) -> Bool { false }
+    func suggestDomainTerms(prefix: String, limit: Int = 3) -> [String] { [] }
+}
+#else
 /// Wiki corpus: trigram suggestions + NER phrase completion via mmap binary files.
 final class WikiCorpus {
     static let shared = WikiCorpus()
@@ -551,8 +563,9 @@ final class WikiCorpus {
         return len < target.count ? -1 : (len > target.count ? 1 : 0)
     }
 }
+#endif
 
-// MARK: - Data helpers
+// MARK: - Data helpers (MINIMAL 版也需要 — CINTable 讀 .bin 用)
 extension Data {
     func u32(_ off: Int) -> UInt32 {
         guard off >= 0, off + 4 <= count else { return 0 }

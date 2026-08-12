@@ -17,8 +17,10 @@ struct ShortcutTab: View {
     @State private var search = ""
     @State private var codeStatus: CodeStatus = .empty
     @State private var freeCount = 0
+    #if !MINIMAL
     @State private var corpusQuery = ""
     @State private var corpusResults: [CorpusHit] = []
+    #endif
     @State private var importAlert: String?
 
     enum CodeStatus {
@@ -37,12 +39,14 @@ struct ShortcutTab: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
 
+                #if !MINIMAL
                 // ── 詞庫查詢 ──
                 Label("詞庫查詢", systemImage: "magnifyingglass").font(Typo.h2)
                 corpusSearchSection
 
                 // ── 快捷碼說明 ──
                 SectionDivider()
+                #endif
                 Label("快捷碼", systemImage: "bolt.fill").font(Typo.h2)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("把空碼變成你的快捷碼 — 打 2–4 碼直接輸出整段文字。")
@@ -360,6 +364,7 @@ struct ShortcutTab: View {
 
     // MARK: - Corpus Search
 
+    #if !MINIMAL
     private var corpusSearchSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -511,4 +516,5 @@ struct ShortcutTab: View {
         }
         return Array(found.sorted().prefix(8))
     }
+    #endif
 }

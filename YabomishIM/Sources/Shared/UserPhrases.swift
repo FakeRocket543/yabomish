@@ -1,5 +1,6 @@
 import Foundation
 
+#if !MINIMAL
 /// User-defined phrases for suggestion. Stored as a simple text file, one phrase per line.
 /// Lookup: given a prefix char, return phrases starting with it.
 final class UserPhrases {
@@ -32,3 +33,4 @@ final class UserPhrases {
         return phrases.filter { $0.hasPrefix(prefix) && $0.count > prefix.count }.prefix(limit).map { String($0) }
     }
 }
+#endif

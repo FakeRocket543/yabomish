@@ -61,6 +61,7 @@ struct HelpTab: View {
                     ",, + Space → 全形空白（另一種方式）",
                 ])
 
+                #if !MINIMAL
                 guide("聯想輸入", icon: "text.magnifyingglass", steps: [
                     "在「輸入」頁開啟聯想輸入",
                     "送字後自動顯示建議的下一個字／詞",
@@ -70,6 +71,7 @@ struct HelpTab: View {
                     "晶晶體、Emoji 聯想為獨立來源",
                     "聯想策略設為「詞庫優先」時，同碼字排序會偏向你正在打的領域",
                 ])
+                #endif
 
                 guide("擴充表", icon: "doc.text", steps: [
                     "擴充表放在 ~/Library/Application Support/Yabomish/tables/",
@@ -127,12 +129,14 @@ struct HelpTab: View {
                     (",,H", "命令說明"),
                 ])
 
+                #if !MINIMAL
                 section("聯想與詞庫", icon: "text.magnifyingglass", items: [
                     ("聯想層順序", "拖拉卡片調整「詞級語料」「詞庫」「字級聯想」的優先順序"),
                     ("詞級語料", "選擇萌典、維基或新聞作為詞組建議來源"),
                     ("一般詞庫", "點擊啟用／停用。拖拉調整建議優先順序"),
                     ("專業詞典", "點擊啟用所需領域。拖拉調整建議優先順序"),
                 ])
+                #endif
 
                 section("擴充表", icon: "doc.text", items: [
                     ("路徑", "~/Library/Application Support/Yabomish/tables/*.txt"),
@@ -160,6 +164,13 @@ struct HelpTab: View {
 
                 Label("語料來源與授權", systemImage: "doc.text").font(Typo.h1)
 
+                #if MINIMAL
+                creditSection("核心資料", items: [
+                    ("注音對照表", "威注音 VanguardLexicon", "MIT"),
+                    ("繁簡對照表", "OpenCC", "Apache 2.0"),
+                    ("萌典字頻", "萌典（教育部辭典）", "CC0"),
+                ])
+                #else
                 creditSection("核心資料", items: [
                     ("注音對照表", "威注音 VanguardLexicon", "MIT"),
                     ("繁簡對照表", "OpenCC", "Apache 2.0"),
@@ -184,6 +195,7 @@ struct HelpTab: View {
                     ("專業詞典 ×28", "國家教育研究院 樂詞網（NAER）", "政府開放資料"),
                     ("外國地名", "國家教育研究院 譯名", "政府開放資料"),
                 ])
+                #endif
 
                 Text("本程式碼以 MIT 授權釋出。各語料依其原始授權條款使用。")
                     .font(Typo.caption).foregroundStyle(.secondary)

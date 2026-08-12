@@ -1,3 +1,4 @@
+#if !MINIMAL
 import SwiftUI
 
 struct ContextProfileEditor: View {
@@ -138,3 +139,4 @@ struct ContextProfileEditor: View {
         dismiss()
     }
 }
+#endif

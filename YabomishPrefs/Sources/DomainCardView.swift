@@ -1,3 +1,4 @@
+#if !MINIMAL
 import SwiftUI
 
 struct DomainCardView: View {
@@ -49,3 +50,4 @@ struct DomainCardView: View {
         return "\(n) 筆"
     }
 }
+#endif

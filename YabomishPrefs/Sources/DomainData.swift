@@ -1,3 +1,4 @@
+#if !MINIMAL
 import Foundation
 
 enum DomainGroup: String, CaseIterable {
@@ -105,3 +106,4 @@ enum DomainData {
         return Int(header[4]) | Int(header[5]) << 8 | Int(header[6]) << 16 | Int(header[7]) << 24
     }
 }
+#endif
