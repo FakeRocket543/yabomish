@@ -14,6 +14,9 @@
 ### 文件
 - **同步使用手冊與使用說明** — 補充 `同音字自動退出`、`Debug 模式` 說明，修正資料路徑為 `~/Library/Application Support/Yabomish/`，並說明舊版 `~/Library/YabomishIM/` 仍作為 `liu.cin` 匯入路徑的向後相容 fallback
 
+### 修正
+- **游標選字窗寬度不會隨候選字縮小** — 隱藏中的固定模式標籤殘留 Auto Layout constraint 與舊文字，把視窗寬度撐在舊尺寸；改為切換佈局時停用／啟用該組 constraint，選字窗寬度隨候選字數自動縮放
+
 ---
 
 ## [0.3.57] — 2026-04-27

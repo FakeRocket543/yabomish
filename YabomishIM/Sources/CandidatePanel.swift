@@ -63,6 +63,7 @@ final class CandidatePanel: NSPanel {
     private var pageIndicator: NSTextField!
 
     private var stackConstraints: [NSLayoutConstraint] = []
+    private var fixedConstraints: [NSLayoutConstraint] = []
 
     // MARK: - Fixed-mode views
 
@@ -140,11 +141,15 @@ final class CandidatePanel: NSPanel {
         fixedLabel.translatesAutoresizingMaskIntoConstraints = false
         fixedLabel.isHidden = true
         contentVisual.addSubview(fixedLabel)
-        NSLayoutConstraint.activate([
+        // 這組 constraint 只在固定模式時啟用 — 隱藏中的 fixedLabel 若保留
+        // leading/trailing constraint，其殘留文字寬度會撐住視窗，
+        // 讓游標模式的選字窗無法縮小
+        fixedConstraints = [
             fixedLabel.leadingAnchor.constraint(equalTo: contentVisual.leadingAnchor, constant: 12),
             fixedLabel.trailingAnchor.constraint(equalTo: contentVisual.trailingAnchor, constant: -12),
             fixedLabel.centerYAnchor.constraint(equalTo: contentVisual.centerYAnchor),
-        ])
+        ]
+        NSLayoutConstraint.activate(fixedConstraints)
 
         // Hover cursor for fixed mode
         let tracking = NSTrackingArea(rect: .zero,
@@ -348,6 +353,7 @@ final class CandidatePanel: NSPanel {
         stackView.orientation = cursorIsHorizontal ? .horizontal : .vertical
         stackView.alignment = cursorIsHorizontal ? .centerY : .leading
         stackView.spacing = cursorIsHorizontal ? 4 : 1
+        NSLayoutConstraint.deactivate(fixedConstraints)
         NSLayoutConstraint.activate(stackConstraints)
         alphaValue = 1.0
         (contentView as? NSVisualEffectView)?.material = .popover
@@ -468,6 +474,7 @@ final class CandidatePanel: NSPanel {
 
     private func switchToFixedLayout() {
         NSLayoutConstraint.deactivate(stackConstraints)
+        NSLayoutConstraint.activate(fixedConstraints)
         stackView.isHidden = true
         fixedLabel.isHidden = false
         (contentView as? NSVisualEffectView)?.material = .hudWindow
