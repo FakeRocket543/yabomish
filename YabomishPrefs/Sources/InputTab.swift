@@ -8,15 +8,21 @@ private struct InputOption: Identifiable {
     let desc: String
 }
 
-private let inputOptions: [InputOption] = [
-    .init(id: "suggestEnabled",       label: "聯想輸入",  icon: "lightbulb",             desc: "送字後推薦候選"),
+private let inputOptions: [InputOption] = {
+    var opts: [InputOption] = []
+    #if !MINIMAL
+    opts.append(.init(id: "suggestEnabled", label: "聯想輸入", icon: "lightbulb", desc: "送字後推薦候選"))
+    #endif
+    opts += [
     .init(id: "autoCommit",           label: "自動送字",  icon: "arrow.right.circle",    desc: "滿碼自動送出"),
     .init(id: "showCodeHint",         label: "拆碼提示",  icon: "eye",                   desc: "送字後顯示碼"),
     .init(id: "zhuyinReverseLookup",  label: "注音反查",  icon: "character.phonetic",    desc: "'; 切換"),
     .init(id: "homophoneMultiReading",label: "同音多讀",  icon: "speaker.wave.2",        desc: "含罕見讀音"),
     .init(id: "fuzzyMatch",           label: "模糊匹配",  icon: "magnifyingglass",       desc: "鄰鍵容錯"),
     .init(id: "punctuationPairing",   label: "標點配對",  icon: "quote.opening",         desc: "「→「」自動配對"),
-]
+    ]
+    return opts
+}()
 
 private let panelOptions: [InputOption] = [
     .init(id: "cursor", label: "游標跟隨", icon: "cursorarrow.click", desc: "選字窗跟游標"),
@@ -171,7 +177,9 @@ struct InputTab: View {
 
     private func binding(for key: String) -> Binding<Bool> {
         switch key {
+        #if !MINIMAL
         case "suggestEnabled":        return $store.suggestEnabled
+        #endif
         case "autoCommit":            return $store.autoCommit
         case "showCodeHint":          return $store.showCodeHint
         case "zhuyinReverseLookup":   return $store.zhuyinReverseLookup

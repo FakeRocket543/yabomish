@@ -1,5 +1,6 @@
 import Foundation
 
+#if !MINIMAL
 /// Merges selected domain term bins into a single WBMM binary at App Support.
 enum DomainMerger {
     static func merge(prefs: IMEPreferences = DefaultPreferences.shared) {
@@ -129,3 +130,4 @@ private extension Data {
     mutating func appendU32(_ v: UInt32) { var x = v.littleEndian; Swift.withUnsafeBytes(of: &x) { append(contentsOf: $0) } }
     mutating func appendU16(_ v: UInt16) { var x = v.littleEndian; Swift.withUnsafeBytes(of: &x) { append(contentsOf: $0) } }
 }
+#endif

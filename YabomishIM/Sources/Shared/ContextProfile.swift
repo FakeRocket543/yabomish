@@ -1,5 +1,6 @@
 import Foundation
 
+#if !MINIMAL
 /// A snapshot of all context-sensitive settings (input mode, suggestion, domains).
 struct ContextProfile: Codable, Identifiable {
     var id: String { code }
@@ -116,3 +117,4 @@ struct ContextProfile: Codable, Identifiable {
         for p in defaults { p.save() }
     }
 }
+#endif

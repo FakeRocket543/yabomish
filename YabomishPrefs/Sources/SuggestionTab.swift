@@ -1,3 +1,4 @@
+#if !MINIMAL
 import SwiftUI
 
 
@@ -382,3 +383,4 @@ struct SuggestionTab: View {
         .buttonStyle(.plain)
     }
 }
+#endif
