@@ -7,6 +7,7 @@ import Foundation
 
     // MARK: - Suggestion
 
+    #if !MINIMAL
     var suggestEnabled: Bool {
         get { access(keyPath: \.suggestEnabled); return ud.object(forKey: "suggestEnabled") as? Bool ?? true }
         set { withMutation(keyPath: \.suggestEnabled) { ud.set(newValue, forKey: "suggestEnabled") }; postChange() }
@@ -34,6 +35,7 @@ import Foundation
         get { access(keyPath: \.domainOrder); return ud.stringArray(forKey: "domainOrder") ?? [] }
         set { withMutation(keyPath: \.domainOrder) { ud.set(newValue, forKey: "domainOrder") }; postChange() }
     }
+    #endif
 
     // MARK: - Font sizes
 
@@ -130,6 +132,7 @@ import Foundation
 
     // MARK: - Context Switcher
 
+    #if !MINIMAL
     var currentContext: String? {
         get { access(keyPath: \.currentContext); return ud.string(forKey: "currentContext") }
         set { withMutation(keyPath: \.currentContext) { ud.set(newValue, forKey: "currentContext") }; postChange() }
@@ -153,6 +156,7 @@ import Foundation
         }
         postChange()
     }
+    #endif
 
     // MARK: - Onboarding
 

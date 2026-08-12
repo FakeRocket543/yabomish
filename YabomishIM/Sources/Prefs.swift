@@ -243,6 +243,7 @@ struct YabomishPrefs {
 
     // MARK: - Context Switcher
 
+    #if !MINIMAL
     static var currentContext: String? {
         get { defaults.string(forKey: "currentContext") }
         set { defaults.set(newValue, forKey: "currentContext") }
@@ -266,4 +267,5 @@ struct YabomishPrefs {
         }
         currentContext = profile.code
     }
+    #endif
 }

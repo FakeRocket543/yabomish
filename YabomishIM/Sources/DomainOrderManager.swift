@@ -1,5 +1,6 @@
 import Foundation
 
+#if !MINIMAL
 final class DomainOrderManager {
     static let shared = DomainOrderManager()
     private let defaults = YabomishPrefs.defaults
@@ -25,3 +26,4 @@ final class DomainOrderManager {
     func isEnabled(_ key: String) -> Bool { YabomishPrefs.domainEnabled(key) }
     func setEnabled(_ key: String, _ val: Bool) { YabomishPrefs.setDomainEnabled(key, val) }
 }
+#endif

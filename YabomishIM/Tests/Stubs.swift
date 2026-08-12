@@ -4,6 +4,7 @@ import Foundation
 
 final class DomainOrderManager {
     static let shared = DomainOrderManager()
+    func saveOrder(_ keys: [String]) { UserDefaults.standard.set(keys, forKey: "domainOrder") }
     func allOrderedKeys() -> [String] {
         let saved = UserDefaults.standard.stringArray(forKey: "domainOrder") ?? []
         let allKeys = WikiCorpus.domainKeys.map { $0.key }

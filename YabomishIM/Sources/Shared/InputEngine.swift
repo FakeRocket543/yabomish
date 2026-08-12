@@ -599,6 +599,7 @@ final class InputEngine {
             }
             return
         }
+        #if !MINIMAL
         if cmd == "sg" {
             let on = !YabomishPrefs.suggestEnabled
             YabomishPrefs.suggestEnabled = on
@@ -655,6 +656,7 @@ final class InputEngine {
             }
             delegate?.engineDidShowToast(sub.count == 2 ? "未知語境 ,,X\(sub.uppercased())" : "語境碼需 2 字母"); return
         }
+        #endif
         // ── 剪貼簿處理 ,,v 系列 ──
         if cmd == "v" || cmd == "vt" || cmd == "vs" {
             guard let text = ClipboardProcessor.plainText(), !text.isEmpty else {
@@ -680,6 +682,11 @@ final class InputEngine {
             return
         }
         if cmd == "h" {
+            #if MINIMAL
+            let sgxHelp = ""
+            #else
+            let sgxHelp = "• ,,SG 聯想開關\n• ,,Xxx 切換語境  ,,XS 儲存  ,,XI 顯示\n"
+            #endif
             let help = """
             【Yabomish 輸入法 使用指南】
 
@@ -707,9 +714,7 @@ final class InputEngine {
             • ,,PYS 拼音(簡)  ,,PYT 拼音(繁)
             • ,,RS 重置字頻  ,,RL 重載字表
             • ,,PIN 固定同碼字排序  ,,UNPINx 解除
-            • ,,SG 聯想開關
-            • ,,Xxx 切換語境  ,,XS 儲存  ,,XI 顯示
-            • ,,C 顯示目前模式
+            \(sgxHelp)• ,,C 顯示目前模式
             • ,,H 顯示本說明
 
             ▎剪貼簿處理
@@ -996,12 +1001,14 @@ final class InputEngine {
         }
 
         // 聯想
+        #if !MINIMAL
         if prefs.suggestEnabled && !_isSameSoundMode && !_isZhuyinMode {
             let results = suggestionEngine.suggest(recentCommitted: _recentCommitted, lastText: text)
             if !results.isEmpty {
                 delegate?.engineDidSuggest(results)
             }
         }
+        #endif
     }
 
     private func _resetComposing() {

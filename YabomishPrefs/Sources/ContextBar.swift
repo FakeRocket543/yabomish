@@ -1,3 +1,4 @@
+#if !MINIMAL
 import SwiftUI
 
 struct ContextBar: View {
@@ -198,3 +199,4 @@ struct ContextBar: View {
         importAlert = "已匯入「\(p.icon) \(p.name)」"
     }
 }
+#endif
