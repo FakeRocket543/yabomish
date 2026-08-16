@@ -3,11 +3,11 @@ import CommonCrypto
 
 /// 語料下載：從 GitHub Release 下載語料 zip 並解壓至 Application Support
 enum DataDownloader {
-    static let dataURL = "https://github.com/user/yabomish-data/releases/download/v0.3.0/yabomish-data-v0.3.0.zip"
+    static let dataURL = "https://github.com/FakeRocket543/yabomish/releases/download/v0.3.59/yabomish-corpus-lite-0.3.59.zip"
     static let supportDir = AppConstants.sharedDir
     private static let marker = "bigram.bin"
     /// Expected SHA-256 of the zip file — update when releasing new data
-    static let expectedSHA256 = "UPDATE_THIS_HASH_ON_RELEASE"
+    static let expectedSHA256 = "c020b544ca5376b675e68a07d0d8d26b50cff6c484a4b22267b88c00607210c3"
 
     static var isDataAvailable: Bool {
         // Check App Support first, then bundle Resources

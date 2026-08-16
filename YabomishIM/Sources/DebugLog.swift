@@ -3,11 +3,13 @@ import Foundation
 /// Writes timestamped debug logs to AppConstants.sharedDir/debug.log
 enum DebugLog {
     private static var logPath: String { AppConstants.sharedDir + "/debug.log" }
+    private static let formatter = ISO8601DateFormatter()
     private static let maxSize = 512 * 1024  // 512 KB
+
 
     static func log(_ msg: String) {
         guard YabomishPrefs.debugMode else { return }
-        let ts = ISO8601DateFormatter().string(from: Date())
+        let ts = formatter.string(from: Date())
         let line = "[\(ts)] \(msg)\n"
         let fm = FileManager.default
         let dir = AppConstants.sharedDir
