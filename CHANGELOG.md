@@ -2,6 +2,21 @@
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.3.59] — 2026-08-16
+
+### 新功能
+- **極簡安裝模式** — `./yabomish.sh` 新增第三種安裝模式：以 `-DMINIMAL` 編譯旗標將聯想與詞庫整組移除，輸入法縮至約 2MB；保留打字、注音／拼音／同音字查碼、繁簡轉換、字頻學習與 `,,PIN` 固定排序、擴充表、快捷碼（#13，@plateaukao）
+- **游標跟隨橫向模式** — 游標跟隨選字窗可切換為水平排列（設定程式 → 外觀），方向鍵自動適配：←→ 移動候選、↑↓ 翻頁（#7）
+
+### 修正
+- **選字窗寬度自動縮放** — 游標模式下隱藏中的固定模式標籤殘留 Auto Layout constraint，把視窗寬度撐在舊尺寸；改為切換佈局時停用／啟用該組 constraint，寬度隨候選字數縮放（#12，@plateaukao）
+- **停止追蹤二進位字典檔** — 44 個 `YabomishIM/Resources/*.bin` 與 `wiki_ner_entities.parquet`（約 170MB）自 git 索引移除，repo 不再隨字典重建膨脹。注意：既有 clone 在 pull 後工作目錄的字典檔會被移除，請先備份或重新產生（#11，@plateaukao）
+
+### 改進
+- `LSMinimumSystemVersion` 明定 14.0
+- 新增 `tools/release.sh`：Developer ID 簽章 + dmg 打包（notarization 需另行提供憑證）
+- 修復 `run_tests.sh` 先前無法編譯的問題（測試 stub 重複定義、缺 `engineDidShowCodeHint`），全套 80 tests passed
+
 ## [0.3.58] — 2026-07-30
 
 ### 新功能

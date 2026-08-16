@@ -16,12 +16,13 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
 git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabomish.sh
 ```
 
-選擇 `1) 完整安裝` 或 `2) 精簡安裝`。
+選擇 `1) 完整安裝`、`2) 精簡安裝` 或 `3) 極簡安裝`。
 
 | 模式 | 說明 | 大小 |
 |------|------|------|
 | 完整安裝 | 含聯想語料（28 專業詞典 + bigram/trigram + 詞庫） | ~98MB |
 | 精簡安裝 | 無專業詞典，仍有成語、用語、兩岸用詞聯想 | ~18MB |
+| 極簡安裝 | 無聯想、無詞庫，僅打字＋查碼＋繁簡轉換＋字頻排序 | ~2MB |
 
 安裝過程會：
 1. 編譯輸入法（YabomishIM.app）和設定程式（YabomishPrefs.app）
