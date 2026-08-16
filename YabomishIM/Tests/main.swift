@@ -264,6 +264,28 @@ func testFreqTrackerBigramBoost() {
     tracker.reset()
 }
 
+func testFreqTrackerImmediateCacheSort() {
+    let tracker = FreqTracker()
+    let code = "_test_cache_\(UUID().uuidString)"
+    tracker.record(code: code, char: "甲")
+    tracker.record(code: code, char: "甲")
+    tracker.record(code: code, char: "乙")
+    // No flushAll: in-memory cache must reflect recordings immediately
+    let sorted = tracker.sorted(["乙", "甲"], forCode: code)
+    checkEqual(sorted, ["甲", "乙"], "cache sort visible without flush")
+    tracker.reset()
+}
+
+func testFreqTrackerResetNoResurrect() {
+    let tracker = FreqTracker()
+    let code = "_test_reset_\(UUID().uuidString)"
+    for _ in 0..<10 { tracker.record(code: code, char: "丙") } // < batchSize, stays pending
+    tracker.reset()
+    tracker.flushAll()
+    let sorted = tracker.sorted(["丁", "丙"], forCode: code)
+    checkEqual(sorted, ["丁", "丙"], "reset clears pending — no resurrection after flush")
+}
+
 // === CandidateRanker tests ===
 
 func testRankerModeFiltering() {
@@ -455,6 +477,8 @@ testCINTableHasPrefix()
 testCINTableValidNextKeys()
 testFreqTrackerRecordAndSort()
 testFreqTrackerBigramBoost()
+testFreqTrackerImmediateCacheSort()
+testFreqTrackerResetNoResurrect()
 testRankerModeFiltering()
 testIntegrationTypeAndCommit()
 testIntegrationTypeMultiChar()
