@@ -141,7 +141,7 @@ final class FreqTracker {
             self.pendingFreq.append((code, char))
             self.recordCount += 1
             if self.pendingFreq.count >= self.batchSize { self.flushFreq() }
-            if self.recordCount >= 500 { self.recordCount = 0; self.decay() }
+            if self.recordCount >= 500 { self.recordCount = 0; self.decayOnQueue(factor: 0.9) }
         }
     }
 
@@ -308,7 +308,14 @@ final class FreqTracker {
 
     // MARK: - Maintenance (all run on bgQueue; flush first so cache reload sees final DB state)
 
+    /// Thread-safe entry: runs the decay on bgQueue.
     func decay(factor: Double = 0.9) {
+        bgQueue.sync { decayOnQueue(factor: factor) }
+    }
+
+    /// Must run on bgQueue (record's 500-count trigger calls this directly,
+    /// avoiding the queue.sync deadlock of calling decay() from inside the queue).
+    private func decayOnQueue(factor: Double) {
         flushFreq(); flushBigram()
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, "UPDATE freq SET n=MAX(1,CAST(n*?1 AS INTEGER))", -1, &stmt, nil) == SQLITE_OK {
