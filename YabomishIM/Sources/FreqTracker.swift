@@ -45,6 +45,11 @@ final class FreqTracker {
     }
 
     deinit {
+        #if os(macOS)
+        if let prefsObserver {
+            DistributedNotificationCenter.default().removeObserver(prefsObserver)
+        }
+        #endif
         sqlite3_finalize(stmtUpsertFreq)
         sqlite3_finalize(stmtUpsertBigram)
         sqlite3_finalize(stmtQueryPinned)
@@ -69,8 +74,7 @@ final class FreqTracker {
         exec("CREATE TABLE IF NOT EXISTS freq(code TEXT, char TEXT, n INTEGER, PRIMARY KEY(code,char))")
         exec("CREATE TABLE IF NOT EXISTS bigram(prev TEXT, char TEXT, n INTEGER, PRIMARY KEY(prev,char))")
         exec("CREATE TABLE IF NOT EXISTS pinned(code TEXT PRIMARY KEY, chars TEXT NOT NULL)")
-        // 預設固定排序（常見同碼字衝突）
-        exec("INSERT OR IGNORE INTO pinned(code,chars) VALUES('hj','手乎')")
+        // （不再內建任何字表衍生資料；固定排序一律由使用者 ,,PIN 自行設定）
         prepare("INSERT INTO freq(code,char,n) VALUES(?1,?2,1) ON CONFLICT(code,char) DO UPDATE SET n=n+1", &stmtUpsertFreq)
         prepare("INSERT INTO bigram(prev,char,n) VALUES(?1,?2,1) ON CONFLICT(prev,char) DO UPDATE SET n=n+1", &stmtUpsertBigram)
         prepare("SELECT chars FROM pinned WHERE code=?1", &stmtQueryPinned)
