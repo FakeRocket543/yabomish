@@ -40,17 +40,20 @@ build_im() {
 
     # Core resources
     for f in icon.tiff icon.icns icon_right.tiff icon_left.tiff \
-             zhuyin_data.json pinyin_data.json t2s.json s2t.json emoji_char_map.json \
+             zhuyin_data.json pinyin_data.json t2s.json s2t.json \
              char_freq.json; do
         [ -f "$ROOT/YabomishIM/Resources/$f" ] && cp "$ROOT/YabomishIM/Resources/$f" "$IM_APP/Contents/Resources/"
     done
     [ -d "$ROOT/YabomishIM/Resources/tables" ] && cp -R "$ROOT/YabomishIM/Resources/tables" "$IM_APP/Contents/Resources/"
 
-    # Base corpus
-    for f in bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
-             phrases.bin ner_phrases.bin yoji.bin region_tw.txt region_cn.txt; do
-        [ -f "$ROOT/YabomishIM/Resources/$f" ] && cp "$ROOT/YabomishIM/Resources/$f" "$IM_APP/Contents/Resources/"
-    done
+    # Base corpus (excluded from minimal build)
+    if [ "$mode" != "min" ]; then
+        for f in emoji_char_map.json bigram.bin trigram.bin word_ngram.bin word_news.bin chengyu.bin \
+                 phrases.bin ner_phrases.bin yoji.bin region_tw.txt region_cn.txt; do
+            [ -f "$ROOT/YabomishIM/Resources/$f" ] && cp "$ROOT/YabomishIM/Resources/$f" "$IM_APP/Contents/Resources/"
+        done
+    fi
+
 
     # Professional dictionaries
     if [ "$mode" = "full" ]; then
@@ -59,14 +62,14 @@ build_im() {
         done
     fi
 
-    echo -n "APPL????" > "$IM_APP/Contents/PkgInfo"
+    local flags=""
+    if [ "$mode" = "min" ]; then flags="-DMINIMAL"; fi
 
     swiftc -module-name YabomishIM \
         -target arm64-apple-macos14.0 \
-        -sdk "$(xcrun --show-sdk-path)" -O \
+        -sdk "$(xcrun --show-sdk-path)" -O $flags \
         -o "$IM_APP/Contents/MacOS/YabomishIM" \
         $(find "$ROOT/YabomishIM/Sources" -name "*.swift" | sort)
-
     ok "YabomishIM.app [$mode] build ${STAMP}.${HASH}"
 }
 
