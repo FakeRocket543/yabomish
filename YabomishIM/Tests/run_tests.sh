@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # UI-only files to exclude
-EXCLUDE="PrefsWindow|CandidatePanel|DomainCardView|DomainCollectionController|DomainOrderManager|ModeToast|AppDelegate|DataDownloader|YabomishInputController|PhraseLookup|DebugLog"
+EXCLUDE="CINImportCoordinator|PrefsWindow|CandidatePanel|DomainCardView|DomainCollectionController|DomainOrderManager|ModeToast|AppDelegate|DataDownloader|YabomishInputController|PhraseLookup|DebugLog"
 
 SOURCES=$(find Sources Sources/Shared -maxdepth 1 -name '*.swift' | grep -Ev "$EXCLUDE" | sort -u)
 # test_horizontal_panel.swift is a standalone GUI E2E with its own harness — compiled separately

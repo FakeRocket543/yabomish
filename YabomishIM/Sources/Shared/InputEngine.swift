@@ -70,8 +70,7 @@ final class InputEngine {
 
     // Zhuyin reverse lookup
     private var _isZhuyinMode = false
-    private var _zhuyinBuffer = ""
-    private var _zyInitial = "", _zyMedial = "", _zyFinal = ""
+    private var _zhuyin = ZhuyinComposer()
 
     // Pinyin reverse lookup
     private var _isPinyinMode = false
@@ -281,13 +280,13 @@ final class InputEngine {
             return
         }
         if _isZhuyinMode {
-            if _currentCandidates.isEmpty && !_zhuyinBuffer.isEmpty {
+            if _currentCandidates.isEmpty && !_zhuyin.isEmpty {
                 _backspaceZhuyin()
-                if _zhuyinBuffer.isEmpty { delegate?.engineDidClearComposing() }
-                else { delegate?.engineDidUpdateComposing(_zhuyinBuffer) }
+                if _zhuyin.isEmpty { delegate?.engineDidClearComposing() }
+                else { delegate?.engineDidUpdateComposing(_zhuyin.buffer) }
             } else if !_currentCandidates.isEmpty {
                 _currentCandidates = []; _notifyCandidates()
-                delegate?.engineDidUpdateComposing(_zhuyinBuffer)
+                delegate?.engineDidUpdateComposing(_zhuyin.buffer)
             }
             return
         }
@@ -514,32 +513,20 @@ final class InputEngine {
 
     // MARK: - Zhuyin
 
-    private static let zyInitials: Set<String> = [
-        "ㄅ","ㄆ","ㄇ","ㄈ","ㄉ","ㄊ","ㄋ","ㄌ",
-        "ㄍ","ㄎ","ㄏ","ㄐ","ㄑ","ㄒ","ㄓ","ㄔ","ㄕ","ㄖ","ㄗ","ㄘ","ㄙ",
-    ]
-    private static let zyMedials: Set<String> = ["ㄧ","ㄨ","ㄩ"]
-    private static let zyFinals: Set<String> = [
-        "ㄚ","ㄛ","ㄜ","ㄝ","ㄞ","ㄟ","ㄠ","ㄡ","ㄢ","ㄣ","ㄤ","ㄥ","ㄦ",
-    ]
-
     func handleZhuyinSymbol(_ zy: String) { sync {
-        if Self.zyInitials.contains(zy) { _zyInitial = zy }
-        else if Self.zyMedials.contains(zy) { _zyMedial = zy }
-        else if Self.zyFinals.contains(zy) { _zyFinal = zy }
-        _zhuyinBuffer = _zyInitial + _zyMedial + _zyFinal
-        delegate?.engineDidUpdateComposing(_zhuyinBuffer)
+        guard _zhuyin.input(zy) else { return }
+        delegate?.engineDidUpdateComposing(_zhuyin.buffer)
     } }
 
     func handleZhuyinTone(_ tone: String) { sync {
-        guard !_zhuyinBuffer.isEmpty else { return }
-        let zhuyin = tone == "˙" ? "˙" + _zhuyinBuffer : _zhuyinBuffer + tone
+        guard !_zhuyin.isEmpty else { return }
+        let zhuyin = tone == "˙" ? "˙" + _zhuyin.buffer : _zhuyin.buffer + tone
         _zhuyinLookup(zhuyin)
     } }
 
     func handleZhuyinSpace() { sync {
-        guard !_zhuyinBuffer.isEmpty else { return }
-        _zhuyinLookup(_zhuyinBuffer)  // tone 1
+        guard !_zhuyin.isEmpty else { return }
+        _zhuyinLookup(_zhuyin.buffer)  // tone 1
     } }
 
     private func _zhuyinLookup(_ zhuyin: String) {
@@ -555,16 +542,12 @@ final class InputEngine {
     }
 
     private func _clearZhuyinSlots() {
-        _zyInitial = ""; _zyMedial = ""; _zyFinal = ""; _zhuyinBuffer = ""
+        _zhuyin.clear()
     }
 
     private func _backspaceZhuyin() {
-        if !_zyFinal.isEmpty { _zyFinal = "" }
-        else if !_zyMedial.isEmpty { _zyMedial = "" }
-        else { _zyInitial = "" }
-        _zhuyinBuffer = _zyInitial + _zyMedial + _zyFinal
+        _zhuyin.backspace()
     }
-
     // MARK: - Same-Sound
 
     private func _handleSameSound() {
@@ -751,13 +734,13 @@ final class InputEngine {
             return
         }
         if _isZhuyinMode {
-            if _currentCandidates.isEmpty && !_zhuyinBuffer.isEmpty {
+            if _currentCandidates.isEmpty && !_zhuyin.isEmpty {
                 _backspaceZhuyin()
-                if _zhuyinBuffer.isEmpty { delegate?.engineDidClearComposing() }
-                else { delegate?.engineDidUpdateComposing(_zhuyinBuffer) }
+                if _zhuyin.isEmpty { delegate?.engineDidClearComposing() }
+                else { delegate?.engineDidUpdateComposing(_zhuyin.buffer) }
             } else if !_currentCandidates.isEmpty {
                 _currentCandidates = []; _notifyCandidates()
-                delegate?.engineDidUpdateComposing(_zhuyinBuffer)
+                delegate?.engineDidUpdateComposing(_zhuyin.buffer)
             }
             return
         }
