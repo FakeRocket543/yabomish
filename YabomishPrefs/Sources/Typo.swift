@@ -6,8 +6,8 @@ enum Typo {
 
     // Headings
     static let h1 = Font.title3.bold()              // 頁面大標題
-    static let h2 = Font.system(size: 16, weight: .bold)  // 區塊標題
-    static let h3 = Font.system(size: 13, weight: .bold) // 子標題
+    static let h2 = Font.system(size: 17, weight: .bold)  // 區塊標題
+    static let h3 = Font.system(size: 14, weight: .semibold) // 子標題
 
     // Body
     static let body     = Font.system(size: 14)
