@@ -320,9 +320,13 @@ func testIntegrationTypeAndCommit() {
     checkEqual(engine.composing, "a", "composing is 'a'")
     check(engine.currentCandidates.count >= 2, "candidates for 'a'")
 
-    // Space → commit first candidate
+    // First space on extendable single code → extension hint, no commit
     engine.handleSpace()
-    check(mock.commits.count > 0, "space commits")
+    check(mock.commits.isEmpty, "first space on single code shows hint, no commit")
+    checkEqual(engine.composing, "a", "composing kept after hint")
+    // Second space → commit first candidate
+    engine.handleSpace()
+    check(mock.commits.count > 0, "second space commits")
     let committed = mock.commits.first ?? ""
     check(committed == "好" || committed == "號", "committed a valid char")
     check(engine.composing.isEmpty, "composing cleared after commit")
@@ -363,6 +367,29 @@ func testIntegrationBackspaceAndRetype() {
     checkEqual(engine.composing, "ab", "retype after backspace")
     engine.handleSpace()
     checkEqual(mock.commits.first, "哈", "commit after backspace+retype")
+}
+
+func testSingleCodeSpaceGuard() {
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    // 'a' is single-char and extendable (ab exists) → first space = hint only
+    engine.handleLetter("a")
+    engine.handleSpace()
+    checkEqual(mock.commits.count, 0, "first space on extendable single code does not commit")
+    checkEqual(engine.composing, "a", "composing preserved after hint")
+    // Second space commits
+    engine.handleSpace()
+    checkEqual(mock.commits.count, 1, "second space commits")
+    // Armed flag cleared by letter input: typing 'a' then extending cancels the guard
+    engine.handleLetter("a")
+    engine.handleLetter("b")
+    engine.handleSpace()
+    checkEqual(mock.commits.count, 2, "two-char code commits on first space")
 }
 
 func testIntegrationEscapeCancels() {
@@ -441,12 +468,13 @@ func testIntegrationSequentialCommits() {
     engine.delegate = mock
     let cinPath = makeTempCIN()
     engine.cinTable.load(cinPath: cinPath)
-    try? FileManager.default.removeItem(atPath: cinPath)
-
     // Type and commit multiple chars in sequence
+    // (single extendable codes now need two spaces — first shows hint)
     engine.handleLetter("a")
     engine.handleSpace()
+    engine.handleSpace()
     engine.handleLetter("b")
+    engine.handleSpace()
     engine.handleSpace()
     engine.handleLetter("a")
     engine.handleLetter("b")
@@ -483,6 +511,7 @@ testRankerModeFiltering()
 testIntegrationTypeAndCommit()
 testIntegrationTypeMultiChar()
 testIntegrationBackspaceAndRetype()
+testSingleCodeSpaceGuard()
 testIntegrationEscapeCancels()
 testIntegrationEnterCommitsRawCode()
 testIntegrationDigitSelect()
