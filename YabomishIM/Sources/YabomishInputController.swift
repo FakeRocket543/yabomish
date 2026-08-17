@@ -65,8 +65,6 @@ class YabomishInputController: IMKInputController {
     private static weak var activeSession: YabomishInputController?
     private static var lastDeactivateTime: Date = .distantPast
     private var lastCommittedLength: Int = 0
-    private static var hasPromptedImport = false
-    private static var showFirstUseTip = false
     private static var yabomishWasActive = false
 
     private static let inputSourceObserver: Void = {
@@ -238,8 +236,8 @@ class YabomishInputController: IMKInputController {
         if let client = sender as? IMKTextInput {
             client.overrideKeyboard(withKeyboardNamed: targetLayout)
         }
-        if Self.cinTable.isEmpty && !Self.hasPromptedImport {
-            Self.hasPromptedImport = true
+        if Self.cinTable.isEmpty && !CINImportCoordinator.hasPromptedImport {
+            CINImportCoordinator.hasPromptedImport = true
             panel.showGuide("尚未匯入字表 — 右鍵狀態列圖示 → 偏好設定 → 匯入字表")
             DispatchQueue.main.async { Self.promptImportCIN() }
         }
@@ -265,8 +263,8 @@ class YabomishInputController: IMKInputController {
         if fromOtherIM && YabomishPrefs.showActivateToast {
             showModeToast(engine.currentModeLabel)
         }
-        if Self.showFirstUseTip {
-            Self.showFirstUseTip = false
+        if CINImportCoordinator.showFirstUseTip {
+            CINImportCoordinator.showFirstUseTip = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                 self?.showModeToast("空白鍵送字 ｜ Shift 切英文 ｜ ,,H 說明")
             }
@@ -307,117 +305,15 @@ class YabomishInputController: IMKInputController {
         super.deactivateServer(sender)
     }
 
-    // MARK: - CIN Import
+    // MARK: - CIN Import (delegates to CINImportCoordinator)
 
-    static func promptImportCIN() {
-        activateForForegroundUI()
-        let alert = NSAlert()
-        alert.messageText = "尚未偵測到字表"
-        alert.informativeText = "Yabomish 需要嘸蝦米字表（liu.cin）才能輸入中文。\n請點「匯入」選擇你的 liu.cin 檔案。"
-        alert.addButton(withTitle: "匯入⋯")
-        alert.addButton(withTitle: "稍後")
-        alert.alertStyle = .warning
-        alert.window.level = .modalPanel
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        importCIN()
-    }
-
-    static func reloadTable() {
-        cinTable.reload()
-        DebugLog.log("YabomishIM: table reloaded via UI, maxCodeLength=\(cinTable.maxCodeLength)")
-    }
-
+    static func promptImportCIN() { CINImportCoordinator.promptImportCIN() }
+    static func reloadTable() { CINImportCoordinator.reloadTable() }
     static func importCIN(from url: URL, attachedTo window: NSWindow?) {
-        importSelectedCIN(from: url, attachedTo: window)
+        CINImportCoordinator.importCIN(from: url, attachedTo: window)
     }
-
     static func importCIN(attachedTo window: NSWindow? = nil) {
-        DispatchQueue.main.async {
-            guard let src = chooseCINFileURL() else { return }
-            importSelectedCIN(from: src, attachedTo: window)
-        }
-    }
-
-    private static func chooseCINFileURL() -> URL? {
-        var result: URL?
-        let work = {
-            let panel = NSOpenPanel()
-            panel.prompt = "匯入"
-            panel.message = "選擇嘸蝦米字表 (.cin)"
-            // FIX: .cin is not a system-recognized UTType — using .plainText alone
-            // causes .cin files to appear grayed-out. Use [.plainText, .data] to allow selection.
-            panel.allowedContentTypes = [.plainText, .data]
-            panel.allowsOtherFileTypes = true
-            panel.canChooseDirectories = false
-            panel.canChooseFiles = true
-            panel.level = .floating
-            NSApp.activate(ignoringOtherApps: true)
-            if panel.runModal() == .OK {
-                result = panel.url
-            }
-        }
-        if Thread.isMainThread {
-            work()
-        } else {
-            DispatchQueue.main.sync { work() }
-        }
-        return result
-    }
-
-    private static func activateForForegroundUI() {
-        NSApp.setActivationPolicy(.accessory)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-
-    private static func importSelectedCIN(from src: URL, attachedTo window: NSWindow?) {
-        let dir = AppConstants.sharedDir
-        let dst = dir + "/liu.cin"
-        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        try? FileManager.default.removeItem(atPath: dst)
-        do {
-            try FileManager.default.copyItem(at: src, to: URL(fileURLWithPath: dst))
-            try? FileManager.default.removeItem(atPath: dst + ".cache")
-            cinTable.reload()
-            // Pre-build lazy caches now to avoid lag on first keystroke
-            DispatchQueue.global(qos: .userInitiated).async {
-                _ = cinTable.shortestCodesTable
-                _ = cinTable.longestCodesTable
-                DebugLog.log("YabomishIM: Pre-built code tables after import")
-            }
-            hasPromptedImport = false
-            showFirstUseTip = true
-            DebugLog.log("YabomishIM: Imported CIN table from \(src.path)")
-            showImportAlert(
-                messageText: "字表匯入成功",
-                informativeText: "已匯入 \(cinTable.isEmpty ? 0 : cinTable.shortestCodesTable.count) 字。",
-                style: .informational,
-                attachedTo: window
-            )
-        } catch {
-            showImportAlert(
-                messageText: "匯入失敗",
-                informativeText: error.localizedDescription,
-                style: .critical,
-                attachedTo: window
-            )
-        }
-    }
-
-    private static func showImportAlert(messageText: String,
-                                        informativeText: String,
-                                        style: NSAlert.Style,
-                                        attachedTo window: NSWindow?) {
-        activateForForegroundUI()
-        let alert = NSAlert()
-        alert.messageText = messageText
-        alert.informativeText = informativeText
-        alert.alertStyle = style
-        if let window {
-            window.makeKeyAndOrderFront(nil)
-            alert.beginSheetModal(for: window)
-        } else {
-            alert.runModal()
-        }
+        CINImportCoordinator.importCIN(attachedTo: window)
     }
 }
 
