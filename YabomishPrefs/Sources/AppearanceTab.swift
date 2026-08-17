@@ -11,7 +11,7 @@ private struct ToggleOption: Identifiable {
 private let toastOptions: [ToggleOption] = [
     .init(id: "showActivateToast", label: "切入提示", icon: "bubble.middle.top", desc: "切換時顯示模式"),
     .init(id: "highContrast",      label: "高對比",   icon: "bold",             desc: "候選字加粗+陰影"),
-    .init(id: "debugMode",         label: "Debug",   icon: "ladybug",           desc: "記錄操作日誌"),
+    .init(id: "debugMode",         label: "除錯記錄",   icon: "ladybug",           desc: "記錄操作日誌"),
 ]
 
 private let iconOptions: [ToggleOption] = [

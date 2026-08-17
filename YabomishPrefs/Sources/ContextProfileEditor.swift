@@ -51,7 +51,7 @@ struct ContextProfileEditor: View {
                     }.frame(width: 80)
                 }
                 HStack {
-                    Toggle("模糊匹配", isOn: $fuzzyMatch)
+                    Toggle("鄰鍵容錯", isOn: $fuzzyMatch)
                     Spacer(minLength: 20)
                     Toggle("自動送字", isOn: $autoCommit)
                 }
