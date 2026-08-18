@@ -90,7 +90,7 @@ struct InputTab: View {
                         }
                         .padding(8)
                         .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Typo.gold.opacity(0.7), lineWidth: 1.5))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Typo.accent.opacity(0.7), lineWidth: 1.5))
                     } else {
                         HStack(spacing: 10) {
                             Text("1蝦").font(.system(size: 16))
@@ -99,7 +99,7 @@ struct InputTab: View {
                         }
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Typo.gold.opacity(0.7), lineWidth: 1.5))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Typo.accent.opacity(0.7), lineWidth: 1.5))
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -132,7 +132,7 @@ struct InputTab: View {
                 VStack(spacing: 5) {
                     Image(systemName: opt.icon)
                         .font(Typo.cardIcon)
-                        .foregroundStyle(on ? Typo.cyan : .secondary)
+                        .foregroundStyle(on ? Typo.accent : .secondary)
                     Text(opt.label)
                         .font(Typo.cardTitle)
                         .lineLimit(2)
@@ -146,14 +146,14 @@ struct InputTab: View {
                 if on {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.cyan)
+                        .foregroundStyle(Typo.accent)
                         .padding(6)
                 }
             }
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(on ? Typo.cyan.opacity(0.18) : Typo.cardOff))
+                .fill(on ? Typo.accent.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(on ? Typo.cyan.opacity(0.7) : Typo.strokeOff,
+                .stroke(on ? Typo.accent.opacity(0.7) : Typo.strokeOff,
                         lineWidth: on ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -169,7 +169,7 @@ struct InputTab: View {
                 VStack(spacing: 5) {
                     Image(systemName: opt.icon)
                         .font(Typo.cardIcon)
-                        .foregroundStyle(selected ? Typo.gold : .secondary)
+                        .foregroundStyle(selected ? Typo.accent : .secondary)
                     Text(opt.label)
                         .font(Typo.cardTitle)
                         .lineLimit(2)
@@ -183,14 +183,14 @@ struct InputTab: View {
                 if selected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.gold)
+                        .foregroundStyle(Typo.accent)
                         .padding(6)
                 }
             }
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.gold.opacity(0.18) : Typo.cardOff))
+                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.gold.opacity(0.7) : Typo.strokeOff,
+                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)

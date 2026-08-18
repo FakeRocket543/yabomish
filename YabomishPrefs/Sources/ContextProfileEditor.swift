@@ -1,5 +1,6 @@
 #if !MINIMAL
 import SwiftUI
+import AppKit
 
 struct ContextProfileEditor: View {
     let profile: ContextProfile
@@ -29,11 +30,15 @@ struct ContextProfileEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("編輯語境 — \(icon) \(name)").font(Typo.h2)
+            HStack(spacing: 6) {
+                Text("編輯語境 —").font(Typo.h2)
+                profileIcon(icon).font(Typo.h2)
+                Text(name).font(Typo.h2)
+            }
 
             GroupBox("基本") {
                 HStack {
-                    Text("圖示"); TextField("emoji", text: $icon).frame(width: 50)
+                    Text("圖示"); TextField("圖示名稱", text: $icon).frame(width: 50)
                     Spacer(minLength: 20)
                     Text("名稱"); TextField("名稱", text: $name).frame(width: 120)
                 }
@@ -104,6 +109,15 @@ struct ContextProfileEditor: View {
         .padding(20)
         .frame(width: 420)
         .onAppear { load() }
+    }
+
+    @ViewBuilder
+    private func profileIcon(_ name: String) -> some View {
+        if NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil {
+            Image(systemName: name)
+        } else {
+            Text(name)
+        }
     }
 
     private func load() {

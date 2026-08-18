@@ -112,7 +112,7 @@ struct SuggestionTab: View {
                 // 4. General domains
                 SectionDivider()
                 Label("一般詞庫", systemImage: "books.vertical").font(Typo.h2)
-                domainGrid(entries: $generalOrder, color: Typo.cyan)
+                domainGrid(entries: $generalOrder, color: Typo.accent)
 
                 // 5. Pro domains — compact chip layout, collapsed by default
                 SectionDivider()
@@ -128,8 +128,8 @@ struct SuggestionTab: View {
                             Text("\(n)/\(proOrder.count)")
                                 .font(.system(size: 11, weight: .medium))
                                 .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Capsule().fill(Typo.orange.opacity(0.25)))
-                                .foregroundStyle(Typo.orange)
+                                .background(Capsule().fill(Typo.accent.opacity(0.25)))
+                                .foregroundStyle(Typo.accent)
                         }
                     }
                 }
@@ -160,7 +160,7 @@ struct SuggestionTab: View {
             VStack(spacing: 5) {
                 Image(systemName: layer.icon)
                     .font(Typo.cardIcon)
-                    .foregroundStyle(enabled ? Typo.deep : .secondary)
+                    .foregroundStyle(enabled ? Typo.accent : .secondary)
                 Text(layer.label)
                     .font(Typo.cardTitle)
                     .lineLimit(1)
@@ -171,9 +171,9 @@ struct SuggestionTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(enabled ? Typo.deep.opacity(0.18) : Typo.cardOff))
+                .fill(enabled ? Typo.accent.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(enabled ? Typo.deep.opacity(0.7) : Typo.strokeOff,
+                .stroke(enabled ? Typo.accent.opacity(0.7) : Typo.strokeOff,
                         lineWidth: enabled ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -189,7 +189,7 @@ struct SuggestionTab: View {
             VStack(spacing: 5) {
                 Image(systemName: entry.icon)
                     .font(Typo.cardIcon)
-                    .foregroundStyle(selected ? Typo.red : .secondary)
+                    .foregroundStyle(selected ? Typo.accent : .secondary)
                 Text(entry.label)
                     .font(Typo.cardTitle)
                     .lineLimit(1)
@@ -200,9 +200,9 @@ struct SuggestionTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.red.opacity(0.18) : Typo.cardOff))
+                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.red.opacity(0.7) : Typo.strokeOff,
+                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -279,7 +279,7 @@ struct SuggestionTab: View {
                 Image(systemName: entry.icon)
                     .font(Typo.chipIcon)
                     .frame(width: 18)
-                    .foregroundStyle(on ? Typo.orange : .secondary)
+                    .foregroundStyle(on ? Typo.accent : .secondary)
                 Text(entry.label)
                     .font(Typo.chipTitle)
                     .foregroundStyle(on ? .primary : .secondary)
@@ -294,11 +294,11 @@ struct SuggestionTab: View {
             .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(on ? Typo.orange.opacity(0.18) : Typo.cardOff)
+                    .fill(on ? Typo.accent.opacity(0.18) : Typo.cardOff)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(on ? Typo.orange.opacity(0.7) : Typo.strokeOff,
+                    .stroke(on ? Typo.accent.opacity(0.7) : Typo.strokeOff,
                             lineWidth: on ? 1.5 : 1)
             )
         }
@@ -375,7 +375,7 @@ struct SuggestionTab: View {
             VStack(spacing: 5) {
                 Text(icon)
                     .font(.system(size: 28, weight: .bold, design: .serif))
-                    .foregroundStyle(selected ? Typo.orange : .secondary)
+                    .foregroundStyle(selected ? Typo.accent : .secondary)
                 Text(label).font(Typo.cardTitle)
                     .foregroundStyle(selected ? .primary : .secondary).lineLimit(1)
                 Text(desc).font(Typo.cardDesc)
@@ -383,9 +383,9 @@ struct SuggestionTab: View {
             }
             .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.orange.opacity(0.18) : Typo.cardOff))
+                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.orange.opacity(0.7) : Typo.strokeOff,
+                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)

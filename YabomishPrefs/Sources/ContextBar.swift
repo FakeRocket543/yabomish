@@ -1,5 +1,6 @@
 #if !MINIMAL
 import SwiftUI
+import AppKit
 
 struct ContextBar: View {
     @Bindable var store: PrefsStore
@@ -12,7 +13,7 @@ struct ContextBar: View {
     // New profile form
     @State private var newName = ""
     @State private var newCode = ""
-    @State private var newIcon = "💬"
+    @State private var newIcon = "bubble.left"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -23,14 +24,14 @@ struct ContextBar: View {
                             applyProfile(p)
                         } label: {
                             HStack(spacing: 4) {
-                                Text(p.icon)
+                                profileIcon(p.icon).font(Typo.caption)
                                 Text(p.name).font(Typo.caption)
                             }
                             .padding(.horizontal, 10).padding(.vertical, 5)
-                            .background(store.currentContext == p.code ? Typo.cyan.opacity(0.25) : Color.primary.opacity(0.06))
+                            .background(store.currentContext == p.code ? Typo.accent.opacity(0.25) : Color.primary.opacity(0.06))
                             .cornerRadius(6)
                             .overlay(RoundedRectangle(cornerRadius: 6)
-                                .stroke(store.currentContext == p.code ? Typo.cyan : Color.clear, lineWidth: 1.5))
+                                .stroke(store.currentContext == p.code ? Typo.accent : Color.clear, lineWidth: 1.5))
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
@@ -93,7 +94,7 @@ struct ContextBar: View {
             Text("新增語境").font(Typo.h2)
             HStack {
                 Text("Icon").frame(width: 60, alignment: .leading)
-                TextField("emoji", text: $newIcon).textFieldStyle(.roundedBorder).frame(width: 60)
+                TextField("圖示名稱", text: $newIcon).textFieldStyle(.roundedBorder).frame(width: 60)
             }
             HStack {
                 Text("名稱").frame(width: 60, alignment: .leading)
@@ -106,7 +107,7 @@ struct ContextBar: View {
                 Text("→ ,,X\(newCode.uppercased())").font(Typo.caption).foregroundStyle(.secondary)
             }
             if let err = validateNew() {
-                Text(err).font(Typo.caption).foregroundStyle(Typo.warn)
+                Text(err).font(Typo.caption).foregroundStyle(Typo.warning)
             }
             HStack {
                 Button("取消") { showAdd = false }
@@ -115,13 +116,22 @@ struct ContextBar: View {
                     var p = ContextProfile.snapshotCurrent(name: newName, icon: newIcon, code: newCode.lowercased())
                     p.inputMode = "t"
                     p.save()
-                    showAdd = false; newName = ""; newCode = ""; newIcon = "💬"
+                    showAdd = false; newName = ""; newCode = ""; newIcon = "bubble.left"
                     reload()
                 }
                 .disabled(validateNew() != nil)
             }
         }
         .padding(20).frame(width: 320)
+    }
+
+    @ViewBuilder
+    private func profileIcon(_ name: String) -> some View {
+        if NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil {
+            Image(systemName: name)
+        } else {
+            Text(name)
+        }
     }
 
     private func validateNew() -> String? {
@@ -196,7 +206,7 @@ struct ContextBar: View {
             importAlert = "已達上限 \(ContextProfile.maxProfiles) 組"; return
         }
         p.save(); reload()
-        importAlert = "已匯入「\(p.icon) \(p.name)」"
+        importAlert = "已匯入「\(p.name)」"
     }
 }
 #endif
