@@ -26,19 +26,19 @@ enum Typo {
     static let chipTitle = Font.system(size: 14, weight: .medium)
     static let chipBadge = Font.system(size: 12).monospacedDigit()
 
-    // MARK: - Colors（媽祖廟五色）
+    // MARK: - Colors (semantic)
 
-    static let cyan   = Color(red: 143/255, green: 172/255, blue: 191/255) // #8FADBF 青灰
-    static let gold   = Color(red: 242/255, green: 211/255, blue: 121/255) // #F2D479 金黃
-    static let orange = Color(red: 242/255, green: 141/255, blue:  53/255) // #F28D35 橘
-    static let deep   = Color(red: 242/255, green: 122/255, blue:  53/255) // #F27B35 深橘
-    static let red    = Color(red: 242/255, green:  64/255, blue:  48/255) // #F24130 朱紅
+    /// 強調色（選中、開啟、按鈕）
+    static let accent   = Color.accentColor
+    /// 成功（已匯入、可用）
+    static let success  = Color.green
+    /// 警告（提醒、覆蓋）
+    static let warning  = Color.orange
+    /// 錯誤（刪除、衝突）
+    static let error    = Color.red
 
-    // Semantic colors
-    static let ok      = Color.green                  // 可用 ✓
-    static let warn    = Color.orange                 // 警告 ⚠️
-    static let cardOff = Color.primary.opacity(0.05)  // 卡片停用背景
-    static let strokeOff = Color.primary.opacity(0.15) // 卡片停用邊框
+    static let cardOff   = Color.primary.opacity(0.05)  // 卡片停用背景
+    static let strokeOff = Color.primary.opacity(0.15)  // 卡片停用邊框
 }
 
 /// 區塊分隔線：上下 padding + 橫線，用在每個 Label(.h2) 前面

@@ -155,7 +155,7 @@ struct AppearanceTab: View {
                 VStack(spacing: 5) {
                     Image(systemName: opt.icon)
                         .font(Typo.cardIcon)
-                        .foregroundStyle(on ? Typo.cyan : .secondary)
+                        .foregroundStyle(on ? Typo.accent : .secondary)
                     Text(opt.label)
                         .font(Typo.cardTitle)
                         .lineLimit(2)
@@ -169,14 +169,14 @@ struct AppearanceTab: View {
                 if on {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.cyan)
+                        .foregroundStyle(Typo.accent)
                         .padding(6)
                 }
             }
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(on ? Typo.cyan.opacity(0.18) : Typo.cardOff))
+                .fill(on ? Typo.accent.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(on ? Typo.cyan.opacity(0.7) : Typo.strokeOff,
+                .stroke(on ? Typo.accent.opacity(0.7) : Typo.strokeOff,
                         lineWidth: on ? 1.5 : 1))
         }
         .buttonStyle(.plain)
@@ -192,7 +192,7 @@ struct AppearanceTab: View {
                 VStack(spacing: 5) {
                     Image(systemName: opt.icon)
                         .font(Typo.cardIcon)
-                        .foregroundStyle(selected ? Typo.gold : .secondary)
+                        .foregroundStyle(selected ? Typo.accent : .secondary)
                     Text(opt.label)
                         .font(Typo.cardTitle)
                         .lineLimit(2)
@@ -206,14 +206,14 @@ struct AppearanceTab: View {
                 if selected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.gold)
+                        .foregroundStyle(Typo.accent)
                         .padding(6)
                 }
             }
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.gold.opacity(0.18) : Typo.cardOff))
+                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.gold.opacity(0.7) : Typo.strokeOff,
+                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)

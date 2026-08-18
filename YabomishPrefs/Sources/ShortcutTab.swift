@@ -136,9 +136,9 @@ struct ShortcutTab: View {
         case .empty: EmptyView()
         case .tooShort: Text("至少 2 碼").foregroundStyle(.secondary).font(Typo.caption)
         case .tooLong: Text("最多 4 碼").foregroundStyle(.secondary).font(Typo.caption)
-        case .available: Text("✓ 可用").foregroundStyle(Typo.ok).font(Typo.caption)
-        case .existsInCIN(let s): Text("字表已有：\(s)").foregroundStyle(Typo.warn).font(Typo.caption)
-        case .existsInShortcuts(let s): Text("已有快捷碼，將覆蓋：\(s)").foregroundStyle(Typo.warn).font(Typo.caption)
+        case .available: Text("✓ 可用").foregroundStyle(Typo.success).font(Typo.caption)
+        case .existsInCIN(let s): Text("字表已有：\(s)").foregroundStyle(Typo.warning).font(Typo.caption)
+        case .existsInShortcuts(let s): Text("已有快捷碼，將覆蓋：\(s)").foregroundStyle(Typo.warning).font(Typo.caption)
         }
     }
 
@@ -392,12 +392,12 @@ struct ShortcutTab: View {
                 let found = corpusResults.filter { !$0.words.isEmpty }
                 if found.isEmpty {
                     HStack(spacing: 4) {
-                        Image(systemName: "xmark.circle").foregroundStyle(.red)
-                        Text("未在任何詞庫中找到「\(corpusQuery)」").font(Typo.body).foregroundStyle(.red)
+                        Image(systemName: "xmark.circle").foregroundStyle(Typo.error)
+                        Text("未在任何詞庫中找到「\(corpusQuery)」").font(Typo.body).foregroundStyle(Typo.error)
                     }
                 } else {
                     HStack {
-                        Text("✓ 在 \(found.count) 個詞庫中找到").font(Typo.caption).foregroundStyle(Typo.ok)
+                        Text("✓ 在 \(found.count) 個詞庫中找到").font(Typo.caption).foregroundStyle(Typo.success)
                         Spacer()
                         Button("匯出 CSV⋯") { exportCorpusCSV(found) }
                             .font(Typo.caption)

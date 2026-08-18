@@ -39,13 +39,13 @@ struct PinnedOrderSection: View {
                                     Text(ch).font(.system(size: 18))
                                     Spacer()
                                     if pinned.contains(ch) {
-                                        Image(systemName: "checkmark").foregroundStyle(Typo.cyan)
+                                        Image(systemName: "checkmark").foregroundStyle(Typo.accent)
                                     } else {
                                         Image(systemName: "plus.circle").foregroundStyle(.secondary)
                                     }
                                 }
                                 .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(pinned.contains(ch) ? Typo.cyan.opacity(0.1) : Color.clear)
+                                .background(pinned.contains(ch) ? Typo.accent.opacity(0.1) : Color.clear)
                                 .cornerRadius(6)
                             }
                             .buttonStyle(.plain)
@@ -69,11 +69,11 @@ struct PinnedOrderSection: View {
                                         Image(systemName: "chevron.down").font(.caption)
                                     }.disabled(i == pinned.count - 1).buttonStyle(.borderless)
                                     Button { pinned.remove(at: i) } label: {
-                                        Image(systemName: "xmark").font(.caption).foregroundStyle(.red)
+                                        Image(systemName: "xmark").font(.caption).foregroundStyle(Typo.error)
                                     }.buttonStyle(.borderless)
                                 }
                                 .padding(.horizontal, 8).padding(.vertical, 3)
-                                .background(Typo.gold.opacity(0.1))
+                                .background(Typo.accent.opacity(0.1))
                                 .cornerRadius(6)
                             }
                         }
@@ -103,7 +103,7 @@ struct PinnedOrderSection: View {
                         Button {
                             deleteCode(item.code); loadAll()
                         } label: {
-                            Image(systemName: "trash").font(.caption).foregroundStyle(.red)
+                            Image(systemName: "trash").font(.caption).foregroundStyle(Typo.error)
                         }.buttonStyle(.borderless)
                     }
                     .contentShape(Rectangle())
