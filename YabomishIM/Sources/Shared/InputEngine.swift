@@ -182,12 +182,26 @@ final class InputEngine {
         let maxLen = cinTable.maxCodeLength
 
         if newComposing.count > maxLen {
+            // If the new (longer) code is itself a snippet or a snippet prefix,
+            // keep typing instead of committing or resetting.
+            #if !MINIMAL
+            let isSnippetOrPrefix = UserSnippets.shared.expansion(for: newComposing) != nil || UserSnippets.shared.hasPrefix(newComposing)
+            if isSnippetOrPrefix {
+                _composing = newComposing
+            } else if !_currentCandidates.isEmpty {
+                _commitFirstCandidate()
+                _composing = char; _isWildcard = false
+            } else {
+                _resetComposing(); return
+            }
+            #else
             if !_currentCandidates.isEmpty {
                 _commitFirstCandidate()
                 _composing = char; _isWildcard = false
             } else {
                 _resetComposing(); return
             }
+            #endif
         } else {
             _composing = newComposing
         }
@@ -195,7 +209,13 @@ final class InputEngine {
         _refreshCandidates()
 
         if _currentCandidates.isEmpty && _composing.count >= cinTable.maxCodeLength && !_isWildcard {
+            #if !MINIMAL
+            if !UserSnippets.shared.hasPrefix(_composing) {
+                _resetComposing(); return
+            }
+            #else
             _resetComposing(); return
+            #endif
         }
 
         if prefs.autoCommit &&
@@ -811,7 +831,11 @@ final class InputEngine {
     // MARK: - Internal
 
     private func _canExtendCode(_ code: String) -> Bool {
-        !cinTable.validNextKeys(after: code).isEmpty
+        #if !MINIMAL
+        return !cinTable.validNextKeys(after: code).isEmpty || UserSnippets.shared.hasPrefix(code)
+        #else
+        return !cinTable.validNextKeys(after: code).isEmpty
+        #endif
     }
 
     public func validNextKeys() -> Set<Character> {
