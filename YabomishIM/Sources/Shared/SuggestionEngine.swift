@@ -74,6 +74,11 @@ final class SuggestionEngine {
             pool4 += bigramSuggest.suggest(after: lastText)
         }
 
+        // Emoji first — they were being truncated when other pools filled the 10-slot limit.
+        for e in wikiCorpus.suggestEmoji(for: lastChar, limit: 3) {
+            if seen.insert(e).inserted { suggestions.append(e) }
+        }
+
         let ordered: [[String]]
         switch strategy {
         case "domain": ordered = [poolJJ, pool3, pool2, pool4]
@@ -84,11 +89,6 @@ final class SuggestionEngine {
             for s in pool where seen.insert(s).inserted {
                 if !wikiCorpus.isRegionDemoted(s) { suggestions.append(s) }
             }
-        }
-
-        // Emoji
-        for e in wikiCorpus.suggestEmoji(for: String(recentCommitted.suffix(1))) {
-            if seen.insert(e).inserted { suggestions.append(e) }
         }
 
         return Array(suggestions.prefix(10))

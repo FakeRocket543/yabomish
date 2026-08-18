@@ -18,6 +18,13 @@ final class UserSnippets {
         snippets[code]
     }
 
+    /// Return true if `code` is a prefix of any *longer* known snippet.
+    /// This is used by the engine to decide whether to keep accepting keystrokes
+    /// past the normal CIN maxCodeLength while the user is typing a long snippet.
+    func hasPrefix(_ code: String) -> Bool {
+        snippets.keys.contains { $0.count > code.count && $0.hasPrefix(code) }
+    }
+
     /// Return a display label for the candidate panel.
     func display(for code: String) -> String? {
         guard let expansion = snippets[code] else { return nil }
@@ -57,11 +64,31 @@ final class UserSnippets {
     }
 
     /// 1. Built-in default snippets shipped with the app bundle.
+    ///    - Resources/Plugins/bosh-snippets.json (legacy)
+    ///    - Resources/Plugins/<name>/snippets.json (new plugin bundles)
     private func defaultSnippets() -> [String: String] {
-        guard let url = Bundle.main.url(forResource: "bosh-snippets", withExtension: "json", subdirectory: "Plugins"),
-              let data = try? Data(contentsOf: url)
-        else { return [:] }
-        return decodeSnippets(data) ?? [:]
+        var merged: [String: String] = [:]
+
+        // Legacy single-file default snippets
+        if let url = Bundle.main.url(forResource: "bosh-snippets", withExtension: "json", subdirectory: "Plugins"),
+           let data = try? Data(contentsOf: url),
+           let dict = decodeSnippets(data) {
+            for (code, text) in dict { merged[code] = text }
+        }
+
+        // New plugin bundles: Plugins/<name>/snippets.json
+        let fm = FileManager.default
+        if let resourceURL = Bundle.main.resourceURL,
+           let entries = try? fm.contentsOfDirectory(at: resourceURL.appendingPathComponent("Plugins"), includingPropertiesForKeys: nil, options: .skipsHiddenFiles) {
+            for dir in entries where dir.hasDirectoryPath {
+                let file = dir.appendingPathComponent("snippets.json")
+                guard let data = try? Data(contentsOf: file),
+                      let dict = decodeSnippets(data) else { continue }
+                for (code, text) in dict { merged[code] = text }
+            }
+        }
+
+        return merged
     }
 
     /// 2. Plugin folders: Plugins/<name>/snippets.json
