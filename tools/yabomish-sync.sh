@@ -1,9 +1,10 @@
 #!/bin/zsh
-# yabomish-sync.sh — v2 多後端同步（R2 / GitHub HTTPS / private git SSH/HTTPS）
+# yabomish-sync.sh — v2 多後端同步（S3 / Git HTTPS / Git SSH）
 # 用法：yabomish-sync.sh [push|pull|status]
 #
 # 後端由 YABOMISH_SYNC_BACKEND 決定：
-#   r2        — 經 vos3 daemon 同步到 R2（預設，舊版相容）
+#   r2        — 經 vos3 daemon 同步到 S3 相容儲存（backend 名稱 r2 為歷史相容保留；
+#               實際 endpoint 由 vos3 remote 決定，目前為 OVH S3 s3.sgp.io.cloud.ovh.net bucket vos3）
 #   git       — 經 git 同步到 GitHub / Forgejo / 任何 git repo
 #               公開用 https://github.com/user/repo.git
 #               私密用 https://github.com/user/repo.git + YABOMISH_SYNC_TOKEN
@@ -111,9 +112,14 @@ r2_push() {
     fi
   done
   if [ "$CHANGED" = 1 ]; then
-    RMAN=$(echo "$RMAN" | jq --arg u "$NOW" '.updated_at = $u | .schema = 1')
+    RMAN=$(echo "$RMAN" | jq --arg u "$NOW" --arg by "$(whoami)@$(hostname -s)" '.updated_at = $u | .schema = 1 | .updated_by = $by')
     echo "$RMAN" > "$TMP/manifest-out.json"
-    if vos3_put "$TMP/manifest-out.json" "$MANIFEST" >/dev/null 2>&1; then echo "↑ manifest.json"; fi
+    if vos3_put "$TMP/manifest-out.json" "$MANIFEST" >/dev/null 2>&1; then
+      echo "↑ manifest.json"
+    else
+      # 檔案已上傳但 manifest 失敗 = 其他裝置拉不到新內容，且之後每次 push 重傳 — 必須報錯
+      echo "✗ manifest.json (upload failed — 檔案已傳但清單未更新，請重試 push)"; exit 1
+    fi
   fi
 }
 
@@ -157,6 +163,11 @@ git_pull() {
   local repo="$TMP/repo"
   for f in "${FILES[@]}"; do
     if [ -f "$repo/$f" ]; then
+      # git 不保留 mtime，無法 LWW：本地與遠端內容不同時先備份再覆蓋，避免靜默丟失本地編輯
+      if [ -f "$SHARE_DIR/$f" ] && ! diff -q "$SHARE_DIR/$f" "$repo/$f" >/dev/null 2>&1; then
+        cp "$SHARE_DIR/$f" "$SHARE_DIR/$f.bak.$(date +%Y%m%d%H%M%S)"
+        echo "! $f (local diverged — backed up to $f.bak.*)"
+      fi
       mkdir -p "$(dirname "$SHARE_DIR/$f")"
       cp "$repo/$f" "$SHARE_DIR/$f"
       echo "↓ $f"

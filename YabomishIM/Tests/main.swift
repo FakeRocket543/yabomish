@@ -507,6 +507,55 @@ func testIntegrationSequentialCommits() {
     check(mock.commits.count == 3, "three sequential commits")
 }
 
+func testSnippetOverflowCommitsExpansion() {
+    // 回歸：auau 候選為 snippet 顯示字串時，滿碼後續打（overflow）必須送出展開文字，
+    // 不是截斷顯示字串（曾 commit "📝 sudo apt update && sudo apt u..."）
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    let realCommands = AppConstants.sharedDir + "/commands.json"
+    guard FileManager.default.contents(atPath: realCommands) != nil,
+          UserSnippets.shared.expansion(for: "auau") != nil else {
+        print("SKIP testSnippetOverflowCommitsExpansion (live commands.json 無 auau)")
+        return
+    }
+
+    for c in ["a", "u", "a", "u"] { engine.handleLetter(c) }
+    engine.handleLetter("x") // 溢出 maxCodeLength → 觸發第一候選 commit
+    let joined = mock.commits.joined()
+    check(joined.contains("sudo apt update"), "overflow commits snippet expansion")
+    check(!joined.contains("📝"), "overflow never commits display string")
+    checkEqual(engine.composing, "x", "overflow char starts new composing")
+}
+
+func testSnippetAutoCommitSendsExpansion() {
+    // 回歸：autoCommit 開啟時，唯一候選為 snippet 也要送展開文字
+    let prev = YabomishPrefs.autoCommit
+    YabomishPrefs.autoCommit = true
+    defer { YabomishPrefs.autoCommit = prev }
+
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    guard UserSnippets.shared.expansion(for: "auau") != nil else {
+        print("SKIP testSnippetAutoCommitSendsExpansion (live commands.json 無 auau)")
+        return
+    }
+
+    for c in ["a", "u", "a", "u"] { engine.handleLetter(c) }
+    let joined = mock.commits.joined()
+    check(joined.contains("sudo apt update"), "autoCommit sends snippet expansion")
+    check(!joined.contains("📝"), "autoCommit never commits display string")
+}
+
 // Run all tests
 print("Running YabomishIM tests...")
 testHarness()
@@ -544,5 +593,7 @@ testIntegrationCommaCommandMode()
 testIntegrationQuotePassthrough()
 testIntegrationSequentialCommits()
 
+testSnippetOverflowCommitsExpansion()
+testSnippetAutoCommitSendsExpansion()
 print("\n\(passed) passed, \(failed) failed")
 exit(failed > 0 ? 1 : 0)

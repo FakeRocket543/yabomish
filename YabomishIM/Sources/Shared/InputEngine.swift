@@ -183,7 +183,7 @@ final class InputEngine {
 
         if newComposing.count > maxLen {
             if !_currentCandidates.isEmpty {
-                _commitText(_currentCandidates[0])
+                _commitFirstCandidate()
                 _composing = char; _isWildcard = false
             } else {
                 _resetComposing(); return
@@ -200,7 +200,7 @@ final class InputEngine {
 
         if prefs.autoCommit &&
            _currentCandidates.count == 1 && _composing.count >= 2 && !_canExtendCode(_composing) {
-            _commitText(_currentCandidates[0]); _eatNextSpace = true; return
+            _commitFirstCandidate(); _eatNextSpace = true; return
         }
 
         _notifyComposing(); _notifyCandidates()
@@ -240,12 +240,7 @@ final class InputEngine {
         if _currentCandidates.isEmpty {
             _resetComposing(); delegate?.engineDidClearComposing(); return
         }
-        #if !MINIMAL
-        if let snippet = _currentSnippet, !_currentCandidates.isEmpty, _currentCandidates[0].hasPrefix("📝 ") {
-            _commitSnippet(snippet); return
-        }
-        #endif
-        _commitText(_currentCandidates[0])
+        _commitFirstCandidate()
     } }
 
     func handleBackspace() { sync {
@@ -935,6 +930,19 @@ final class InputEngine {
                 delegate?.engineDidSuggest(results)
             }
         }
+        #endif
+    }
+
+    /// Commit candidates[0]：有 snippet 時送出展開文字（MINIMAL build 無 snippet 來源，恆走 _commitText）。
+    private func _commitFirstCandidate() {
+        #if !MINIMAL
+        if let snippet = _currentSnippet {
+            _commitSnippet(snippet)
+        } else {
+            _commitText(_currentCandidates[0])
+        }
+        #else
+        _commitText(_currentCandidates[0])
         #endif
     }
 
