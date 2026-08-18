@@ -1,4 +1,8 @@
 {
+  "auau": { "type": "text", "text": "sudo apt update && sudo apt upgrade" },
+  "gcom": { "type": "text", "text": "git commit -am \"\"" },
+  "gpush": { "type": "text", "text": "git push" },
+  "gpull": { "type": "text", "text": "git pull" },
   "ss": { "type": "shell", "run": "~/Library/Application\\ Support/Yabomish/yabomish_capture.sh screen" },
   "ws": { "type": "shell", "run": "~/Library/Application\\ Support/Yabomish/yabomish_capture.sh window" },
   "cs": { "type": "shell", "run": "~/Library/Application\\ Support/Yabomish/yabomish_capture.sh select" }
