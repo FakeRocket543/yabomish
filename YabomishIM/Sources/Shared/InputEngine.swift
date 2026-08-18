@@ -137,7 +137,6 @@ final class InputEngine {
     func handleLetter(_ char: String) { sync {
         _snapComposing = _composing; _snapCandidates = _currentCandidates; _snapIsWildcard = _isWildcard
         _lastWasEmptySpace = false
-        _singleCodeSpaceArmed = false
 
         // Pin mode: letters build the code to pin
         if _isPinMode {
@@ -199,8 +198,6 @@ final class InputEngine {
     } }
 
     private var _lastWasEmptySpace = false
-    /// True after the first space on an extendable 1-char code — second space commits.
-    private var _singleCodeSpaceArmed = false
 
     func handleSpace() { sync {
         if _composing.isEmpty { return }
@@ -234,15 +231,6 @@ final class InputEngine {
         if _currentCandidates.isEmpty {
             _resetComposing(); delegate?.engineDidClearComposing(); return
         }
-        // Single-code guard: a 1-char code that can extend (e.g. `w` → 五 vs 我=ixo)
-        // requires a second space to commit — the first space only shows the extension hint.
-        if _composing.count == 1 && _canExtendCode(_composing) && !_singleCodeSpaceArmed {
-            _singleCodeSpaceArmed = true
-            let nexts = String(cinTable.validNextKeys(after: _composing).sorted().prefix(8))
-            delegate?.engineDidShowToast("'\(_composing)' 可加碼：\(nexts)　再按空白送出")
-            return
-        }
-        _singleCodeSpaceArmed = false
         _commitText(_currentCandidates[0])
     } }
 
