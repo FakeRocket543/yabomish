@@ -96,6 +96,13 @@ struct YabomishPrefs {
         get { defaults.string(forKey: "menuBarLabel") ?? "yabomish" }
         set { defaults.set(newValue, forKey: "menuBarLabel") }
     }
+
+    /// 切換顯示（切入提示 / 狀態列名稱）: "繁中" / "Yabomish" / "🦐"
+    static var switchDisplay: String {
+        get { defaults.string(forKey: "switchDisplay") ?? "繁中" }
+        set { defaults.set(newValue, forKey: "switchDisplay") }
+    }
+
     static var iconDirection: String {
         get { defaults.string(forKey: "iconDirection") ?? "left" }
         set { defaults.set(newValue, forKey: "iconDirection") }

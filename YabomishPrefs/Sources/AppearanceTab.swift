@@ -19,6 +19,12 @@ private let iconOptions: [ToggleOption] = [
     .init(id: "right", label: "→ 向右", icon: "arrow.right", desc: "蝦頭朝右"),
 ]
 
+private let switchOptions: [ToggleOption] = [
+    .init(id: "繁中",     label: "繁中",     icon: "character",     desc: "傳統模式名"),
+    .init(id: "Yabomish", label: "Yabomish", icon: "keyboard",      desc: "英文品牌名"),
+    .init(id: "🦐",       label: "🦐",       icon: "face.smiling",  desc: "蝦子 emoji"),
+]
+
 struct AppearanceTab: View {
     @Bindable var store: PrefsStore
 
@@ -126,6 +132,14 @@ struct AppearanceTab: View {
                 }
 
                 SectionDivider()
+                Label("切換顯示", systemImage: "text.badge.star").font(Typo.h2)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach(switchOptions) { opt in
+                        switchDisplayCard(opt)
+                    }
+                }
+
+                SectionDivider()
                 Label("蝦頭方向", systemImage: "shippingbox").font(Typo.h2)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     ForEach(iconOptions) { opt in
@@ -188,6 +202,43 @@ struct AppearanceTab: View {
     private func iconCard(_ opt: ToggleOption) -> some View {
         let selected = store.iconDirection == opt.id
         Button { store.iconDirection = opt.id } label: {
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 5) {
+                    Image(systemName: opt.icon)
+                        .font(Typo.cardIcon)
+                        .foregroundStyle(selected ? Typo.accent : .secondary)
+                    Text(opt.label)
+                        .font(Typo.cardTitle)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                    Text(opt.desc)
+                        .font(Typo.cardDesc)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, minHeight: 90)
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Typo.accent)
+                        .padding(6)
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: 10)
+                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
+            .overlay(RoundedRectangle(cornerRadius: 10)
+                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
+                        lineWidth: selected ? 1.5 : 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(opt.label)
+        .accessibilityValue(selected ? "已選擇" : "未選擇")
+    }
+
+    @ViewBuilder
+    private func switchDisplayCard(_ opt: ToggleOption) -> some View {
+        let selected = store.switchDisplay == opt.id
+        Button { store.switchDisplay = opt.id } label: {
             ZStack(alignment: .topTrailing) {
                 VStack(spacing: 5) {
                     Image(systemName: opt.icon)

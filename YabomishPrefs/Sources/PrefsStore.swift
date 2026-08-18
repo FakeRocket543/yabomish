@@ -85,6 +85,10 @@ import Foundation
         get { access(keyPath: \.iconDirection); return ud.string(forKey: "iconDirection") ?? "left" }
         set { withMutation(keyPath: \.iconDirection) { ud.set(newValue, forKey: "iconDirection") }; postChange() }
     }
+    var switchDisplay: String {
+        get { access(keyPath: \.switchDisplay); return ud.string(forKey: "switchDisplay") ?? "繁中" }
+        set { withMutation(keyPath: \.switchDisplay) { ud.set(newValue, forKey: "switchDisplay") }; postChange() }
+    }
     var debugMode: Bool {
         get { access(keyPath: \.debugMode); return ud.object(forKey: "debugMode") as? Bool ?? false }
         set { withMutation(keyPath: \.debugMode) { ud.set(newValue, forKey: "debugMode") }; postChange() }
