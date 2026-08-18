@@ -320,16 +320,13 @@ func testIntegrationTypeAndCommit() {
     checkEqual(engine.composing, "a", "composing is 'a'")
     check(engine.currentCandidates.count >= 2, "candidates for 'a'")
 
-    // First space on extendable single code → extension hint, no commit
+    // Space on extendable single code → commit first candidate directly (guard removed)
     engine.handleSpace()
-    check(mock.commits.isEmpty, "first space on single code shows hint, no commit")
-    checkEqual(engine.composing, "a", "composing kept after hint")
-    // Second space → commit first candidate
-    engine.handleSpace()
-    check(mock.commits.count > 0, "second space commits")
+    checkEqual(mock.commits.count, 1, "space on single code commits directly")
     let committed = mock.commits.first ?? ""
     check(committed == "好" || committed == "號", "committed a valid char")
     check(engine.composing.isEmpty, "composing cleared after commit")
+    check(mock.toasts.isEmpty, "no hint toast on single-code space")
 }
 
 func testIntegrationTypeMultiChar() {
@@ -369,7 +366,7 @@ func testIntegrationBackspaceAndRetype() {
     checkEqual(mock.commits.first, "哈", "commit after backspace+retype")
 }
 
-func testSingleCodeSpaceGuard() {
+func testSingleCodeSpaceDirectCommit() {
     let engine = InputEngine()
     let mock = MockEngineDelegate()
     engine.delegate = mock
@@ -377,15 +374,13 @@ func testSingleCodeSpaceGuard() {
     engine.cinTable.load(cinPath: cinPath)
     try? FileManager.default.removeItem(atPath: cinPath)
 
-    // 'a' is single-char and extendable (ab exists) → first space = hint only
+    // 'a' is single-char and extendable (ab exists) → space commits directly, no guard
     engine.handleLetter("a")
     engine.handleSpace()
-    checkEqual(mock.commits.count, 0, "first space on extendable single code does not commit")
-    checkEqual(engine.composing, "a", "composing preserved after hint")
-    // Second space commits
-    engine.handleSpace()
-    checkEqual(mock.commits.count, 1, "second space commits")
-    // Armed flag cleared by letter input: typing 'a' then extending cancels the guard
+    checkEqual(mock.commits.count, 1, "first space on extendable single code commits")
+    check(engine.composing.isEmpty, "composing cleared after commit")
+    check(mock.toasts.isEmpty, "no hint toast")
+    // Extending to a two-char code still commits on first space
     engine.handleLetter("a")
     engine.handleLetter("b")
     engine.handleSpace()
@@ -511,7 +506,7 @@ testRankerModeFiltering()
 testIntegrationTypeAndCommit()
 testIntegrationTypeMultiChar()
 testIntegrationBackspaceAndRetype()
-testSingleCodeSpaceGuard()
+testSingleCodeSpaceDirectCommit()
 testIntegrationEscapeCancels()
 testIntegrationEnterCommitsRawCode()
 testIntegrationDigitSelect()
