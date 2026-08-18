@@ -159,10 +159,20 @@ struct ShortcutTab: View {
                             .frame(width: 80, alignment: .leading)
                         Text(sc.content).lineLimit(1)
                         Spacer()
-                        Button("✎") { code = sc.code; content = sc.content }
-                            .buttonStyle(.borderless)
-                        Button("🗑") { deleteShortcut(code: sc.code) }
-                            .buttonStyle(.borderless)
+                        Button {
+                            code = sc.code; content = sc.content
+                        } label: {
+                            Image(systemName: "pencil")
+                                .accessibilityLabel("編輯")
+                        }
+                        .buttonStyle(.borderless)
+                        Button {
+                            deleteShortcut(code: sc.code)
+                        } label: {
+                            Image(systemName: "trash")
+                                .accessibilityLabel("刪除")
+                        }
+                        .buttonStyle(.borderless)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { code = sc.code; content = sc.content }
