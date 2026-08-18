@@ -105,7 +105,7 @@ final class InputEngine {
     var isInSpecialMode: Bool { sync { _isZhuyinMode || _isPinyinMode || _isSameSoundMode } }
     var inputMode: InputMode { sync { _inputMode } }
     var selKeys: [Character] { cinTable.selKeys }
-    var currentModeLabel: String { sync { _isEnglishMode ? "A" : (Self.modeLabels[_inputMode] ?? "繁中") } }
+    var currentModeLabel: String { sync { _modeLabel(for: _inputMode) } }
     var currentModeName: String { sync { _currentModeName } }
 
     func clearCandidates() { sync { _currentCandidates = [] } }
@@ -119,7 +119,13 @@ final class InputEngine {
     }
 
     private var _currentModeLabel: String {
-        _isEnglishMode ? "A" : (Self.modeLabels[_inputMode] ?? "繁中")
+        _modeLabel(for: _inputMode)
+    }
+
+    private func _modeLabel(for mode: InputMode) -> String {
+        if _isEnglishMode { return "A" }
+        if mode == .t { return prefs.switchDisplay }
+        return Self.modeLabels[mode] ?? "繁中"
     }
 
     // MARK: - Init
@@ -137,6 +143,7 @@ final class InputEngine {
     func handleLetter(_ char: String) { sync {
         _snapComposing = _composing; _snapCandidates = _currentCandidates; _snapIsWildcard = _isWildcard
         _lastWasEmptySpace = false
+        _singleCodeSpaceArmed = false
 
         // Pin mode: letters build the code to pin
         if _isPinMode {
@@ -231,8 +238,24 @@ final class InputEngine {
         if _currentCandidates.isEmpty {
             _resetComposing(); delegate?.engineDidClearComposing(); return
         }
+        // Single-code guard v2 (trusted list): an extendable 1-char code that the user
+        // has NEVER confirmed before gets ONE hint on first space; committing adds the
+        // code to the trusted set so habitual singles (d=的, x=有…) never interrupt again.
+        if _composing.count == 1 && _canExtendCode(_composing)
+            && !_trustedSingleCodes.contains(_composing) && !_singleCodeSpaceArmed {
+            _singleCodeSpaceArmed = true
+            delegate?.engineDidShowToast("'\(_composing)' → \(_currentCandidates[0])　（再按空白確認；之後直送）")
+            return
+        }
+        _singleCodeSpaceArmed = false
+        if _composing.count == 1 { _trustedSingleCodes.insert(_composing) }
         _commitText(_currentCandidates[0])
     } }
+
+    /// Single-char codes the user has confirmed at least once — no more hint.
+    /// Reset via ,,RS (freq reset clears it too).
+    private var _trustedSingleCodes: Set<String> = []
+    private var _singleCodeSpaceArmed = false
 
     func handleBackspace() { sync {
         // Pin mode: backspace removes last picked char, or last code char, or exits
@@ -556,8 +579,7 @@ final class InputEngine {
         _resetComposing()
 
         let modeMap = CommaCommandHelp.modeMap
-        if cmd == "rs" { freqTracker.reset(); delegate?.engineDidShowToast("字頻已重置"); return }
-        if cmd == "rl" { cinTable.reload(); CommaCommandRunner.reload(); delegate?.engineDidShowToast("字表已重載"); return }
+        if cmd == "rs" { freqTracker.reset(); _trustedSingleCodes.removeAll(); delegate?.engineDidShowToast("字頻已重置"); return }
         if cmd == "pin" {
             _isZhuyinMode = false; _clearZhuyinSlots()
             _isSameSoundMode = false; _sameSoundBase = ""
@@ -674,7 +696,7 @@ final class InputEngine {
         _isPinMode = false; _pinCode = ""; _pinPicked = []
         _currentCandidates = []; _notifyCandidates()
         _inputMode = mode
-        delegate?.engineDidShowToast(Self.modeLabels[mode] ?? "繁中")
+        delegate?.engineDidShowToast(_modeLabel(for: mode))
     }
 
     /// Switch to a named mode (used by space-swipe cycle). Returns the display label.
@@ -701,7 +723,7 @@ final class InputEngine {
         if _isSameSoundMode { _isSameSoundMode = false; _sameSoundBase = ""; _composing = "" }
         if let mode = modeMap[name] {
             _inputMode = mode
-            let label = Self.modeLabels[mode] ?? "繁中"
+            let label = _modeLabel(for: mode)
             delegate?.engineDidShowToast(label)
             return label
         }

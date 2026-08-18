@@ -119,12 +119,18 @@ install_im() {
     local ICON; ICON=$(defaults read $IM_BUNDLE_ID iconDirection 2>/dev/null || echo "left")
     [ "$ICON" = "right" ] && [ -f "$DIR/icon_right.tiff" ] && sudo cp "$DIR/icon_right.tiff" "$DIR/icon.tiff"
 
-    # 套用已有的狀態列名稱設定
+    # 套用切換顯示設定到 Info.plist（狀態列 / 輸入法名稱）
     local PLIST="$INSTALL_DIR/YabomishIM.app/Contents/Info.plist"
-    local LBL; LBL=$(defaults read $IM_BUNDLE_ID menuBarLabel 2>/dev/null || echo "yabomish")
+    local LBL; LBL=$(defaults read $IM_BUNDLE_ID switchDisplay 2>/dev/null || defaults read $IM_BUNDLE_ID menuBarLabel 2>/dev/null || echo "繁中")
     case "$LBL" in
-        yabo) sudo /usr/libexec/PlistBuddy -c "Set :CFBundleName Yabo" "$PLIST";;
+        yabo)          LBL="Yabo";;
+        yabomish|Yabo) LBL="Yabomish";;
+        繁中)          LBL="繁中";;
+        🦐)            LBL="🦐";;
+        *)             LBL="繁中";;
     esac
+    sudo /usr/libexec/PlistBuddy -c "Set :CFBundleName $LBL" "$PLIST" || true
+    sudo /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $LBL" "$PLIST" || true
 
     # 字表
     mkdir -p "$USER_DIR/tables"
