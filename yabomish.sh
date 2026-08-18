@@ -84,6 +84,7 @@ build_prefs() {
 
     cp "$PREFS_DIR/Resources/Info.plist" "$PREFS_APP/Contents/"
     cp "$PREFS_DIR/Resources/AppIcon.icns" "$PREFS_APP/Contents/Resources/"
+    [ -f "$PREFS_DIR/Resources/help.md" ] && cp "$PREFS_DIR/Resources/help.md" "$PREFS_APP/Contents/Resources/"
 
     local VER; VER=$(grep -m1 '^## \[' "$ROOT/CHANGELOG.md" | sed 's/.*\[\(.*\)\].*/\1/')
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")

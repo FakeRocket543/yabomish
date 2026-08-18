@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct HelpTab: View {
+    @State private var helpText: String = ""
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -15,6 +17,16 @@ struct HelpTab: View {
                     Link("回報問題",
                          destination: URL(string: "https://github.com/FakeRocket543/yabomish/issues/new")!)
                         .font(Typo.body)
+                }
+
+                // ── 共用說明文件 ──
+                if !helpText.isEmpty {
+                    if let attr = try? AttributedString(markdown: helpText) {
+                        Text(attr)
+                    } else {
+                        Text(helpText)
+                    }
+                    Divider()
                 }
 
                 // ── 使用方法 ──
@@ -209,6 +221,12 @@ struct HelpTab: View {
             }
             .padding(20)
         }
+        .onAppear { loadHelp() }
+    }
+
+    private func loadHelp() {
+        guard let url = Bundle.main.url(forResource: "help", withExtension: "md") else { return }
+        helpText = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
     }
 
     // MARK: - Guide (numbered steps)
@@ -254,11 +272,28 @@ struct HelpTab: View {
     private func creditSection(_ title: String, items: [(String, String, String)]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(Typo.h3).foregroundStyle(.secondary)
-            ForEach(items, id: \.0) { name, source, license in
-                HStack(alignment: .top, spacing: 0) {
-                    Text(name).font(Typo.bodyMono).frame(width: 140, alignment: .leading)
-                    Text(source).font(Typo.body).frame(width: 220, alignment: .leading)
-                    Text(license).font(Typo.cardDesc).foregroundStyle(.secondary)
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
+                ],
+                spacing: 4
+            ) {
+                ForEach(items, id: \.0) { name, source, license in
+                    Text(name)
+                        .font(Typo.bodyMono)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(source)
+                        .font(Typo.body)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(license)
+                        .font(Typo.cardDesc)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
