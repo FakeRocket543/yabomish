@@ -148,6 +148,35 @@ func testRealCommaCommand() {
     check(engine.composing.isEmpty, "escape exits comma command")
 }
 
+func testCommaCommandTextExpand() {
+    // commands.json v2 契約：type:text 跨平台展開
+    let tmp = NSTemporaryDirectory() + "/cmd-test-\(UUID().uuidString).json"
+    let json = """
+    {"auau": {"type": "text", "text": "sudo apt update && sudo apt upgrade"},
+     "ss":   {"type": "shell", "run": "echo hi"}}
+    """
+    try? json.write(toFile: tmp, atomically: true, encoding: .utf8)
+    CommaCommandRunner.reload(path: tmp)
+    defer { CommaCommandRunner.reload(); try? FileManager.default.removeItem(atPath: tmp) }
+
+    checkEqual(CommaCommandRunner.expandText("auau"), "sudo apt update && sudo apt upgrade", "expandText returns text payload")
+    checkEqual(CommaCommandRunner.expandText("ss"), nil, "shell command is not text-expandable")
+    checkEqual(CommaCommandRunner.expandText("nope"), nil, "unknown command returns nil")
+
+    let engine = InputEngine()
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    CommaCommandRunner.reload(path: tmp) // after engine init (init reloads real config)
+    let cinPath = makeTempCIN()
+    engine.cinTable.load(cinPath: cinPath)
+    try? FileManager.default.removeItem(atPath: cinPath)
+
+    for c in [",", ",", "a", "u", "a", "u"] { engine.handleLetter(c) }
+    engine.handleSpace()
+    checkEqual(mock.commits.first, "sudo apt update && sudo apt upgrade", ",,auau commits expanded text")
+    check(engine.composing.isEmpty, "composing cleared after text expand")
+}
+
 func testRealEnterCommitsRaw() {
     let engine = InputEngine()
     let mock = MockEngineDelegate()
@@ -491,6 +520,7 @@ testRealBackspace()
 testRealEscape()
 testRealModeSwitch()
 testRealCommaCommand()
+testCommaCommandTextExpand()
 testRealEnterCommitsRaw()
 testRealZhuyinModeSwitch()
 testCINTableLoadAndLookup()
