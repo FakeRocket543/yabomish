@@ -118,7 +118,10 @@ struct ShortcutTab: View {
             TextEditor(text: $content)
                 .font(.body)
                 .frame(height: 60)
-                .border(Typo.strokeOff)
+                .padding(4)
+                .background(RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.primary.opacity(0.2), lineWidth: 1)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor))))
             HStack {
                 Spacer()
                 Button("＋ 新增") { addShortcut() }
