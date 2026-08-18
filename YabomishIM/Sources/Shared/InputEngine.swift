@@ -163,7 +163,6 @@ final class InputEngine {
             }
         }
 
-        // ,, command: second comma
         if _composing == "," && char == "," {
             _isInCommaCommand = true; _commaCommandBuffer = ""; _composing = ",,"
             _notifyComposing(); return
@@ -560,7 +559,6 @@ final class InputEngine {
         let cmd = _commaCommandBuffer.lowercased()
         _isInCommaCommand = false; _commaCommandBuffer = ""
         _resetComposing()
-
         let modeMap = CommaCommandHelp.modeMap
         if cmd == "rs" { freqTracker.reset(); delegate?.engineDidShowToast("字頻已重置"); return }
         if cmd == "pin" {
@@ -666,6 +664,11 @@ final class InputEngine {
             return
         }
         // ── 外部指令 commands.json ──
+        // text 型別：展開文字直接送出（三平台同步契約）
+        if let expanded = CommaCommandRunner.expandText(cmd) {
+            delegate?.engineDidCommit(expanded)
+            return
+        }
         if CommaCommandRunner.tryExecute(cmd, toast: { [weak self] msg in
             DispatchQueue.main.async { self?.delegate?.engineDidShowToast(msg) }
         }) { return }
