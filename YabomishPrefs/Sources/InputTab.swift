@@ -128,19 +128,28 @@ struct InputTab: View {
     private func toggleCard(_ opt: InputOption) -> some View {
         let on = binding(for: opt.id).wrappedValue
         Button { binding(for: opt.id).wrappedValue.toggle() } label: {
-            VStack(spacing: 5) {
-                Image(systemName: opt.icon)
-                    .font(Typo.cardIcon)
-                    .foregroundStyle(on ? Typo.cyan : .secondary)
-                Text(opt.label)
-                    .font(Typo.cardTitle)
-                    .lineLimit(1)
-                Text(opt.desc)
-                    .font(Typo.cardDesc)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 5) {
+                    Image(systemName: opt.icon)
+                        .font(Typo.cardIcon)
+                        .foregroundStyle(on ? Typo.cyan : .secondary)
+                    Text(opt.label)
+                        .font(Typo.cardTitle)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                    Text(opt.desc)
+                        .font(Typo.cardDesc)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, minHeight: 100)
+                if on {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Typo.cyan)
+                        .padding(6)
+                }
             }
-            .frame(width: 110, height: 100)
             .background(RoundedRectangle(cornerRadius: 10)
                 .fill(on ? Typo.cyan.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
@@ -148,25 +157,36 @@ struct InputTab: View {
                         lineWidth: on ? 1.5 : 1))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(opt.label)
+        .accessibilityValue(on ? "已啟用" : "已停用")
     }
 
     @ViewBuilder
     private func panelCard(_ opt: InputOption) -> some View {
         let selected = store.panelPosition == opt.id
         Button { store.panelPosition = opt.id } label: {
-            VStack(spacing: 5) {
-                Image(systemName: opt.icon)
-                    .font(Typo.cardIcon)
-                    .foregroundStyle(selected ? Typo.gold : .secondary)
-                Text(opt.label)
-                    .font(Typo.cardTitle)
-                    .lineLimit(1)
-                Text(opt.desc)
-                    .font(Typo.cardDesc)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 5) {
+                    Image(systemName: opt.icon)
+                        .font(Typo.cardIcon)
+                        .foregroundStyle(selected ? Typo.gold : .secondary)
+                    Text(opt.label)
+                        .font(Typo.cardTitle)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                    Text(opt.desc)
+                        .font(Typo.cardDesc)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, minHeight: 90)
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Typo.gold)
+                        .padding(6)
+                }
             }
-            .frame(maxWidth: .infinity, minHeight: 90)
             .background(RoundedRectangle(cornerRadius: 10)
                 .fill(selected ? Typo.gold.opacity(0.18) : Typo.cardOff))
             .overlay(RoundedRectangle(cornerRadius: 10)
@@ -174,6 +194,8 @@ struct InputTab: View {
                         lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(opt.label)
+        .accessibilityValue(selected ? "已選擇" : "未選擇")
     }
 
     private func binding(for key: String) -> Binding<Bool> {

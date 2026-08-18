@@ -83,19 +83,21 @@ struct SuggestionTab: View {
 
                 // 2. Layer order
                 Label("聯想層順序", systemImage: "square.3.layers.3d").font(Typo.h2)
-                LazyVGrid(columns: threeColumns, spacing: 8) {
-                    ForEach(layerOrder) { layer in
-                        layerCard(layer)
+                GeometryReader { geo in
+                    LazyVGrid(columns: threeColumns, spacing: 8) {
+                        ForEach(layerOrder) { layer in
+                            layerCard(layer)
+                        }
                     }
-                }
-                .dropDestination(for: String.self) { items, location in
-                    guard let draggedID = items.first,
-                          let srcIdx = layerOrder.firstIndex(where: { $0.id == draggedID }) else { return false }
-                    let item = layerOrder.remove(at: srcIdx)
-                    let col = max(0, min(2, Int(location.x / 160)))
-                    layerOrder.insert(item, at: min(layerOrder.count, col))
-                    saveStrategy()
-                    return true
+                    .dropDestination(for: String.self) { items, location in
+                        guard let draggedID = items.first,
+                              let srcIdx = layerOrder.firstIndex(where: { $0.id == draggedID }) else { return false }
+                        let item = layerOrder.remove(at: srcIdx)
+                        let col = max(0, min(2, Int(location.x / (geo.size.width / 3))))
+                        layerOrder.insert(item, at: min(layerOrder.count, col))
+                        saveStrategy()
+                        return true
+                    }
                 }
 
                 // 3. Word corpus source
@@ -210,32 +212,38 @@ struct SuggestionTab: View {
 
     @ViewBuilder
     private func domainGrid(entries: Binding<[DomainEntry]>, color: Color) -> some View {
-        LazyVGrid(columns: domainColumns, spacing: 8) {
-            ForEach(entries.wrappedValue) { entry in
-                DomainCardView(
-                    entry: entry,
-                    isEnabled: Binding(
-                        get: { store.domainEnabled(entry.id) },
-                        set: { store.setDomainEnabled(entry.id, $0) }
-                    ),
-                    color: color
-                )
+        GeometryReader { geo in
+            LazyVGrid(columns: domainColumns, spacing: 8) {
+                ForEach(entries.wrappedValue) { entry in
+                    DomainCardView(
+                        entry: entry,
+                        isEnabled: Binding(
+                            get: { store.domainEnabled(entry.id) },
+                            set: { store.setDomainEnabled(entry.id, $0) }
+                        ),
+                        color: color
+                    )
+                }
             }
-        }
-        .dropDestination(for: String.self) { items, location in
-            guard let draggedID = items.first else { return false }
-            var arr = entries.wrappedValue
-            guard let srcIdx = arr.firstIndex(where: { $0.id == draggedID }) else { return false }
-            let item = arr.remove(at: srcIdx)
-            let cellSize: CGFloat = 100
-            let col = max(0, Int(location.x / cellSize))
-            let row = max(0, Int(location.y / cellSize))
-            let gridCols = max(1, Int((NSScreen.main?.frame.width ?? 600) / cellSize))
-            let destIdx = min(arr.count, row * gridCols + col)
-            arr.insert(item, at: destIdx)
-            entries.wrappedValue = arr
-            saveDomainOrder()
-            return true
+            .dropDestination(for: String.self) { items, location in
+                guard let draggedID = items.first else { return false }
+                var arr = entries.wrappedValue
+                guard let srcIdx = arr.firstIndex(where: { $0.id == draggedID }) else { return false }
+                let item = arr.remove(at: srcIdx)
+                let gridWidth = geo.size.width
+                let spacing: CGFloat = 8
+                let minCell: CGFloat = 104
+                let numCols = max(1, Int((gridWidth + spacing) / (minCell + spacing)))
+                let cellWidth = (gridWidth - CGFloat(numCols - 1) * spacing) / CGFloat(numCols)
+                let cellHeight: CGFloat = 100 + spacing
+                let col = max(0, min(numCols - 1, Int(location.x / cellWidth)))
+                let row = max(0, Int(location.y / cellHeight))
+                let destIdx = min(arr.count, row * numCols + col)
+                arr.insert(item, at: destIdx)
+                entries.wrappedValue = arr
+                saveDomainOrder()
+                return true
+            }
         }
     }
 
