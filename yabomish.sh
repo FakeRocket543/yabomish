@@ -47,6 +47,7 @@ build_im() {
         [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
     done
     [ -d "$IM_RES/tables" ] && cp -R "$IM_RES/tables" "$IM_APP/Contents/Resources/"
+    [ -d "$IM_RES/Plugins" ] && cp -R "$IM_RES/Plugins" "$IM_APP/Contents/Resources/"
 
     # 聯想／詞庫基礎語料（極簡版不含）
     if [ "$MODE" != "min" ]; then

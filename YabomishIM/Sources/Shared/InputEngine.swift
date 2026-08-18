@@ -45,12 +45,16 @@ final class InputEngine {
         self.ranker = CandidateRanker(wikiCorpus: wikiCorpus, prefs: prefs)
         DebugLog.log("YabomishKB: InputEngine init homophoneAutoExit=\(prefs.homophoneAutoExit)")
         CommaCommandRunner.reload()
+        #if !MINIMAL
+        UserSnippets.shared.reload()
+        #endif
     }
 
     // MARK: - State
 
     private var _composing = ""
     private var _currentCandidates: [String] = []
+    private var _currentSnippet: String?
     private var _isWildcard = false
     private var _isEnglishMode = false
     private var _lastCommitted = ""
@@ -236,6 +240,11 @@ final class InputEngine {
         if _currentCandidates.isEmpty {
             _resetComposing(); delegate?.engineDidClearComposing(); return
         }
+        #if !MINIMAL
+        if let snippet = _currentSnippet, !_currentCandidates.isEmpty, _currentCandidates[0].hasPrefix("📝 ") {
+            _commitSnippet(snippet); return
+        }
+        #endif
         _commitText(_currentCandidates[0])
     } }
 
@@ -385,11 +394,13 @@ final class InputEngine {
             // Bigram suggestion — commit directly
             _commitText(_currentCandidates[index])
         } else {
-            _commitText(_currentCandidates[index])
+            if index == 0, let snippet = _currentSnippet {
+                _commitSnippet(snippet)
+            } else {
+                _commitText(_currentCandidates[index])
+            }
         }
     } }
-
-    /// VRSF quick-select: returns true if handled
     func handleVRSF(_ char: String) -> Bool { sync {
         let map: [(String, Int)] = [("v", 1), ("r", 2), ("s", 3), ("f", 4)]
         for (letter, idx) in map {
@@ -775,6 +786,8 @@ final class InputEngine {
             delegate?.engineDidClearComposing(); _notifyCandidates()
         } else if _composing.isEmpty {
             _commitText(_currentCandidates[index])
+        } else if index == 0, let snippet = _currentSnippet {
+            _commitSnippet(snippet)
         } else {
             _commitText(_currentCandidates[index])
         }
@@ -814,9 +827,13 @@ final class InputEngine {
     }
 
     private func _refreshCandidates() {
+        _currentSnippet = nil
         let code = _composing
         if _inputMode == .j {
             _currentCandidates = cinTable.lookup(code + ",") + cinTable.lookup(code + ".")
+            #if !MINIMAL
+            _appendSnippetIfNeeded()
+            #endif
             return
         }
         let raw = _isWildcard ? cinTable.wildcardLookup(code) : cinTable.lookup(code)
@@ -827,7 +844,20 @@ final class InputEngine {
         if _currentCandidates.isEmpty && !_isWildcard && code.count >= 2 && prefs.fuzzyMatch {
             _currentCandidates = ranker.fuzzyLookup(code, cinTable: cinTable)
         }
+
+        #if !MINIMAL
+        _appendSnippetIfNeeded()
+        #endif
     }
+
+    #if !MINIMAL
+    private func _appendSnippetIfNeeded() {
+        let code = _composing
+        guard !code.isEmpty, let display = UserSnippets.shared.display(for: code) else { return }
+        _currentSnippet = UserSnippets.shared.expansion(for: code)
+        _currentCandidates.insert(display, at: 0)
+    }
+    #endif
 
     private static let punctuationPairs: [String: String] = [
         "「": "」", "（": "）", "『": "』", "【": "】", "《": "》", "〈": "〉",
@@ -897,16 +927,30 @@ final class InputEngine {
             }
         }
 
-        // 聯想
-        #if !MINIMAL
-        if prefs.suggestEnabled && !_isSameSoundMode && !_isZhuyinMode {
-            let results = suggestionEngine.suggest(recentCommitted: _recentCommitted, lastText: text)
+    // 聯想
+    #if !MINIMAL
+    if prefs.suggestEnabled && !_isSameSoundMode && !_isZhuyinMode {
+        let results = suggestionEngine.suggest(recentCommitted: _recentCommitted, lastText: text)
             if !results.isEmpty {
                 delegate?.engineDidSuggest(results)
             }
         }
         #endif
     }
+
+    #if !MINIMAL
+    private func _commitSnippet(_ text: String) {
+        DebugLog.log("YabomishKB: commitSnippet='\(text)' composing='\(_composing)'")
+        delegate?.engineDidCommit(text)
+        _composing = ""; _currentCandidates = []; _currentSnippet = nil
+        _isWildcard = false; _sameSoundBase = ""
+        _notifyCandidates(); delegate?.engineDidClearComposing()
+        _prevCommitted = _lastCommitted
+        _lastCommitted = text.isEmpty ? "" : String(text.suffix(1))
+        _recentCommitted += text
+        if _recentCommitted.count > 10 { _recentCommitted = String(_recentCommitted.suffix(10)) }
+    }
+    #endif
 
     private func _resetComposing() {
         _composing = ""; _currentCandidates = []; _isWildcard = false

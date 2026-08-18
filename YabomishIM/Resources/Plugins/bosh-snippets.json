@@ -1,0 +1,12 @@
+{
+    "auau": "sudo apt update && sudo apt upgrade",
+    "gcom": "git commit -am \"\"",
+    "gpush": "git push",
+    "gpull": "git pull",
+    "sshr": "ssh root@",
+    "py3": "python3 ",
+    "npmi": "npm install",
+    "dockps": "docker ps -a",
+    "dockup": "docker compose up -d",
+    "dockdown": "docker compose down"
+}
