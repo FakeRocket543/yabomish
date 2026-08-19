@@ -43,6 +43,7 @@ enum CommaCommandHelp {
 
         ▎自訂指令
         • 設定檔：~/Library/Application Support/Yabomish/commands.json
+        • 型別：text 展開文字／shell 執行指令／open 開啟 app／hermes 送本機 agent
         • ,,RL 重載字表及自訂指令
 
         ▎候選字區

@@ -177,6 +177,37 @@ func testCommaCommandTextExpand() {
     check(engine.composing.isEmpty, "composing cleared after text expand")
 }
 
+func testHermesReplyParsing() {
+    checkEqual(CommaCommandRunner._hermesReplyText(#"{"text":"回覆一"}"#), "回覆一", "JSON text key")
+    checkEqual(CommaCommandRunner._hermesReplyText(#"{"reply":"回覆二"}"#), "回覆二", "JSON reply key")
+    checkEqual(CommaCommandRunner._hermesReplyText(#"{"response":"回覆三"}"#), "回覆三", "JSON response key")
+    checkEqual(CommaCommandRunner._hermesReplyText(#"{"content":"回覆四"}"#), "回覆四", "JSON content key")
+    checkEqual(CommaCommandRunner._hermesReplyText("純文字回覆"), "純文字回覆", "plain text passthrough")
+    checkEqual(CommaCommandRunner._hermesReplyText(#"{"other":"x"}"#), #"{"other":"x"}"#, "unknown JSON falls back to raw body")
+    checkEqual(CommaCommandRunner._hermesReplyText(#"{"text":""}"#), #"{"text":""}"#, "empty text falls back to raw body")
+}
+
+func testCommaCommandHermesDecode() {
+    let tmp = NSTemporaryDirectory() + "/cmd-hermes-\(UUID().uuidString).json"
+    let json = """
+    {"ask": {"type": "hermes", "send": "幫我總結", "url": "http://127.0.0.1:9991/ask"}}
+    """
+    try? json.write(toFile: tmp, atomically: true, encoding: .utf8)
+    CommaCommandRunner.reload(path: tmp)
+    defer { CommaCommandRunner.reload(); try? FileManager.default.removeItem(atPath: tmp) }
+
+    checkEqual(CommaCommandRunner.expandText("ask"), nil, "hermes command is not text-expandable")
+    // hermes matched by tryExecute (fires async request; no listener here → error toast path)
+    var toastSeen = ""
+    let matched = CommaCommandRunner.tryExecute("ask", toast: { toastSeen = $0 }) { _ in }
+    check(matched, "hermes command matched by tryExecute")
+    check(!CommaCommandRunner.tryExecute("nope", toast: { _ in }) { _ in }, "unknown command unmatched")
+    // give async request a moment to fail (connection refused) — toast must fire, no crash
+    let deadline = Date().addingTimeInterval(1.0)
+    while Date() < deadline && toastSeen.isEmpty { RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.05)) }
+    check(toastSeen.contains("Hermes"), "refused connection surfaces error toast, got: \(toastSeen)")
+}
+
 func testRealEnterCommitsRaw() {
     let engine = InputEngine()
     let mock = MockEngineDelegate()
@@ -570,6 +601,8 @@ testRealEscape()
 testRealModeSwitch()
 testRealCommaCommand()
 testCommaCommandTextExpand()
+testHermesReplyParsing()
+testCommaCommandHermesDecode()
 testRealEnterCommitsRaw()
 testRealZhuyinModeSwitch()
 testCINTableLoadAndLookup()
