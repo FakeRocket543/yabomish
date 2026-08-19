@@ -25,19 +25,35 @@ enum DataDownloader {
 
     /// Validate that no zip entry escapes the target directory via path traversal
     private static func safeUnzip(zipPath: String, destDir: String) -> Bool {
+        // `zipinfo -l` prints an attributes column: "-rwxr-xr-x" for files,
+        // "drwxr-xr-x" for dirs, "lrwxr-xr-x" for symlinks. Reject symlinks —
+        // classic zip-slip variant: an "l" entry pointing at /etc/... followed
+        // by a file entry of the same name makes unzip -o write through it.
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/zipinfo")
-        proc.arguments = ["-1", zipPath]
+        proc.arguments = ["-l", zipPath]
         let pipe = Pipe()
         proc.standardOutput = pipe
         do { try proc.run() } catch { return false }
         proc.waitUntilExit()
         let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        // Reject if any entry contains ".." or starts with "/"
-        for line in output.split(separator: "\n") {
-            let entry = String(line)
-            if entry.contains("..") || entry.hasPrefix("/") {
-                DebugLog.log("DataDownloader: rejected unsafe zip entry: \(entry)")
+        // zipinfo -l row: perms ver OS size type-method cmp-size method date time name
+        // name = everything after the 9th column (names may contain spaces).
+        // Footer rows ("N files, ...") lack a perms-looking first column — skipped.
+        for line in output.split(separator: "\n").dropFirst(2) {
+            let cols = line.split(separator: " ", omittingEmptySubsequences: true)
+            guard cols.count >= 10 else { continue } // header/footer lines
+            let perms = cols[0]
+            guard perms.count == 10 else { continue }
+            let first = perms[perms.startIndex]
+            guard first == "-" || first == "l" || first == "d" else { continue }
+            let name = cols.dropFirst(9).joined(separator: " ")
+            if perms.hasPrefix("l") {
+                DebugLog.log("DataDownloader: rejected symlink entry: \(name)")
+                return false
+            }
+            if name.contains("..") || name.hasPrefix("/") {
+                DebugLog.log("DataDownloader: rejected unsafe zip entry: \(name)")
                 return false
             }
         }
