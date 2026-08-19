@@ -106,12 +106,14 @@ Layer 3: 字級（bigram/trigram 預測下一字）
 {
   "sf": { "type": "open", "app": "Safari" },
   "gh": { "type": "open", "app": "Ghostty" },
-  "ss": { "type": "shell", "run": "screencapture -x ~/Desktop/shot-$(date +%s).png" }
+  "ss": { "type": "shell", "run": "screencapture -x ~/Desktop/shot-$(date +%s).png" },
+  "ask": { "type": "hermes", "send": "幫我總結這篇", "url": "http://127.0.0.1:8765/ask" }
 }
 ```
 
 - `type: "open"` — 開啟/切換到指定 app
 - `type: "shell"` — 執行 shell 命令（5 秒超時，非同步）
+- `type: "hermes"` — 把 `send` 字串 POST 到本機 agent listener（預設 `http://127.0.0.1:8765/ask`，可用 `url` 覆寫），回覆插入游標處。接受純文字或 `{"text"|"reply"|"response"|"content": "..."}` JSON（60 秒逾時）。只送出 `send` 字串本身——不送鍵擊、不送輸入內容、無背景流量
 - `,,RL` 重載字表時一併重載自訂指令
 - 內建指令優先於自訂指令
 

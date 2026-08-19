@@ -6,13 +6,15 @@ import Foundation
 /// {
 ///   "auau": { "type": "text",  "text": "sudo apt update && sudo apt upgrade" },
 ///   "ss":   { "type": "shell", "run": "~/.../yabomish_capture.sh screen" },
-///   "saf":  { "type": "open",  "app": "Safari" }
+///   "saf":  { "type": "open",  "app": "Safari" },
+///   "ask":  { "type": "hermes", "send": "幫我總結這篇" }
 /// }
 /// ```
 ///
-/// - `text`  → 展開成文字直接送出（macOS/iOS/Android 三平台）
-/// - `shell` → 執行 shell 指令（僅 macOS）
-/// - `open`  → 開啟 app（僅 macOS）
+/// - `text`   → 展開成文字直接送出（macOS/iOS/Android 三平台）
+/// - `shell`  → 執行 shell 指令（僅 macOS）
+/// - `open`   → 開啟 app（僅 macOS）
+/// - `hermes` → POST 明確觸發的字串到本機 Hermes agent，回覆插入游標處（僅 macOS）
 enum CommaCommandRunner {
 
     struct Command: Decodable {
@@ -20,6 +22,8 @@ enum CommaCommandRunner {
         let app: String?
         let run: String?
         let text: String?
+        let send: String?
+        let url: String?
     }
     private(set) static var commands: [String: Command] = [:]
 
@@ -43,8 +47,12 @@ enum CommaCommandRunner {
         return command.text
     }
 
-    /// Try to execute a platform command (shell/open, macOS-only). Returns true if matched.
-    static func tryExecute(_ cmd: String, toast: @escaping (String) -> Void) -> Bool {
+    /// Try to execute a platform command (shell/open/hermes, macOS-only).
+    /// Returns true if matched. `deliver` receives text to insert at the cursor
+    /// (hermes replies) on the main queue.
+    static func tryExecute(_ cmd: String,
+                           toast: @escaping (String) -> Void,
+                           deliver: @escaping (String) -> Void = { _ in }) -> Bool {
         #if os(macOS)
         guard let command = commands[cmd] else { return false }
         switch command.type {
@@ -56,6 +64,10 @@ enum CommaCommandRunner {
             if let script = command.run {
                 _runShellAsync(script, toast: toast)
             }
+        case "hermes":
+            if let payload = command.send {
+                _askHermes(payload: payload, url: command.url, toast: toast, deliver: deliver)
+            }
         default:
             break // "text" handled by expandText; anything else is ignored here
         }
@@ -66,6 +78,48 @@ enum CommaCommandRunner {
     }
 
     #if os(macOS)
+    /// Localhost-only Hermes bridge. Sends ONLY the explicitly configured
+    /// `send` string — never keystrokes or context — to a local agent listener;
+    /// the reply is delivered to the cursor. This is the same trust shape as
+    /// ,,v clipboard processing: user-triggered, single payload, no background
+    /// telemetry of any kind.
+    private static func _askHermes(payload: String, url: String?,
+                                   toast: @escaping (String) -> Void,
+                                   deliver: @escaping (String) -> Void) {
+        let endpoint = URL(string: url ?? "http://127.0.0.1:8765/ask")!
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 60
+        req.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["text": payload])
+        toast("Hermes …")
+        URLSession.shared.dataTask(with: req) { data, response, error in
+            DispatchQueue.main.async {
+                if let error {
+                    toast("Hermes 失敗: \(error.localizedDescription)")
+                    return
+                }
+                guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                      let data, let body = String(data: data, encoding: .utf8),
+                      !body.isEmpty else {
+                    toast("Hermes 無回應"); return
+                }
+                deliver(Self._hermesReplyText(body))
+            }
+        }.resume()
+    }
+
+    /// Accept plain text or `{"text"|"reply"|"response": "..."}` JSON bodies.
+    static func _hermesReplyText(_ body: String) -> String {
+        if let data = body.data(using: .utf8),
+           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            for key in ["text", "reply", "response", "content"] {
+                if let s = obj[key] as? String, !s.isEmpty { return s }
+            }
+        }
+        return body
+    }
+
     private static func _runShellAsync(_ script: String, toast: @escaping (String) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             let p = Process(); let pipe = Pipe()

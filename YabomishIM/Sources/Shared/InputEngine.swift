@@ -409,11 +409,15 @@ final class InputEngine {
             // Bigram suggestion — commit directly
             _commitText(_currentCandidates[index])
         } else {
+            #if !MINIMAL
             if index == 0, let snippet = _currentSnippet {
                 _commitSnippet(snippet)
             } else {
                 _commitText(_currentCandidates[index])
             }
+            #else
+            _commitText(_currentCandidates[index])
+            #endif
         }
     } }
     func handleVRSF(_ char: String) -> Bool { sync {
@@ -697,6 +701,8 @@ final class InputEngine {
         }
         if CommaCommandRunner.tryExecute(cmd, toast: { [weak self] msg in
             DispatchQueue.main.async { self?.delegate?.engineDidShowToast(msg) }
+        }, deliver: { [weak self] text in
+            DispatchQueue.main.async { self?.delegate?.engineDidPasteText(text) }
         }) { return }
         guard let mode = modeMap[cmd] else {
             delegate?.engineDidShowToast("未知命令 ,,\(cmd.uppercased())\n輸入 ,,H 查看說明"); return
@@ -797,12 +803,12 @@ final class InputEngine {
                 _isSameSoundMode = false
                 delegate?.engineDidShowToast(_currentModeLabel)
             }
-            DebugLog.log("YabomishKB: sameSound after _selectCandidateImpl isSameSound=\(_isSameSoundMode)")
-            delegate?.engineDidClearComposing(); _notifyCandidates()
-        } else if _composing.isEmpty {
-            _commitText(_currentCandidates[index])
         } else if index == 0, let snippet = _currentSnippet {
+            #if !MINIMAL
             _commitSnippet(snippet)
+            #else
+            _commitText(_currentCandidates[index])
+            #endif
         } else {
             _commitText(_currentCandidates[index])
         }
