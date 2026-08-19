@@ -119,6 +119,54 @@ xstr	⭐
 
 ---
 
+## 7.4 自訂指令（commands.json）
+
+除了打字展開，Yabomish 還支援「觸發即執行」的指令型自訂：打 `,,` 加短碼再按空白，可以展開文字、執行 shell、開 app，或詢問本機 AI agent。
+
+### 設定檔位置
+
+```
+~/Library/Application Support/Yabomish/commands.json
+```
+
+macOS、iOS 共用同一份檔案格式（透過跨裝置同步保持一致）。iOS 鍵盤只執行 `text` 型，其餘型別在 macOS 上生效。
+
+### 四種型別
+
+```json
+{
+  "auau": { "type": "text",  "text": "sudo apt update && sudo apt upgrade" },
+  "ss":   { "type": "shell", "run": "screencapture -x ~/Desktop/shot-$(date +%s).png" },
+  "saf":  { "type": "open",  "app": "Safari" },
+  "ask":  { "type": "hermes", "send": "幫我總結這篇", "url": "http://127.0.0.1:8765/ask" }
+}
+```
+
+| 型別 | 行為 | 平台 |
+|------|------|------|
+| `text` | 展開成文字直接送出 | macOS / iOS |
+| `shell` | 非同步執行 shell 指令（5 秒逾時） | 僅 macOS |
+| `open` | 開啟或切換到指定 app | 僅 macOS |
+| `hermes` | 把 `send` 字串 POST 到本機 agent，回覆插入游標處 | macOS（輸入法）／iOS（容器 App 內） |
+
+輸入 `,,auau` 空白即觸發；`,,RL` 重載字表時會一併重載此檔。內建指令優先於自訂指令。
+
+### Hermes 型別與安全邊界
+
+`hermes` 是與本機 AI agent（如 Hermes）的橋接：送出你預先寫好的 `send` 字串，把回覆直接打到游標位置。等同把 `,` 查詢」變成一個鍵。
+
+安全設計：
+
+- **僅允許本機位址**——`url` 只接受 `127.0.0.1`、`localhost`、`::1`，scheme 限 `http`。網域、區網 IP、HTTPS 一律拒絕，防止設定檔被竄改後外傳資料。
+- **只送出 `send` 字串本身**——不送鍵擊紀錄、不送輸入內容、無任何背景流量。
+- 回覆支援純文字或 `{"text"|"reply"|"response"|"content": "..."}` JSON 格式（60 秒逾時）。
+
+### 安全提醒
+
+`shell` 型別具備任意程式碼執行能力，`hermes` 型別會發出網路請求（僅限本機）。**請勿載入來源不明的 commands.json**，只使用自己或信任者提供的設定檔。
+
+---
+
 ## 實用技巧
 
 - **命名慣例**：建議快捷碼以特定前綴開頭（如 `a`），避免與日常打字衝突。
