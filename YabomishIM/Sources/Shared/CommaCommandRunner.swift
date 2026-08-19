@@ -86,7 +86,9 @@ enum CommaCommandRunner {
     private static func _askHermes(payload: String, url: String?,
                                    toast: @escaping (String) -> Void,
                                    deliver: @escaping (String) -> Void) {
-        let endpoint = URL(string: url ?? "http://127.0.0.1:8765/ask")!
+        guard let endpoint = Self.hermesEndpoint(url) else {
+            toast("Hermes 僅允許本機位址（127.0.0.1 / localhost / ::1）"); return
+        }
         var req = URLRequest(url: endpoint)
         req.httpMethod = "POST"
         req.timeoutInterval = 60
@@ -107,6 +109,20 @@ enum CommaCommandRunner {
                 deliver(Self._hermesReplyText(body))
             }
         }.resume()
+    }
+    /// Hermes endpoints are loopback-only. commands.json is a sync-sourced
+    /// file; without this gate a tampered entry could exfiltrate the payload
+    /// (or probe) to an arbitrary host. Host must be 127.0.0.1, localhost,
+    /// or ::1 — no DNS names, no LAN IPs, no schemes other than http.
+    static func hermesEndpoint(_ url: String?) -> URL? {
+        guard let endpoint = URL(string: url ?? "http://127.0.0.1:8765/ask"),
+              endpoint.scheme == "http",
+              let host = endpoint.host?.lowercased()
+        else { return nil }
+        guard host == "127.0.0.1" || host == "localhost" || host == "[::1]" || host == "::1" else {
+            return nil
+        }
+        return endpoint
     }
 
     /// Accept plain text or `{"text"|"reply"|"response": "..."}` JSON bodies.

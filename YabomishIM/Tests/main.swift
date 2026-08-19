@@ -187,6 +187,18 @@ func testHermesReplyParsing() {
     checkEqual(CommaCommandRunner._hermesReplyText(#"{"text":""}"#), #"{"text":""}"#, "empty text falls back to raw body")
 }
 
+
+func testHermesEndpointLoopbackOnly() {
+    checkEqual(CommaCommandRunner.hermesEndpoint(nil)?.absoluteString, "http://127.0.0.1:8765/ask", "nil → default loopback")
+    checkEqual(CommaCommandRunner.hermesEndpoint("http://127.0.0.1:9000/ask")?.absoluteString, "http://127.0.0.1:9000/ask", "127.0.0.1 allowed")
+    checkEqual(CommaCommandRunner.hermesEndpoint("http://localhost:9000/x")?.absoluteString, "http://localhost:9000/x", "localhost allowed")
+    check(CommaCommandRunner.hermesEndpoint("http://[::1]:8765/ask") != nil, "ipv6 loopback allowed")
+    check(CommaCommandRunner.hermesEndpoint("http://evil.example.com/ask") == nil, "domain rejected")
+    check(CommaCommandRunner.hermesEndpoint("http://192.168.1.5/ask") == nil, "LAN IP rejected")
+    check(CommaCommandRunner.hermesEndpoint("https://127.0.0.1/ask") == nil, "https rejected")
+    check(CommaCommandRunner.hermesEndpoint("ftp://127.0.0.1/ask") == nil, "non-http scheme rejected")
+    check(CommaCommandRunner.hermesEndpoint("not a url") == nil, "garbage rejected")
+}
 func testCommaCommandHermesDecode() {
     let tmp = NSTemporaryDirectory() + "/cmd-hermes-\(UUID().uuidString).json"
     let json = """
@@ -601,6 +613,7 @@ testRealEscape()
 testRealModeSwitch()
 testRealCommaCommand()
 testCommaCommandTextExpand()
+testHermesEndpointLoopbackOnly()
 testHermesReplyParsing()
 testCommaCommandHermesDecode()
 testRealEnterCommitsRaw()
