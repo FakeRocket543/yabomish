@@ -53,6 +53,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | 注音查碼 | `,,ZH` |
 | 拼音查碼 | `,,PYS` / `,,PYT` |
 | 同音字 | `,,TO` |
+| 查字歷史 | `,,LH`（檢視）／`,,RH`（清除） |
 | 送出原始碼 | Enter |
 
 完整使用說明見 [docs/usage.md](docs/usage.md)。
@@ -91,6 +92,8 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | `,,PYT` | 拼音查碼（繁體） |
 | `,,TO` | 同音字查詢模式 |
 | `,,RS` | 重置字頻統計 |
+| `,,LH` | 查字歷史（反查選字記錄） |
+| `,,RH` | 清除查字歷史 |
 | `,,RL` | 重載字表＋擴充表 |
 | `,,PIN` | 固定同碼字排序 |
 | `,,UNPINx` | 解除碼 x 的固定排序 |

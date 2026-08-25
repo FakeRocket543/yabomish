@@ -599,6 +599,100 @@ func testSnippetAutoCommitSendsExpansion() {
     check(!joined.contains("📝"), "autoCommit never commits display string")
 }
 
+// === Lookup history（查字歷史）tests ===
+
+func makeTempLookupDir() -> String {
+    let dir = NSTemporaryDirectory() + "yabo-lh-\(UUID().uuidString)"
+    try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+    return dir
+}
+
+func testLookupHistoryRecordOrderAndClear() {
+    let ft = FreqTracker(dir: makeTempLookupDir())
+    ft.recordLookup(mode: "to", query: "隆", char: "籠", code: "xlq")
+    ft.recordLookup(mode: "zh", query: "ㄒㄩㄣˋ", char: "訊", code: "cnra")
+    let recent = ft.recentLookups(limit: 10)
+    checkEqual(recent.count, 2, "two lookup entries")
+    checkEqual(recent.first?.char ?? "", "訊", "most recent first")
+    checkEqual(recent.first?.mode ?? "", "zh", "mode recorded")
+    checkEqual(recent.first?.code ?? "", "cnra", "code recorded")
+    checkEqual(recent.last?.query ?? "", "隆", "older entry keeps query")
+    ft.clearLookups()
+    checkEqual(ft.recentLookups(limit: 10).count, 0, "clearLookups empties history")
+}
+
+func testLookupHistoryCap1000() {
+    let ft = FreqTracker(dir: makeTempLookupDir())
+    for i in 0..<1005 {
+        ft.recordLookup(mode: "zh", query: "ㄆ\(i)", char: "批\(i)", code: "p\(i)")
+    }
+    let total = ft.recentLookups(limit: 2000).count
+    checkEqual(total, 1000, "history capped at 1000 rows")
+    checkEqual(ft.recentLookups(limit: 1).first?.query ?? "", "ㄆ1004", "cap keeps newest")
+}
+
+func testLookupHistoryPersistAcrossReopen() {
+    let dir = makeTempLookupDir()
+    let ft1 = FreqTracker(dir: dir)
+    ft1.recordLookup(mode: "pys", query: "xia4", char: "廈", code: "xsa")
+    _ = ft1.recentLookups(limit: 10) // barrier: bgQueue insert landed
+    let ft2 = FreqTracker(dir: dir)
+    let reopened = ft2.recentLookups(limit: 10)
+    checkEqual(reopened.count, 1, "history persists across reopen")
+    checkEqual(reopened.first?.char ?? "", "廈", "persisted entry intact")
+}
+
+func testCommaCommandLHandRH() {
+    let ft = FreqTracker(dir: makeTempLookupDir())
+    ft.recordLookup(mode: "to", query: "隆", char: "籠", code: "xlq")
+    ft.recordLookup(mode: "zh", query: "ㄒㄩㄣˋ", char: "訊", code: "cnra")
+    _ = ft.recentLookups(limit: 10) // barrier
+
+    let engine = InputEngine(cinTable: loadTestCINTable(), freqTracker: ft)
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+
+    for c in [",", ",", "l", "h"] { engine.handleLetter(c) }
+    engine.handleSpace()
+    let joined = mock.commits.joined(separator: "|")
+    check(joined.contains("查字歷史"), ",,LH commits history list")
+    check(joined.contains("訊 cnra"), ",,LH lists newest entry with code")
+    check(joined.contains("←隆"), ",,LH shows same-sound base as query")
+
+    for c in [",", ",", "r", "h"] { engine.handleLetter(c) }
+    engine.handleSpace()
+    check(mock.toasts.contains("查字歷史已清除"), ",,RH toasts confirmation")
+    checkEqual(ft.recentLookups(limit: 10).count, 0, ",,RH empties history")
+
+    for c in [",", ",", "l", "h"] { engine.handleLetter(c) }
+    engine.handleSpace()
+    check(mock.toasts.contains("查字歷史：空白"), ",,LH on empty history toasts")
+}
+
+func testSameSoundSpaceSelectRecordsLookup() {
+    // ,,TO step2 用空白鍵選首候選走 _commitText 而非 selectCandidate——回歸：此路徑也要記錄。
+    // 依賴 ZhuyinLookup.shared 的 zhuyin_data.json（測試機有裝資料才跑，否則 SKIP）。
+    guard let first = ZhuyinLookup.shared.lookup("好").first, !first.chars.isEmpty else {
+        print("SKIP testSameSoundSpaceSelectRecordsLookup (無 zhuyin_data)")
+        return
+    }
+    let ft = FreqTracker(dir: makeTempLookupDir())
+    let engine = InputEngine(cinTable: loadTestCINTable(), freqTracker: ft)
+    let mock = MockEngineDelegate()
+    engine.delegate = mock
+    engine.switchToMode("to")
+    engine.handleLetter("a")   // temp CIN: a → 好/號
+    engine.handleSpace()       // step1: 好 成為同音基準字，列出同音候選
+    check(engine.isSameSoundMode, "same-sound mode stays on after step 1")
+    engine.handleSpace()       // step2: 空白鍵選首候選 → _commitText 路徑
+    let recent = ft.recentLookups(limit: 10)
+    checkEqual(recent.count, 1, "space-selected homophone recorded")
+    checkEqual(recent.first?.mode ?? "", "to", "mode is to")
+    checkEqual(recent.first?.query ?? "", "好", "query is base char")
+    checkEqual(recent.first?.char ?? "", ZhuyinLookup.shared.sortByFreq(first.chars).first ?? "", "recorded char is first homophone")
+    engine.handleEscape()
+}
+
 // Run all tests
 print("Running YabomishIM tests...")
 testHarness()
@@ -641,5 +735,10 @@ testIntegrationSequentialCommits()
 
 testSnippetOverflowCommitsExpansion()
 testSnippetAutoCommitSendsExpansion()
+testLookupHistoryRecordOrderAndClear()
+testLookupHistoryCap1000()
+testLookupHistoryPersistAcrossReopen()
+testCommaCommandLHandRH()
+testSameSoundSpaceSelectRecordsLookup()
 print("\n\(passed) passed, \(failed) failed")
 exit(failed > 0 ? 1 : 0)

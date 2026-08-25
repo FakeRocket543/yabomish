@@ -1,6 +1,16 @@
 import Foundation
 import SQLite3
 
+/// 查字歷史：一筆「用反查模式選字送出」的記錄
+///（注音 ,,ZH／同音 ,,TO／拼音 ,,PYS、,,PYT）
+struct LookupEntry: Codable, Equatable {
+    let mode: String   // "zh" | "to" | "pys" | "pyt"
+    let query: String  // 注音（含調）｜同音基準字｜拼音+調
+    let char: String
+    let code: String   // 嘸蝦米碼，多碼以 / 相連
+    let ts: Double
+}
+
 final class FreqTracker {
     private var db: OpaquePointer?
     private let path: String
@@ -9,6 +19,8 @@ final class FreqTracker {
     private var pendingFreq: [(code: String, char: String)] = []
     private var pendingBigram: [(prev: String, char: String)] = []
     private let batchSize = 50
+    /// Cap for lookup_history rows（查字是低頻事件，1000 筆≈多年用量）
+    private static let lookupCap = 1000
 
     private var stmtUpsertFreq: OpaquePointer?
     private var stmtUpsertBigram: OpaquePointer?
@@ -22,10 +34,10 @@ final class FreqTracker {
 
     private var prefsObserver: Any?
 
-    init() {
+    init(dir: String? = nil) {
         // SQLite DB always in local App Support (never in iCloud/sync folder —
-        // WAL mode is incompatible with cloud sync)
-        let dir = AppConstants.sharedDir
+        // WAL mode is incompatible with cloud sync). `dir` override for tests.
+        let dir = dir ?? AppConstants.sharedDir
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         self.path = dir + "/freq.db"
         openDB()
@@ -74,7 +86,8 @@ final class FreqTracker {
         exec("CREATE TABLE IF NOT EXISTS freq(code TEXT, char TEXT, n INTEGER, PRIMARY KEY(code,char))")
         exec("CREATE TABLE IF NOT EXISTS bigram(prev TEXT, char TEXT, n INTEGER, PRIMARY KEY(prev,char))")
         exec("CREATE TABLE IF NOT EXISTS pinned(code TEXT PRIMARY KEY, chars TEXT NOT NULL)")
-        // （不再內建任何字表衍生資料；固定排序一律由使用者 ,,PIN 自行設定）
+        exec("CREATE TABLE IF NOT EXISTS lookup_history(id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, mode TEXT NOT NULL, query TEXT NOT NULL, char TEXT NOT NULL, code TEXT NOT NULL)")
+        // （查字歷史：反查選字記錄，,,LH 檢視、,,RH 清除；不參與候選排序）
         prepare("INSERT INTO freq(code,char,n) VALUES(?1,?2,1) ON CONFLICT(code,char) DO UPDATE SET n=n+1", &stmtUpsertFreq)
         prepare("INSERT INTO bigram(prev,char,n) VALUES(?1,?2,1) ON CONFLICT(prev,char) DO UPDATE SET n=n+1", &stmtUpsertBigram)
         prepare("SELECT chars FROM pinned WHERE code=?1", &stmtQueryPinned)
@@ -306,6 +319,77 @@ final class FreqTracker {
         cachedPinned(code)
     }
 
+    // MARK: - Lookup history（查字歷史）
+
+    /// Record one reverse-lookup selection. Lookups are rare (a few per day):
+    /// no pending batch, direct insert on bgQueue + prune to cap.
+    func recordLookup(mode: String, query: String, char: String, code: String) {
+        let entry = LookupEntry(mode: mode, query: query, char: char, code: code,
+                                ts: Date().timeIntervalSince1970)
+        bgQueue.async { [weak self] in
+            self?.insertLookupOnQueue(entry)
+        }
+    }
+
+    /// Most recent lookups, newest first.
+    func recentLookups(limit: Int = 20) -> [LookupEntry] {
+        bgQueue.sync {
+            var out: [LookupEntry] = []
+            var stmt: OpaquePointer?
+            let sql = "SELECT mode, query, char, code, ts FROM lookup_history ORDER BY id DESC LIMIT \(max(0, limit))"
+            if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    out.append(LookupEntry(
+                        mode: String(cString: sqlite3_column_text(stmt, 0)),
+                        query: String(cString: sqlite3_column_text(stmt, 1)),
+                        char: String(cString: sqlite3_column_text(stmt, 2)),
+                        code: String(cString: sqlite3_column_text(stmt, 3)),
+                        ts: sqlite3_column_double(stmt, 4)))
+                }
+            }
+            sqlite3_finalize(stmt)
+            return out
+        }
+    }
+
+    /// Clear all lookup history (`,,RH`). Independent from `reset()` (`,,RS` 只清字頻).
+    func clearLookups() {
+        bgQueue.sync { exec("DELETE FROM lookup_history") }
+    }
+
+    /// Must run on bgQueue.
+    private func insertLookupOnQueue(_ e: LookupEntry) {
+        var stmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, "INSERT INTO lookup_history(ts,mode,query,char,code) VALUES(?1,?2,?3,?4,?5)", -1, &stmt, nil) == SQLITE_OK {
+            sqlite3_bind_double(stmt, 1, e.ts)
+            sqlite3_bind_text(stmt, 2, e.mode, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(stmt, 3, e.query, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(stmt, 4, e.char, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(stmt, 5, e.code, -1, SQLITE_TRANSIENT)
+            sqlite3_step(stmt)
+        }
+        sqlite3_finalize(stmt)
+        exec("DELETE FROM lookup_history WHERE id <= (SELECT MAX(id) FROM lookup_history) - \(Self.lookupCap)")
+    }
+
+    /// Must run on bgQueue (importJSON merge). Returns all rows oldest-first.
+    private func allLookupsOnQueue() -> [LookupEntry] {
+        var out: [LookupEntry] = []
+        var stmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, "SELECT mode, query, char, code, ts FROM lookup_history ORDER BY id", -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                out.append(LookupEntry(
+                    mode: String(cString: sqlite3_column_text(stmt, 0)),
+                    query: String(cString: sqlite3_column_text(stmt, 1)),
+                    char: String(cString: sqlite3_column_text(stmt, 2)),
+                    code: String(cString: sqlite3_column_text(stmt, 3)),
+                    ts: sqlite3_column_double(stmt, 4)))
+            }
+        }
+        sqlite3_finalize(stmt)
+        return out
+    }
+
     // MARK: - Maintenance (all run on bgQueue; flush first so cache reload sees final DB state)
 
     /// Thread-safe entry: runs the decay on bgQueue.
@@ -372,6 +456,7 @@ final class FreqTracker {
     private struct JSONStorage: Codable {
         let freq: [String: [String: Int]]
         let bigram: [String: [String: Int]]?
+        let lookups: [LookupEntry]?  // optional → 舊檔（無查字歷史）可解碼
     }
 
     private func migrateFromJSON(dir: String) {
@@ -392,7 +477,7 @@ final class FreqTracker {
         } catch {
             do {
                 let legacyFreq = try JSONDecoder().decode([String: [String: Int]].self, from: data)
-                importJSON(JSONStorage(freq: legacyFreq, bigram: nil))
+                importJSON(JSONStorage(freq: legacyFreq, bigram: nil, lookups: nil))
                 try? FileManager.default.removeItem(atPath: jsonPath)
             } catch { DebugLog.log("FreqTracker migrateFromJSON decode: \(error.localizedDescription)") }
         }
@@ -407,6 +492,13 @@ final class FreqTracker {
         if let bg = s.bigram {
             for (prev, counts) in bg {
                 for (char, n) in counts { upsertMax("bigram", prev, char, n) }
+            }
+        }
+        if let lookups = s.lookups, !lookups.isEmpty {
+            // 單調合併：五元組去重後 append（同事件跨裝置不重複、不互刪）
+            let local = Set(allLookupsOnQueue().map { "\($0.ts)|\($0.mode)|\($0.query)|\($0.char)|\($0.code)" })
+            for e in lookups where !local.contains("\(e.ts)|\(e.mode)|\(e.query)|\(e.char)|\(e.code)") {
+                insertLookupOnQueue(e)
             }
         }
         exec("COMMIT")
@@ -468,7 +560,7 @@ final class FreqTracker {
             }
         }
         sqlite3_finalize(stmt)
-        let storage = JSONStorage(freq: freq, bigram: bigram)
+        let storage = JSONStorage(freq: freq, bigram: bigram, lookups: allLookupsOnQueue())
         if let data = try? JSONEncoder().encode(storage) {
             do { try data.write(to: URL(fileURLWithPath: path), options: .atomic) }
             catch { DebugLog.log("FreqTracker exportToJSON write: \(error.localizedDescription)") }

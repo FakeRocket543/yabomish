@@ -75,6 +75,7 @@ final class InputEngine {
     // Zhuyin reverse lookup
     private var _isZhuyinMode = false
     private var _zhuyin = ZhuyinComposer()
+    private var _lastZhuyinQuery = ""
 
     // Pinyin reverse lookup
     private var _isPinyinMode = false
@@ -386,6 +387,7 @@ final class InputEngine {
             let full = _currentCandidates[index]
             let char = String(full.prefix(1))
             let codes = cinTable.reverseLookup(char)
+            _recordLookup(mode: "zh", query: _lastZhuyinQuery, char: char, codes: codes)
             _commitText(char)
             if !codes.isEmpty { delegate?.engineDidShowCodeHint("\(char) → \(codes.joined(separator: " / "))", duration: 3.0) }
             _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates()
@@ -395,6 +397,7 @@ final class InputEngine {
             // Same-sound step 2: user picked a homophone
             let char = _currentCandidates[index]
             let codes = cinTable.reverseLookup(char)
+            _recordLookup(mode: "to", query: _sameSoundBase, char: char, codes: codes)
             DebugLog.log("YabomishKB: sameSound selectCandidate autoExit=\(prefs.homophoneAutoExit) base='\(_sameSoundBase)' char='\(char)'")
             delegate?.engineDidCommit(char)
             if !codes.isEmpty { delegate?.engineDidShowCodeHint("\(char) → \(codes.joined(separator: " / "))", duration: 3.0) }
@@ -529,6 +532,7 @@ final class InputEngine {
         let char = String(entry.prefix(1))
         delegate?.engineDidCommit(char)
         let codes = cinTable.reverseLookup(char)
+        _recordLookup(mode: _pinyinSimplified ? "pys" : "pyt", query: _composing, char: char, codes: codes)
         if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
         _pinyinBuffer = ""; _currentCandidates = []; _notifyCandidates()
         delegate?.engineDidClearComposing()
@@ -553,6 +557,7 @@ final class InputEngine {
     } }
 
     private func _zhuyinLookup(_ zhuyin: String) {
+        _lastZhuyinQuery = zhuyin
         let raw = zhuyinLookup.charsForZhuyin(zhuyin)
         guard !raw.isEmpty else { return }
         let chars = zhuyinLookup.sortByFreq(raw, prevChar: _prevCommitted, curZhuyin: zhuyin)
@@ -565,7 +570,7 @@ final class InputEngine {
     }
 
     private func _clearZhuyinSlots() {
-        _zhuyin.clear()
+        _zhuyin.clear(); _lastZhuyinQuery = ""
     }
 
     private func _backspaceZhuyin() {
@@ -591,6 +596,19 @@ final class InputEngine {
         _resetComposing()
         let modeMap = CommaCommandHelp.modeMap
         if cmd == "rs" { freqTracker.reset(); delegate?.engineDidShowToast("字頻已重置"); return }
+        if cmd == "lh" {
+            let entries = freqTracker.recentLookups(limit: 20)
+            guard !entries.isEmpty else {
+                delegate?.engineDidShowToast("查字歷史：空白"); return
+            }
+            var lines = ["查字歷史（最近 \(entries.count) 筆，新→舊；,,RH 清除）"]
+            for (i, e) in entries.enumerated() {
+                lines.append("\(i + 1). \(e.char) \(e.code)" + (e.query.isEmpty ? "" : " ←\(e.query)"))
+            }
+            delegate?.engineDidCommit(lines.joined(separator: "\n"))
+            return
+        }
+        if cmd == "rh" { freqTracker.clearLookups(); delegate?.engineDidShowToast("查字歷史已清除"); return }
         if cmd == "pin" {
             _isZhuyinMode = false; _clearZhuyinSlots()
             _isSameSoundMode = false; _sameSoundBase = ""
@@ -788,6 +806,7 @@ final class InputEngine {
             let full = _currentCandidates[index]
             let char = String(full.prefix(1))
             let codes = cinTable.reverseLookup(char)
+            _recordLookup(mode: "zh", query: _lastZhuyinQuery, char: char, codes: codes)
             _commitText(char)
             if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
             _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates()
@@ -795,6 +814,7 @@ final class InputEngine {
         } else if _isSameSoundMode && !_sameSoundBase.isEmpty {
             let char = _currentCandidates[index]
             let codes = cinTable.reverseLookup(char)
+            _recordLookup(mode: "to", query: _sameSoundBase, char: char, codes: codes)
             DebugLog.log("YabomishKB: sameSound _selectCandidateImpl autoExit=\(prefs.homophoneAutoExit) base='\(_sameSoundBase)' char='\(char)'")
             delegate?.engineDidCommit(char)
             if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
@@ -888,8 +908,20 @@ final class InputEngine {
         "「": "」", "（": "）", "『": "』", "【": "】", "《": "》", "〈": "〉",
     ]
 
+    /// 查字歷史：反查模式（注音/同音/拼音）選字送出時記錄——這些字就是「不會拆碼的字」。
+    private func _recordLookup(mode: String, query: String, char: String, codes: [String]) {
+        freqTracker.recordLookup(mode: mode, query: query, char: char, code: codes.joined(separator: "/"))
+        DebugLog.log("YabomishKB: lookupHistory \(mode) '\(query)' → \(char) \(codes.joined(separator: "/"))")
+    }
+
     private func _commitText(_ text: String) {
         DebugLog.log("YabomishKB: commitText='\(text)' composing='\(_composing)' sameSound=\(_isSameSoundMode ? 1 : 0)")
+        // Same-sound step 2 via Space/VRSF — 這條路不經過 selectCandidate 分支，補記查字歷史
+        if _isSameSoundMode && !_sameSoundBase.isEmpty,
+           text.count == 1, _currentCandidates.contains(text) {
+            _recordLookup(mode: "to", query: _sameSoundBase, char: text,
+                          codes: cinTable.reverseLookup(text))
+        }
         // Same-sound step 1 → step 2
         if _isSameSoundMode && _sameSoundBase.isEmpty && text.count == 1 {
             let results = zhuyinLookup.lookup(text)

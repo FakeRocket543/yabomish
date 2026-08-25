@@ -1,5 +1,11 @@
 # Changelog
 
+
+## [0.3.61] — 2026-08-25
+
+### 新功能
+- **查字歷史** — 注音反查（`,,ZH`）、同音字（`,,TO`）、拼音查碼（`,,PYS`／`,,PYT`）選字送出時自動記錄至 freq.db（`lookup_history` 表，上限 1000 筆）——這份清單就是「不會拆碼的字」。`,,LH` 檢視最近 20 筆（`字 碼 ←查詢`），`,,RH` 清除；`,,RS` 重置字頻不影響查字歷史。記錄隨 freq.json 一起走既有同步通道（macOS syncFolder／iOS iCloud，五元組去重單調合併）。MINIMAL 模式照常可用。設計細節見 `doc/20260825-lookup-history.md`
+
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
 ## [0.3.60] — 2026-08-18
