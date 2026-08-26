@@ -6,6 +6,7 @@
 ### 新功能
 - **查字歷史** — 注音反查（`,,ZH`）、同音字（`,,TO`）、拼音查碼（`,,PYS`／`,,PYT`）選字送出時自動記錄至 freq.db（`lookup_history` 表，上限 1000 筆）——這份清單就是「不會拆碼的字」。`,,LH` 檢視最近 20 筆（`字 碼 ←查詢`），`,,RH` 清除；`,,RS` 重置字頻不影響查字歷史。記錄隨 freq.json 一起走既有同步通道（macOS syncFolder／iOS iCloud，五元組去重單調合併）。MINIMAL 模式照常可用。設計細節見 `doc/20260825-lookup-history.md`
 - **查字歷史 GUI** — YabomishPrefs「輸入」頁新增查字歷史區塊：檢視全部反查選字記錄（新→舊，含模式與時間）、匯出 CSV（UTF-8 BOM，Excel 直接開啟不亂碼）、一鍵清除。直接唯讀 freq.db，與輸入法即時一致
+- **打字練習 YabomishPractice.app** — 獨立看打練習程式（`yabomish.sh` 選單 6）：常用字／弱點字／隨機字三種題源、10/20/50 字一輪、即時對錯回饋、結算顯示每分鐘字數與準確率、成績歷程記錄。題目由使用者自備拆碼表＋公共語料字頻即時生成，弱點字直接取自查字歷史；不連網、不隨附任何表格資料
 
 格式基於 [Keep a Changelog](https://keepachangelog.com/)。
 
