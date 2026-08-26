@@ -42,6 +42,7 @@ struct PracticeRootView: View {
                 menu
             }
         }
+        .onChange(of: source) { _, _ in roundError = nil }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
@@ -243,12 +244,12 @@ struct PracticeSessionView: View {
         self.onExit = onExit
         _s = State(initialValue: initial)
     }
-
     var body: some View {
         Group {
             if s.finished { result } else { drilling }
         }
         .onAppear { focused = true }
+        .onDisappear { flashClear?.cancel() }
     }
 
     /// 上下文／佇列預覽：當前字前後各取若干，文章模式即原文語境，單元模式即接續預覽
@@ -378,10 +379,10 @@ struct PracticeSessionView: View {
             }
         }
         .onAppear {
-            if !saved {
-                saved = StatsStore.append(record)
-                engine.collectWrong(wrongLog.map(\.char))
-            }
+            guard !saved else { return }
+            if s.attempts > 0 { saved = StatsStore.append(record) }
+            engine.collectWrong(wrongLog.map(\.char))
+            saved = true   // 零作答不寫檔，但避免重入
         }
     }
 

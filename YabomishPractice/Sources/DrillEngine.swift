@@ -82,7 +82,7 @@ final class DrillEngine {
             }
         }
         // 每字碼表：短碼優先（常用短碼先熟的漸進精神）
-        for (k, v) in map { map[k] = v.sorted { ($0.count, $0) < ($1.count, $0) } }
+        for (k, v) in map { map[k] = v.sorted { ($0.count, $0) < ($1.count, $1) } }
         charCodes = map
         tableLoaded = !map.isEmpty
     }
