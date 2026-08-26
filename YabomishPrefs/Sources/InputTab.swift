@@ -119,6 +119,13 @@ struct InputTab: View {
                     .font(Typo.hint).foregroundStyle(.secondary)
                 PinnedOrderSection()
 
+                // ── 查字歷史 ──
+                SectionDivider()
+                Label("查字歷史", systemImage: "clock.arrow.circlepath").font(Typo.h2)
+                Text("反查模式（注音／同音／拼音）選字送出的自動記錄——就是「不會拆碼的字」清單，可匯出複習。")
+                    .font(Typo.hint).foregroundStyle(.secondary)
+                LookupHistorySection()
+
             }
             .padding(20)
         }
