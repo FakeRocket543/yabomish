@@ -244,6 +244,7 @@ struct PracticeSessionView: View {
     @State private var hintsUsed = 0
     @State private var saved = false
     @FocusState private var focused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(initial: PracticeSession, engine: DrillEngine, onExit: @escaping () -> Void) {
         self.initial = initial
@@ -273,7 +274,7 @@ struct PracticeSessionView: View {
             ForEach(before..<after, id: \.self) { i in
                 Text(s.items[i].char)
                     .font(.system(size: i == s.index ? 20 : 14, weight: i == s.index ? .bold : .regular))
-                    .foregroundStyle(i == s.index ? Typo.accent : (i < s.index ? Color.secondary.opacity(0.45) : .secondary))
+                    .foregroundStyle(i == s.index ? Typo.accent : (i < s.index ? Color.secondary.opacity(0.6) : .secondary))
                     .frame(minWidth: 22)
             }
             if after < s.items.count { Text("⋯").font(Typo.caption).foregroundStyle(.tertiary) }
@@ -303,7 +304,7 @@ struct PracticeSessionView: View {
                     .fill(.ultraThinMaterial)
                     .shadow(color: .black.opacity(0.07), radius: 6, y: 2)
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(flash.map { $0.opacity(0.12) } ?? .clear)
+                    .fill(flash.map { $0.opacity(0.16) } ?? .clear)
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(flash ?? .clear, lineWidth: 2)
                 if let item = s.currentItem {
@@ -312,7 +313,7 @@ struct PracticeSessionView: View {
                         .minimumScaleFactor(0.5)
                         .padding(24)
                         .id(s.index)
-                        .transition(.scale(scale: 0.92).combined(with: .opacity))
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -351,6 +352,7 @@ struct PracticeSessionView: View {
             }
             .frame(height: 20)
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: s.index)
     }
 
     private var hintText: String? {
