@@ -6,6 +6,7 @@ import SQLite3
 final class DrillEngine {
     enum Source: String, CaseIterable, Identifiable {
         case common = "常用字"
+        case short = "一二碼字"
         case weak = "弱點字"
         case random = "隨機字"
         var id: String { rawValue }
@@ -14,7 +15,7 @@ final class DrillEngine {
     struct Item: Identifiable {
         let id = UUID()
         let char: String
-        let codes: [String]   // 該字所有合法碼（短碼在前）
+        let codes: [String]   // 該字所有合法碼（碼長遞增）
     }
 
     private(set) var charCodes: [String: [String]] = [:]     // char → codes（碼長遞增）
@@ -80,7 +81,7 @@ final class DrillEngine {
                 }
             }
         }
-        // 每字碼表：短碼優先（官方教學順序精神：常用短碼先熟）
+        // 每字碼表：短碼優先（常用短碼先熟的漸進精神）
         for (k, v) in map { map[k] = v.sorted { ($0.count, $0) < ($1.count, $0) } }
         charCodes = map
         tableLoaded = !map.isEmpty
@@ -96,9 +97,10 @@ final class DrillEngine {
         freqLoaded = true
     }
 
-    // MARK: - 弱點字（查字歷史）
+    // MARK: - 弱點來源
 
-    private func weakChars(limit: Int) -> [String] {
+    /// 查字歷史最近記錄的字
+    private func lookupHistoryChars(limit: Int) -> [String] {
         var out: [String] = []
         var db: OpaquePointer?
         guard sqlite3_open_v2(Self.userDir + "/freq.db", &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else { return out }
@@ -112,10 +114,35 @@ final class DrillEngine {
         return out
     }
 
+    // MARK: - 錯字收集（練習打錯的字自動進弱點池）
+
+    private static var wrongLogPath: String { Self.userDir + "/practice_wrong.json" }
+
+    /// 本輪答錯的字寫入弱點池（去重、上限 300、新的在前）
+    func collectWrong(_ chars: [String]) {
+        var existing = loadWrongLog()
+        for ch in chars {
+            existing.removeAll { $0 == ch }
+            existing.insert(ch, at: 0)
+        }
+        if existing.count > 300 { existing = Array(existing.prefix(300)) }
+        if let data = try? JSONEncoder().encode(existing) {
+            try? data.write(to: URL(fileURLWithPath: Self.wrongLogPath), options: .atomic)
+        }
+    }
+
+    private func loadWrongLog() -> [String] {
+        guard let data = FileManager.default.contents(atPath: Self.wrongLogPath),
+              let list = try? JSONDecoder().decode([String].self, from: data)
+        else { return [] }
+        return list
+    }
+
     // MARK: - 出題
 
-    /// 產生一輪題目。回傳 nil 表示該題源無可用題（附原因）。
+    /// 產生一輪題目。回傳 error 表示該題源無可用題（附原因）。
     func makeRound(source: Source, count: Int) -> (items: [Item], error: String?) {
+        guard count >= 1 else { return ([], "題數需 ≥ 1") }
         let pool: [String]
         switch source {
         case .common:
@@ -124,10 +151,22 @@ final class DrillEngine {
                 .prefix(200)
                 .map { $0 }
             if pool.isEmpty { return ([], "無題——字頻資料或拆碼表缺漏") }
+        case .short:
+            // 一二碼字：最短碼 ≤2 的高頻常用字（速練簡碼手感）
+            pool = freq.keys.filter { c in
+                guard let first = charCodes[c]?.first else { return false }
+                return first.count <= 2
+            }
+            .sorted { (freq[$0] ?? 0, $0) > (freq[$1] ?? 0, $1) }
+            .prefix(150)
+            .map { $0 }
+            if pool.isEmpty { return ([], "無題——找不到一、二碼的常用字") }
         case .weak:
-            let chars = weakChars(limit: 300)
-            var seen = Set<String>(); pool = chars.filter { charCodes[$0] != nil && seen.insert($0).inserted }
-            if pool.isEmpty { return ([], "查字歷史還沒有記錄——在輸入法用 ,，ZH／,，TO／,，PYS 查字後就會累積弱點題") }
+            // 查字歷史 ∪ 練習錯字收集——兩個弱點來源合流
+            var seen = Set<String>()
+            let merged = (loadWrongLog() + lookupHistoryChars(limit: 300)).filter { seen.insert($0).inserted }
+            pool = merged.filter { charCodes[$0] != nil }
+            if pool.isEmpty { return ([], "查字歷史與錯字收集都還是空的——在輸入法查字或練習打錯後就會累積") }
         case .random:
             pool = Array(charCodes.keys)
             if pool.isEmpty { return ([], "拆碼表為空") }
@@ -136,8 +175,23 @@ final class DrillEngine {
         let items = picked.map { Item(char: $0, codes: charCodes[$0] ?? []) }
         return (items, nil)
     }
-}
 
+    /// 自訂文章：依原文順序出題（不打亂、重複字照打），只收表內字。回傳 (題目, 跳過的不在表內字數)。
+    func makeRoundFromArticle(_ text: String, cap: Int = 200) -> (items: [Item], skipped: Int, error: String?) {
+        var items: [Item] = []
+        var skipped = 0
+        for ch in text {
+            guard !(ch.isWhitespace || ch.isNewline) else { continue }
+            guard let codes = charCodes[String(ch)], !codes.isEmpty else { skipped += 1; continue }
+            items.append(Item(char: String(ch), codes: codes))
+            if items.count >= max(1, cap) { break }
+        }
+        if items.isEmpty {
+            return ([], skipped, "文章裡沒有可練習的字（都不在拆碼表內）")
+        }
+        return (items, skipped, nil)
+    }
+}
 
 // CINM binary helpers（與 PinnedOrderSection 同款）
 @inline(__always) private func u32(_ d: Data, _ o: Int) -> UInt32 {

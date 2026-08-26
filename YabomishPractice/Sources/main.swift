@@ -45,6 +45,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.title = "Yabomish 打字練習"
+        window.minSize = NSSize(width: 640, height: 480)
         window.contentView = NSHostingView(rootView: PracticeRootView())
         window.center()
         window.makeKeyAndOrderFront(nil)
