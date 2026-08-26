@@ -62,9 +62,16 @@ struct PracticeRootView: View {
 
     private var menu: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label("打字練習", systemImage: "keyboard.badge.eye").font(Typo.h2)
-            Text("看打練習：畫面出字，輸入嘸蝦米碼按 Enter 送出。題目由你自己的拆碼表即時生成，不連網。")
-                .font(Typo.body).foregroundStyle(.secondary)
+            HStack(spacing: 14) {
+                Image(systemName: "keyboard")
+                    .font(.system(size: 42))
+                    .foregroundStyle(Typo.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("打字練習").font(Typo.h2)
+                    Text("看打練習：畫面出字，輸入嘸蝦米碼按 **空白鍵** 送出（Enter 也可以）。題目由你自己的拆碼表即時生成，不連網。")
+                        .font(Typo.body).foregroundStyle(.secondary)
+                }
+            }
 
             HStack(spacing: 12) {
                 Picker("題源", selection: $source) {
@@ -244,11 +251,16 @@ struct PracticeSessionView: View {
         self.onExit = onExit
         _s = State(initialValue: initial)
     }
+
     var body: some View {
         Group {
             if s.finished { result } else { drilling }
         }
-        .onAppear { focused = true }
+        .onAppear {
+            // 即按即開始：進入練習立刻搶焦點，0.12s 後補一次（等 window 成為 key）
+            DispatchQueue.main.async { self.focused = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { self.focused = true }
+        }
         .onDisappear { flashClear?.cancel() }
     }
 
@@ -268,9 +280,6 @@ struct PracticeSessionView: View {
         }
         .frame(maxWidth: .infinity)
     }
-
-    // MARK: 練習中
-
     private var drilling: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -283,30 +292,49 @@ struct PracticeSessionView: View {
                 Button("結束") { finishEarly() }.buttonStyle(.link)
             }
 
+            ProgressView(value: Double(s.index), total: Double(s.items.count))
+                .tint(Typo.accent)
+
             contextStrip
 
-            Group {
+            // 大字卡：material 底＋對錯閃色＋換題縮放過場
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(0.07), radius: 6, y: 2)
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(flash.map { $0.opacity(0.12) } ?? .clear)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(flash ?? .clear, lineWidth: 2)
                 if let item = s.currentItem {
                     Text(item.char)
-                        .font(.system(size: 84, weight: .medium))
+                        .font(.system(size: 92, weight: .medium))
                         .minimumScaleFactor(0.5)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(24)
+                        .id(s.index)
+                        .transition(.scale(scale: 0.92).combined(with: .opacity))
                 }
             }
-            .frame(maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture { focused = true }
 
             HStack(spacing: 10) {
-                TextField("輸入碼後按 Enter", text: $input)
+                TextField("輸入碼後按 空白鍵 送出", text: $input)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 22, design: .monospaced))
                     .focused($focused)
                     .onSubmit(submit)
+                    .onKeyPress(.space) { submit(); return .handled }
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
                             .stroke(flash ?? .clear, lineWidth: 2.5)
                             .animation(.easeOut(duration: 0.35), value: flash)
                     )
-                Button("送出") { submit() }.disabled(input.isEmpty)
+                Button("送出 ␣") { submit() }
+                    .disabled(input.isEmpty)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
                 Button("跳過") { skip() }
                 Button("提示") { revealHint() }
                     .disabled(hintShownFor == s.index)
@@ -344,7 +372,7 @@ struct PracticeSessionView: View {
                                    correct: s.correct, seconds: s.seconds)
         return VStack(alignment: .leading, spacing: 14) {
             Text("本輪完成").font(Typo.h2)
-            HStack(spacing: 28) {
+            HStack(spacing: 12) {
                 metric(String(format: "%.1f", record.kpm), "字／分鐘")
                 metric(String(format: "%.0f%%", record.accuracy * 100), "準確率")
                 metric(String(format: "%.0f 秒", record.seconds), "用時")
@@ -387,10 +415,14 @@ struct PracticeSessionView: View {
     }
 
     private func metric(_ v: String, _ label: String) -> some View {
-        VStack(spacing: 2) {
-            Text(v).font(.system(size: 26, weight: .semibold, design: .rounded))
+        VStack(spacing: 3) {
+            Text(v).font(.system(size: 24, weight: .semibold, design: .rounded))
+                .foregroundStyle(Typo.accent)
             Text(label).font(Typo.caption).foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 10).fill(.ultraThinMaterial))
     }
 
     // MARK: 作答
