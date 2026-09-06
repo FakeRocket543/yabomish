@@ -21,7 +21,10 @@
 
 ### 重構
 
+- **偏好快照** — 熱路徑每擊鍵 6–10 次 UserDefaults 讀取改為內部快照（NSLock 保護、setter 即時刷新、跨程 prefsChanged 通知同步），打字手感更穩
 - **YabomishPrefs 卡片元件統一** — 7–8 份近乎相同的選擇卡片抽成共用 `SelectableCardView`（視覺逐欄位等價），順帶補齊聯想頁卡片的無障礙標籤；CSV 跳脫抽成共用 `csvEscape()`；查字歷史 DateFormatter 改 static 快取
+- **輸入法去重** — toast 建視窗×2、候選導航×3、「送首選或跳離」×4、候選索引反查×7、拼音聲調×2 各合併為單一實作（行為逐項保持；行為已分歧的死版 `selectCandidate` 隨死碼刪除）
+- **死碼清理（−500+ 行）** — 刪除 `PhraseLookup`（省 SQLite 常駐快取）、`UserPhrases`、`DomainMerger` 整檔與 `htmlToMarkdown` 等零引用程式碼；引擎死 API（`undoLastLetter`／`selectByDigit` 等）；「注音反查」「新引擎」等無效開關與對應死偏好屬性；README／測試腳本過期條目
 
 ### 移除
 
