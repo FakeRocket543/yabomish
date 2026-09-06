@@ -63,8 +63,6 @@ class YabomishInputController: IMKInputController {
 
     private static let freqTracker = FreqTracker()
     private static weak var activeSession: YabomishInputController?
-    private static var lastDeactivateTime: Date = .distantPast
-    private var lastCommittedLength: Int = 0
     private static var yabomishWasActive = false
 
     /// App 啟動後的一次性背景任務：字頻同步資料夾合併（syncFolder ↔ freq.db）。
@@ -108,71 +106,98 @@ class YabomishInputController: IMKInputController {
         return handleWithNewEngine(event, client: client)
     }
 
-    // MARK: - Mode Toast
+    // MARK: - HUD Toast（模式切換／查碼提示共用流程）
 
     private static var modeWindow: NSPanel?
+    private static var codeHintWindow: NSPanel?
 
-    private func showModeToast(_ text: String) {
-        Self.modeWindow?.orderOut(nil)
+    /// 提示視窗的靜態槽位：兩種提示各自獨立，互不覆蓋。
+    private enum ToastSlot {
+        case mode
+        case codeHint
+    }
+
+    /// 垂直位置：模式提示置中；查碼提示固定在中線上方 60pt。
+    private enum ToastVertical {
+        case centered
+        case fixedOffset(CGFloat)
+    }
+
+    /// 兩種提示僅以下外觀參數不同（對應原 showModeToast / showCodeHintToast）。
+    private struct ToastStyle {
+        let font: NSFont
+        let horizontalPadding: CGFloat
+        let minWidth: CGFloat          // 查碼提示無最小寬，填 0
+        let verticalPadding: CGFloat
+        let vertical: ToastVertical
+        let cornerRadius: CGFloat
+        let labelYOffset: CGFloat
+    }
+
+    private static func toastPanel(for slot: ToastSlot) -> NSPanel? {
+        switch slot {
+        case .mode: return modeWindow
+        case .codeHint: return codeHintWindow
+        }
+    }
+
+    private static func storeToastPanel(_ win: NSPanel?, for slot: ToastSlot) {
+        switch slot {
+        case .mode: modeWindow = win
+        case .codeHint: codeHintWindow = win
+        }
+    }
+
+    /// 建立並顯示 HUD 提示：先收起同槽位舊窗，淡出後僅在仍是同窗時清空槽位。
+    private func showToast(_ text: String, style: ToastStyle, duration: Double, slot: ToastSlot) {
+        Self.toastPanel(for: slot)?.orderOut(nil)
         guard let screen = NSScreen.main else { return }
         let label = NSTextField(labelWithString: text)
-        label.font = .systemFont(ofSize: YabomishPrefs.toastFontSize, weight: .medium)
+        label.font = style.font
         label.textColor = .white
         label.alignment = .center
         label.sizeToFit()
-        let w = max(label.frame.width + 32, 56)
-        let h = label.frame.height + 20
-        let rect = NSRect(x: screen.frame.midX - w/2, y: screen.frame.midY - h/2, width: w, height: h)
+        let w = max(label.frame.width + style.horizontalPadding, style.minWidth)
+        let h = label.frame.height + style.verticalPadding
+        let y: CGFloat
+        switch style.vertical {
+        case .centered: y = screen.frame.midY - h/2
+        case .fixedOffset(let offset): y = screen.frame.midY + offset
+        }
+        let rect = NSRect(x: screen.frame.midX - w/2, y: y, width: w, height: h)
         let win = NSPanel(contentRect: rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         win.level = .popUpMenu
         win.isOpaque = false
         win.backgroundColor = .clear
         win.appearance = YabomishPrefs.resolvedAppearance
         let bg = NSVisualEffectView(frame: NSRect(origin: .zero, size: rect.size))
-        bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = 12
+        bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = style.cornerRadius
         win.contentView = bg
-        label.frame = NSRect(x: 0, y: 10, width: rect.width, height: label.frame.height)
+        label.frame = NSRect(x: 0, y: style.labelYOffset, width: rect.width, height: label.frame.height)
         bg.addSubview(label)
         win.orderFront(nil)
-        Self.modeWindow = win
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        Self.storeToastPanel(win, for: slot)
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
             NSAnimationContext.runAnimationGroup({ ctx in ctx.duration = 0.3; win.animator().alphaValue = 0 }) {
-                win.orderOut(nil); if Self.modeWindow === win { Self.modeWindow = nil }
+                win.orderOut(nil); if Self.toastPanel(for: slot) === win { Self.storeToastPanel(nil, for: slot) }
             }
         }
     }
 
-    // MARK: - Code Hint Toast
-
-    private static var codeHintWindow: NSPanel?
+    private func showModeToast(_ text: String) {
+        showToast(text, style: ToastStyle(
+            font: .systemFont(ofSize: YabomishPrefs.toastFontSize, weight: .medium),
+            horizontalPadding: 32, minWidth: 56, verticalPadding: 20,
+            vertical: .centered, cornerRadius: 12, labelYOffset: 10
+        ), duration: 0.6, slot: .mode)
+    }
 
     private func showCodeHintToast(_ text: String, duration: Double = 1.2) {
-        Self.codeHintWindow?.orderOut(nil)
-        guard let screen = NSScreen.main else { return }
-        let label = NSTextField(labelWithString: text)
-        label.font = .systemFont(ofSize: 14, weight: .regular)
-        label.textColor = .white
-        label.alignment = .center
-        label.sizeToFit()
-        let w = label.frame.width + 24
-        let h = label.frame.height + 12
-        let rect = NSRect(x: screen.frame.midX - w/2, y: screen.frame.midY + 60, width: w, height: h)
-        let win = NSPanel(contentRect: rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        win.level = .popUpMenu
-        win.isOpaque = false; win.backgroundColor = .clear
-        win.appearance = YabomishPrefs.resolvedAppearance
-        let bg = NSVisualEffectView(frame: NSRect(origin: .zero, size: rect.size))
-        bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = 8
-        win.contentView = bg
-        label.frame = NSRect(x: 0, y: 4, width: rect.width, height: label.frame.height)
-        bg.addSubview(label)
-        win.orderFront(nil)
-        Self.codeHintWindow = win
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
-            NSAnimationContext.runAnimationGroup({ ctx in ctx.duration = 0.3; win.animator().alphaValue = 0 }) {
-                win.orderOut(nil); if Self.codeHintWindow === win { Self.codeHintWindow = nil }
-            }
-        }
+        showToast(text, style: ToastStyle(
+            font: .systemFont(ofSize: 14, weight: .regular),
+            horizontalPadding: 24, minWidth: 0, verticalPadding: 12,
+            vertical: .fixedOffset(60), cornerRadius: 8, labelYOffset: 4
+        ), duration: duration, slot: .codeHint)
     }
 
     // MARK: - Candidate Panel
@@ -253,7 +278,6 @@ class YabomishInputController: IMKInputController {
         Self.yabomishWasActive = true
         if fromOtherIM {
             DispatchQueue.global(qos: .userInitiated).async {
-                _ = PhraseLookup.shared
                 _ = WikiCorpus.shared
                 _ = BigramSuggest.shared
                 ZhuyinLookup.shared.preheat()
@@ -263,7 +287,7 @@ class YabomishInputController: IMKInputController {
         Self.activeSession = self
         panel.onCandidateSelected = { [weak self] text in
             guard let self else { return }
-            let idx = self.engine.currentCandidates.firstIndex(of: text) ?? 0
+            let idx = self.candidateIndex(of: text)
             self.engine.selectCandidate(at: idx)
         }
         // Reset engine state for new session
@@ -310,7 +334,6 @@ class YabomishInputController: IMKInputController {
         panel.hide()
         Self.freqTracker.flushAll()
         Self.activeSession = nil
-        Self.lastDeactivateTime = Date()
         super.deactivateServer(sender)
     }
 
@@ -389,8 +412,7 @@ extension YabomishInputController {
             if let digit = keyCodeToDigit[keyCode], !engine.currentCandidates.isEmpty {
                 // Shift+digit: output digit
                 if !engine.composing.isEmpty {
-                    if !engine.currentCandidates.isEmpty { engine.handleSpace() }
-                    else { engine.handleEscape() }
+                    commitOrEscapeComposing()
                 } else {
                     engine.clearCandidates()
                     panel.hide()
@@ -403,17 +425,11 @@ extension YabomishInputController {
                 return true
             }
             if keyCode == 49 {
-                if !engine.composing.isEmpty {
-                    if !engine.currentCandidates.isEmpty { engine.handleSpace() }
-                    else { engine.handleEscape() }
-                }
+                commitOrEscapeComposing()
                 client.insertText("\u{3000}", replacementRange: notFoundRange)
                 return true
             }
-            if !engine.composing.isEmpty {
-                if !engine.currentCandidates.isEmpty { engine.handleSpace() }
-                else { engine.handleEscape() }
-            }
+            commitOrEscapeComposing()
             if let ch = keyCodeToChar[keyCode], ch.isLetter {
                 let s = flags.contains(.capsLock) ? String(ch).uppercased() : String(ch)
                 client.insertText(s, replacementRange: notFoundRange)
@@ -467,7 +483,7 @@ extension YabomishInputController {
             if engine.composing.isEmpty && !engine.currentCandidates.isEmpty {
                 // Suggestion/emoji mode — confirm highlighted candidate
                 if let selected = panel.selectedCandidate() {
-                    let idx = engine.currentCandidates.firstIndex(of: selected) ?? 0
+                    let idx = candidateIndex(of: selected)
                     engine.selectCandidate(at: idx)
                     return true
                 }
@@ -486,23 +502,7 @@ extension YabomishInputController {
                 panel.hide()
                 return false
             }
-            if panel.isFixedMode || YabomishPrefs.cursorHorizontal {
-                switch keyCode {
-                case 123: panel.movePrev(); return true
-                case 124: panel.moveNext(); return true
-                case 126: panel.pageUp(); return true
-                case 125: panel.pageDown(); return true
-                default: break
-                }
-            } else {
-                switch keyCode {
-                case 126: panel.moveUp(); return true
-                case 125: panel.moveDown(); return true
-                case 123: panel.pageUp(); return true
-                case 124: panel.pageDown(); return true
-                default: break
-                }
-            }
+            if navigateCandidates(keyCode) { return true }
         }
 
         // Tab, PageDown, PageUp
@@ -518,7 +518,7 @@ extension YabomishInputController {
         // Digit keys — select candidate (composing or suggestion mode)
         if !engine.currentCandidates.isEmpty, let digit = keyCodeToDigit[keyCode] {
             if let selected = panel.selectByKey(digit) {
-                let idx = engine.currentCandidates.firstIndex(of: selected) ?? 0
+                let idx = candidateIndex(of: selected)
                 engine.selectCandidate(at: idx)
                 return true
             }
@@ -527,10 +527,7 @@ extension YabomishInputController {
         // Non-CIN punctuation passthrough: - = \ ` ' ; /
         let passthroughKeyCodes: Set<UInt16> = [27, 24, 42, 50, 39, 41, 44]
         if passthroughKeyCodes.contains(keyCode) {
-            if !engine.composing.isEmpty {
-                if !engine.currentCandidates.isEmpty { engine.handleSpace() }
-                else { engine.handleEscape() }
-            }
+            commitOrEscapeComposing()
             if let sh = keyCodeToShifted[keyCode], flags.contains(.shift) {
                 client.insertText(String(sh), replacementRange: notFoundRange)
             } else if let ch = keyCodeToChar[keyCode] {
@@ -558,6 +555,42 @@ extension YabomishInputController {
 
     private var notFoundRange: NSRange {
         NSRange(location: NSNotFound, length: NSNotFound)
+    }
+
+    /// 於目前候選中查找指定文字的索引；找不到時回退 0（沿用原行為）。
+    private func candidateIndex(of text: String) -> Int {
+        engine.currentCandidates.firstIndex(of: text) ?? 0
+    }
+
+    /// 直出按鍵前清場：有組字內容時，有候選以空白送出首選，否則跳離組字。
+    private func commitOrEscapeComposing() {
+        if !engine.composing.isEmpty {
+            if !engine.currentCandidates.isEmpty { engine.handleSpace() }
+            else { engine.handleEscape() }
+        }
+    }
+
+    /// 方向鍵導候選。固定模式（或游標水平跟隨）：左右移動、上下翻頁；
+    /// 直式（游標跟隨）：上下移動、左右翻頁。回傳是否已由導向處理。
+    @discardableResult
+    private func navigateCandidates(_ keyCode: UInt16) -> Bool {
+        if panel.isFixedMode || YabomishPrefs.cursorHorizontal {
+            switch keyCode {
+            case 123: panel.movePrev(); return true
+            case 124: panel.moveNext(); return true
+            case 126: panel.pageUp(); return true
+            case 125: panel.pageDown(); return true
+            default: return false
+            }
+        } else {
+            switch keyCode {
+            case 126: panel.moveUp(); return true
+            case 125: panel.moveDown(); return true
+            case 123: panel.pageUp(); return true
+            case 124: panel.pageDown(); return true
+            default: return false
+            }
+        }
     }
 
     private static var _shiftDownKey = 0
@@ -601,25 +634,15 @@ extension YabomishInputController {
         // Candidates showing: selection/navigation
         if !engine.currentCandidates.isEmpty {
             if let digit = keyCodeToDigit[keyCode], let selected = panel.selectByKey(digit) {
-                let idx = engine.currentCandidates.firstIndex(of: selected) ?? 0
+                let idx = candidateIndex(of: selected)
                 engine.selectCandidate(at: idx)
                 return true
             }
             if keyCode == 49 { panel.pageDown(); return true }
-            if panel.isFixedMode || YabomishPrefs.cursorHorizontal {
-                if keyCode == 123 { panel.movePrev(); return true }
-                if keyCode == 124 { panel.moveNext(); return true }
-                if keyCode == 126 { panel.pageUp(); return true }
-                if keyCode == 125 { panel.pageDown(); return true }
-            } else {
-                if keyCode == 126 { panel.moveUp(); return true }
-                if keyCode == 125 { panel.moveDown(); return true }
-                if keyCode == 123 { panel.pageUp(); return true }
-                if keyCode == 124 { panel.pageDown(); return true }
-            }
+            if navigateCandidates(keyCode) { return true }
             if keyCode == 48 { panel.pageDown(); return true }
             if keyCode == 36, let sel = panel.selectedCandidate() {
-                let idx = engine.currentCandidates.firstIndex(of: sel) ?? 0
+                let idx = candidateIndex(of: sel)
                 engine.selectCandidate(at: idx)
                 return true
             }
@@ -649,25 +672,15 @@ extension YabomishInputController {
         // Candidates showing: selection/navigation
         if !engine.currentCandidates.isEmpty {
             if let digit = keyCodeToDigit[keyCode], let selected = panel.selectByKey(digit) {
-                let idx = engine.currentCandidates.firstIndex(of: selected) ?? 0
+                let idx = candidateIndex(of: selected)
                 engine.selectPinyinCandidate(at: idx)
                 return true
             }
             if keyCode == 49 { panel.pageDown(); return true }
-            if panel.isFixedMode || YabomishPrefs.cursorHorizontal {
-                if keyCode == 123 { panel.movePrev(); return true }
-                if keyCode == 124 { panel.moveNext(); return true }
-                if keyCode == 126 { panel.pageUp(); return true }
-                if keyCode == 125 { panel.pageDown(); return true }
-            } else {
-                if keyCode == 126 { panel.moveUp(); return true }
-                if keyCode == 125 { panel.moveDown(); return true }
-                if keyCode == 123 { panel.pageUp(); return true }
-                if keyCode == 124 { panel.pageDown(); return true }
-            }
+            if navigateCandidates(keyCode) { return true }
             if keyCode == 48 { panel.pageDown(); return true }
             if keyCode == 36, let sel = panel.selectedCandidate() {
-                let idx = engine.currentCandidates.firstIndex(of: sel) ?? 0
+                let idx = candidateIndex(of: sel)
                 engine.selectPinyinCandidate(at: idx)
                 return true
             }
@@ -787,7 +800,6 @@ extension YabomishInputController: InputEngineDelegate {
         DebugLog.log("engineDidSuggest: \(suggestions.count) suggestions")
         if engine.composing.isEmpty && !suggestions.isEmpty {
             engine.setCandidates(suggestions)
-            lastCommittedLength = engine._lastCommittedText.count
             showNewEngineCandidatePanel(client: client)
         }
     }

@@ -63,11 +63,6 @@ final class InputEngine {
     private var _recentCommitted = ""
     private var _eatNextSpace = false
 
-    // Snapshot for long-press undo
-    private var _snapComposing = ""
-    private var _snapCandidates: [String] = []
-    private var _snapIsWildcard = false
-
     // Same-sound
     private var _isSameSoundMode = false
     private var _sameSoundBase = ""
@@ -139,14 +134,9 @@ final class InputEngine {
         cinTable.reload()
     }
 
-    func scheduleBackgroundTasks() {
-        freqTracker.deferredMerge()
-    }
-
     // MARK: - Public API (called by KeyboardViewController)
 
     func handleLetter(_ char: String) { sync {
-        _snapComposing = _composing; _snapCandidates = _currentCandidates; _snapIsWildcard = _isWildcard
         _lastWasEmptySpace = false
 
         // Pin mode: letters build the code to pin
@@ -353,23 +343,6 @@ final class InputEngine {
         _notifyComposing(); _notifyCandidates()
     } }
 
-    /// Undo the last handleLetter call (for long-press number)
-    func undoLastLetter() { sync {
-        // If autoCommit fired, undo the commit
-        if _composing != _snapComposing && _snapComposing.count < _composing.count {
-            // Normal case: just added a letter
-            _handleBackspaceImpl()
-        } else if _composing.count == 1 && _snapComposing.isEmpty {
-            // Added first letter
-            _handleBackspaceImpl()
-        } else {
-            // autoCommit or overflow happened — restore snapshot and undo commit
-            delegate?.engineDidDeleteBack()
-            _composing = _snapComposing; _currentCandidates = _snapCandidates; _isWildcard = _snapIsWildcard
-            _notifyComposing(); _notifyCandidates()
-        }
-    } }
-
     func selectCandidate(at index: Int) { sync {
         DebugLog.log("YabomishKB: selectCandidate idx=\(index) count=\(_currentCandidates.count) composing='\(_composing)' zhuyin=\(_isZhuyinMode ? 1 : 0)")
         guard index < _currentCandidates.count else { return }
@@ -433,16 +406,6 @@ final class InputEngine {
         return false
     } }
 
-    func selectByDigit(_ digit: Int) -> Bool { sync {
-        guard !_currentCandidates.isEmpty else { return false }
-        let keys = cinTable.selKeys
-        guard digit < keys.count else { return false }
-        // digit 0 = first candidate on current page, etc.
-        guard digit < _currentCandidates.count else { return false }
-        _selectCandidateImpl(at: digit)
-        return true
-    } }
-
     func toggleEnglishMode() { sync {
         _isEnglishMode.toggle()
         if !_isEnglishMode { /* switching back to Chinese */ }
@@ -477,23 +440,7 @@ final class InputEngine {
     } }
 
     func handlePinyinTone(_ tone: Int) { sync {
-        guard _isPinyinMode, !_pinyinBuffer.isEmpty else { return }
-        let pinyin = _pinyinBuffer + "\(tone)"
-        let chars = zhuyinLookup.charsForPinyin(pinyin)
-        guard !chars.isEmpty else { return }
-        let display: [String]
-        if _pinyinSimplified {
-            let t2s = cinTable.t2s
-            var seen = Set<String>()
-            display = chars.compactMap { c in
-                let s = t2s[c] ?? c; return seen.insert(s).inserted ? s : nil
-            }
-        } else { display = chars }
-        _currentCandidates = display.map { c in
-            let codes = cinTable.reverseLookup(c)
-            return codes.isEmpty ? c : "\(c) \(codes.joined(separator: "/"))"
-        }
-        _composing = pinyin; _notifyComposing(); _notifyCandidates()
+        _handlePinyinToneImpl(tone)
     } }
 
     func handlePinyinSpace() { sync {
@@ -779,72 +726,6 @@ final class InputEngine {
 
     // MARK: - Internal impl (called from within queue, no locking)
 
-    private func _handleBackspaceImpl() {
-        if _isInCommaCommand {
-            if _commaCommandBuffer.isEmpty {
-                _isInCommaCommand = false; _composing = ","
-                _notifyComposing()
-            } else {
-                _commaCommandBuffer = String(_commaCommandBuffer.dropLast())
-                _composing = ",," + _commaCommandBuffer; _notifyComposing()
-            }
-            return
-        }
-        if _isZhuyinMode {
-            if _currentCandidates.isEmpty && !_zhuyin.isEmpty {
-                _backspaceZhuyin()
-                if _zhuyin.isEmpty { delegate?.engineDidClearComposing() }
-                else { delegate?.engineDidUpdateComposing(_zhuyin.buffer) }
-            } else if !_currentCandidates.isEmpty {
-                _currentCandidates = []; _notifyCandidates()
-                delegate?.engineDidUpdateComposing(_zhuyin.buffer)
-            }
-            return
-        }
-        if _composing.isEmpty { return }
-        _composing = String(_composing.dropLast())
-        if _composing.isEmpty { _resetComposing() }
-        else {
-            _isWildcard = _composing.contains("*")
-            _refreshCandidates(); _notifyComposing(); _notifyCandidates()
-        }
-    }
-
-    private func _selectCandidateImpl(at index: Int) {
-        DebugLog.log("YabomishKB: selectCandidate idx=\(index) count=\(_currentCandidates.count) composing='\(_composing)' zhuyin=\(_isZhuyinMode ? 1 : 0)")
-        guard index < _currentCandidates.count else { return }
-        if _isZhuyinMode {
-            let full = _currentCandidates[index]
-            let char = String(full.prefix(1))
-            let codes = cinTable.reverseLookup(char)
-            _recordLookup(mode: "zh", query: _lastZhuyinQuery, char: char, codes: codes)
-            _commitText(char)
-            if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
-            _clearZhuyinSlots(); _currentCandidates = []; _notifyCandidates()
-            _exitZhuyinModeImpl()
-        } else if _isSameSoundMode && !_sameSoundBase.isEmpty {
-            let char = _currentCandidates[index]
-            let codes = cinTable.reverseLookup(char)
-            _recordLookup(mode: "to", query: _sameSoundBase, char: char, codes: codes)
-            DebugLog.log("YabomishKB: sameSound _selectCandidateImpl autoExit=\(prefs.homophoneAutoExit) base='\(_sameSoundBase)' char='\(char)'")
-            delegate?.engineDidCommit(char)
-            if !codes.isEmpty { delegate?.engineDidShowToast("\(char) → \(codes.joined(separator: " / "))") }
-            _sameSoundBase = ""; _composing = ""; _currentCandidates = []
-            if prefs.homophoneAutoExit {
-                _isSameSoundMode = false
-                delegate?.engineDidShowToast(_currentModeLabel)
-            }
-        } else if index == 0, let snippet = _currentSnippet {
-            #if !MINIMAL
-            _commitSnippet(snippet)
-            #else
-            _commitText(_currentCandidates[index])
-            #endif
-        } else {
-            _commitText(_currentCandidates[index])
-        }
-    }
-
     private func _handlePinyinToneImpl(_ tone: Int) {
         guard _isPinyinMode, !_pinyinBuffer.isEmpty else { return }
         let pinyin = _pinyinBuffer + "\(tone)"
@@ -873,13 +754,6 @@ final class InputEngine {
         #else
         return !cinTable.validNextKeys(after: code).isEmpty
         #endif
-    }
-
-    public func validNextKeys() -> Set<Character> {
-        sync {
-            guard !_composing.isEmpty else { return [] }
-            return cinTable.validNextKeys(after: _composing)
-        }
     }
 
     private func _refreshCandidates() {
@@ -1041,13 +915,6 @@ final class InputEngine {
         delegate?.engineDidClearComposing()
         _notifyCandidates()
     }
-
-    /// Returns the shortest code hint for a candidate, or nil if it equals the current composing.
-    func shortestCodeHint(for char: String) -> String? { sync {
-        guard let codes = cinTable.shortestCodesTable[char] else { return nil }
-        guard let best = codes.min(by: { $0.count < $1.count }) ?? codes.first else { return nil }
-        return best.count < _composing.count ? best : nil
-    } }
 
     private func _notifyComposing() { delegate?.engineDidUpdateComposing(_composing) }
     private func _notifyCandidates() { delegate?.engineDidUpdateCandidates(_currentCandidates) }
