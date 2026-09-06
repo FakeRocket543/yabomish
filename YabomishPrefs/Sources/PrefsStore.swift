@@ -102,10 +102,6 @@ import Foundation
         get { access(keyPath: \.highContrast); return ud.object(forKey: "highContrast") as? Bool ?? false }
         set { withMutation(keyPath: \.highContrast) { ud.set(newValue, forKey: "highContrast") }; postChange() }
     }
-    var useNewEngine: Bool {
-        get { access(keyPath: \.useNewEngine); return ud.object(forKey: "useNewEngine") as? Bool ?? true }
-        set { withMutation(keyPath: \.useNewEngine) { ud.set(newValue, forKey: "useNewEngine") }; postChange() }
-    }
     var autoCommit: Bool {
         get { access(keyPath: \.autoCommit); return ud.object(forKey: "autoCommit") as? Bool ?? false }
         set { withMutation(keyPath: \.autoCommit) { ud.set(newValue, forKey: "autoCommit") }; postChange() }
@@ -113,10 +109,6 @@ import Foundation
     var showCodeHint: Bool {
         get { access(keyPath: \.showCodeHint); return ud.object(forKey: "showCodeHint") as? Bool ?? false }
         set { withMutation(keyPath: \.showCodeHint) { ud.set(newValue, forKey: "showCodeHint") }; postChange() }
-    }
-    var zhuyinReverseLookup: Bool {
-        get { access(keyPath: \.zhuyinReverseLookup); return ud.object(forKey: "zhuyinReverseLookup") as? Bool ?? true }
-        set { withMutation(keyPath: \.zhuyinReverseLookup) { ud.set(newValue, forKey: "zhuyinReverseLookup") }; postChange() }
     }
     var homophoneMultiReading: Bool {
         get { access(keyPath: \.homophoneMultiReading); return ud.object(forKey: "homophoneMultiReading") as? Bool ?? false }

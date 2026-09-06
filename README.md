@@ -241,7 +241,6 @@ YabomishIM/Sources/
 ├── CandidatePanel.swift           # 選字窗（游標/固定雙模式、VoiceOver）
 ├── FreqTracker.swift              # 字頻學習（unigram + bigram + trigram + pinned、SQLite）
 ├── ZhuyinLookup.swift             # 注音反查 + 同音字 + 拼音查碼
-├── PhraseLookup.swift             # NER 詞組 + 社群上下文（SQLite）
 ├── DataDownloader.swift           # 語料下載（GitHub Release）
 ├── Prefs.swift                    # UserDefaults 偏好設定
 ├── DomainOrderManager.swift       # 詞庫排序管理
@@ -252,9 +251,7 @@ YabomishIM/Sources/
     ├── CandidateRanker.swift      # 候選字排序（字頻 + bigram + 用詞習慣）
     ├── WikiCorpus.swift           # 語料查詢（trigram、NER、詞庫、emoji）
     ├── BigramSuggest.swift        # 字級 bigram 建議（mmap .bin）
-    ├── DomainMerger.swift         # 詞庫合併
     ├── CINCompiler.swift          # .cin → .bin 裝置端編譯
-    ├── UserPhrases.swift          # 使用者自訂詞組
     ├── IMEPreferences.swift       # 偏好設定協定（可注入測試替身）
     ├── MemoryBudget.swift         # 記憶體預算管理（iOS 60MB 限制）
     └── Constants.swift            # 路徑常數（App Group / Application Support）
