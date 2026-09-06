@@ -74,6 +74,21 @@ final class CandidatePanel: NSPanel {
     var targetScreen: NSScreen?
     var modeTag: String = ""  // 當前模式標籤（非 "繁中" 時顯示）
 
+    // 固定模式點擊命中範圍：rebuildFixedLabel 逐段量測候選字寬度，
+    // 記下每個候選字在整行文字中的 x 區間；mouseDown 依此精確點選，
+    // 不再誤送第一個候選字
+    private struct FixedHitRange {
+        let candIdx: Int
+        let start: CGFloat  // 相對整行文字原點的 x 起點
+        let width: CGFloat
+    }
+    private struct FixedHitRect {
+        let candIdx: Int
+        let rect: NSRect  // contentView 座標（左下原點）
+    }
+    private var fixedTextLayout: (textWidth: CGFloat, ranges: [FixedHitRange])?
+    private var fixedHitRects: [FixedHitRect] = []
+
     private var isFixed: Bool { YabomishPrefs.panelPosition == "fixed" }
     private var effectiveScreen: NSScreen { targetScreen ?? NSScreen.main ?? NSScreen.screens[0] }
 
@@ -259,6 +274,9 @@ final class CandidatePanel: NSPanel {
             self.fixedLabel.font = Self.cachedFont(size: 14)
             self.fixedLabel.textColor = .secondaryLabelColor
             self.fixedLabel.sizeToFit()
+            // 提示訊息非候選字列，清空命中範圍避免誤觸點選
+            self.fixedTextLayout = nil
+            self.fixedHitRects = []
             self.repositionFixed()
             self.alphaValue = 0.9
             self.orderFront(nil)
@@ -287,6 +305,8 @@ final class CandidatePanel: NSPanel {
             }
             self.candidates = []
             self.composingText = ""
+            self.fixedTextLayout = nil
+            self.fixedHitRects = []
         }
     }
 
@@ -522,24 +542,38 @@ final class CandidatePanel: NSPanel {
         let highlightAttrs = cachedHighlightAttrs!
 
         let result = NSMutableAttributedString()
+        // 逐段量測寬度（與實際 attributed string 相同屬性），
+        // 記下每個候選字在整行文字中的 x 區間，供點擊命中測試使用
+        var cursorX: CGFloat = 0
+        var hitRanges: [FixedHitRange] = []
 
         if !composingText.isEmpty {
-            result.append(NSAttributedString(string: "[\(composingText)]" + sep, attributes: normalAttrs))
+            let prefix = "[\(composingText)]" + sep
+            result.append(NSAttributedString(string: prefix, attributes: normalAttrs))
+            cursorX += NSAttributedString(string: prefix, attributes: normalAttrs).size().width
         }
 
         for i in start..<end {
-            if i > start { result.append(NSAttributedString(string: sep, attributes: normalAttrs)) }
+            if i > start {
+                result.append(NSAttributedString(string: sep, attributes: normalAttrs))
+                cursorX += NSAttributedString(string: sep, attributes: normalAttrs).size().width
+            }
             let keyIdx = i - start
             let keyChar = keyIdx < selKeys.count ? keyLabel(selKeys[keyIdx]) : " "
             let text = "\(keyChar)\(candidates[i])"
             let attrs = (i == highlightIndex) ? highlightAttrs : normalAttrs
             result.append(NSAttributedString(string: text, attributes: attrs))
+            let w = NSAttributedString(string: text, attributes: attrs).size().width
+            hitRanges.append(FixedHitRange(candIdx: i, start: cursorX, width: w))
+            cursorX += w
         }
 
         let totalPages = (candidates.count + pageSize - 1) / pageSize
         if totalPages > 1 {
             let currentPage = pageStart / pageSize + 1
-            result.append(NSAttributedString(string: sep + "◀ \(currentPage)/\(totalPages) ▶", attributes: normalAttrs))
+            let suffix = sep + "◀ \(currentPage)/\(totalPages) ▶"
+            result.append(NSAttributedString(string: suffix, attributes: normalAttrs))
+            cursorX += NSAttributedString(string: suffix, attributes: normalAttrs).size().width
         }
 
         if !modeTag.isEmpty && modeTag != "繁中" {
@@ -547,17 +581,49 @@ final class CandidatePanel: NSPanel {
             let tagAttrs: [NSAttributedString.Key: Any] = [
                 .font: tagFont, .foregroundColor: NSColor.secondaryLabelColor
             ]
-            result.append(NSAttributedString(string: sep + "[\(modeTag)]", attributes: tagAttrs))
+            let suffix = sep + "[\(modeTag)]"
+            result.append(NSAttributedString(string: suffix, attributes: tagAttrs))
+            cursorX += NSAttributedString(string: suffix, attributes: tagAttrs).size().width
         }
 
         fixedLabel.attributedStringValue = result
+        fixedTextLayout = (textWidth: cursorX, ranges: hitRanges)
 
         let size = fixedLabel.intrinsicContentSize
         let h = size.height + 8
         let screen = effectiveScreen
         let maxW = screen.frame.width * 0.85
         setContentSize(NSSize(width: min(size.width + 24, maxW), height: h))
+
+        // 視窗尺寸變更後依新版面重算點擊矩形
+        rebuildFixedHitRects()
         throttledA11yNotify()
+    }
+
+    /// 把 fixedTextLayout 記錄的 x 區間換算成 contentView 座標的點擊矩形。
+    /// 與 fixedConstraints 一致：label 左右各內縮 12pt、垂直置中；
+    /// 文字在 label 內為置中對齊，故文字原點 = label 左緣 + (label寬 − 文字寬) / 2。
+    /// contentView 座標未翻轉（原點左下），mouseDown 亦以同一座標比較。
+    private func rebuildFixedHitRects() {
+        fixedHitRects = []
+        guard let cv = contentView, let layout = fixedTextLayout,
+              layout.textWidth > 0, !layout.ranges.isEmpty else { return }
+        let cb = cv.bounds
+        let labelH = fixedLabel.intrinsicContentSize.height
+        let labelFrame = NSRect(x: 12, y: (cb.height - labelH) / 2,
+                                width: max(cb.width - 24, 0), height: labelH)
+        // 文字寬度超過 label（視窗被 85% 螢幕上限截斷）時，置中對齊的實際
+        // 渲染起點與量測公式不符，命中會誤判 — 停用點擊選字，僅留數字鍵／拖曳
+        guard layout.textWidth <= labelFrame.width else { return }
+        let textX = labelFrame.minX + (labelFrame.width - layout.textWidth) / 2
+        // 垂直放寬 ±3pt，使用者不必精準點在文字高度內
+        let bandY = labelFrame.minY - 3
+        let bandH = labelFrame.height + 6
+        for r in layout.ranges {
+            fixedHitRects.append(FixedHitRect(
+                candIdx: r.candIdx,
+                rect: NSRect(x: textX + r.start, y: bandY, width: r.width, height: bandH)))
+        }
     }
 
     private func repositionFixed() {
@@ -572,6 +638,8 @@ final class CandidatePanel: NSPanel {
         default:       x = screen.frame.midX - frame.width / 2
         }
         setFrameOrigin(NSPoint(x: x, y: y))
+        // 視窗原點改變不影響 contentView 內部座標，但保險起見一併重算
+        rebuildFixedHitRects()
     }
 
     private func dockBottomHeight(screen: NSScreen) -> CGFloat {
@@ -593,23 +661,14 @@ final class CandidatePanel: NSPanel {
 
     override func mouseDown(with event: NSEvent) {
         if isFixed {
-            // Check if click hit a candidate label
-            let loc = event.locationInWindow
-            if let hit = fixedLabel.hitTest(contentView!.convert(loc, to: fixedLabel)),
-               hit is NSTextField {
-                // Fixed mode: find which candidate was clicked
-                let start = pageStart
-                for i in 0..<pageSize {
-                    let candIdx = start + i
-                    guard candIdx < candidates.count else { break }
-                    // fixedLabel is a single text field; use selectByKey approach
-                    if i < selKeys.count {
-                        if let c = selectByKey(selKeys[i]) {
-                            onCandidateSelected?(c)
-                            return
-                        }
-                    }
-                }
+            // 命中測試：把點擊位置換算到 contentView 座標（左下原點），
+            // 只有點在候選字範圍內才送出該候選字；未命中則不做任何事
+            //（絕不誤送字），其餘區域維持原本的拖曳行為
+            let loc = contentView!.convert(event.locationInWindow, from: nil)
+            for hit in fixedHitRects where hit.rect.contains(loc) {
+                guard hit.candIdx < candidates.count else { break }
+                onCandidateSelected?(candidates[hit.candIdx])
+                return
             }
             dragOffset = event.locationInWindow
             NSCursor.closedHand.push()

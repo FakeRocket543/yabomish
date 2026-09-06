@@ -2,8 +2,25 @@ import Foundation
 
 /// Unified CIN table — mmap binary reader (.bin via CINCompiler) + text .cin fallback.
 /// Binary path: liu.bin loaded via mappedIfSafe (zero-copy). Text path: parse .cin into Dict.
+///
+/// 執行緒安全：所有可變狀態（binData/entryCount/offsets/overlay/反向快取/
+/// t2s/s2t/selKeys/cinName/maxCodeLength）會被主執行緒的查詢熱路徑與背景
+/// reload／預熱執行緒同時存取，統一由單一 NSLock（stateLock）保護。
+/// 慣例：每個公開方法進入時經 locked {} 取得鎖一次；內部 helper 一律假設
+/// 「已持鎖」，且不得在鎖內呼叫其他公開方法（避免 NSLock 不可重入導致死鎖）。
 final class CINTable {
-    // MARK: - mmap binary (liu.bin)
+    // MARK: - 同步
+
+    private let stateLock = NSLock()
+
+    /// 在鎖內執行 body（查詢熱路徑每次只取得鎖一次，寫入罕見）
+    private func locked<T>(_ body: () -> T) -> T {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return body()
+    }
+
+    // MARK: - mmap binary (liu.bin) — 以下狀態一律在持鎖下存取
     private var binData: Data?
     private var entryCount = 0
     private var codesOff = 0
@@ -16,7 +33,8 @@ final class CINTable {
 
     // MARK: - Reverse lookup caches (lazy, released on memory pressure)
     private var _reverseTable: [String: [String]]?
-    private var reverseTable: [String: [String]] {
+    /// 建構／讀取反向表（須持鎖；shortest/longest/reverseLookup 共用）
+    private var reverseTableLocked: [String: [String]] {
         if let cached = _reverseTable { return cached }
         guard MemoryBudget.canAfford(MemoryBudget.reverseTable) else { return [:] }
         var r: [String: [String]] = [:]
@@ -33,45 +51,80 @@ final class CINTable {
 
     private var _shortestCodes: [String: Set<String>]?
     var shortestCodesTable: [String: Set<String>] {
-        if let cached = _shortestCodes { return cached }
-        var r: [String: Set<String>] = [:]
-        for (char, codes) in reverseTable {
-            let m = codes.min(by: { $0.count < $1.count })?.count ?? 0
-            r[char] = Set(codes.filter { $0.count == m })
+        locked {
+            if let cached = _shortestCodes { return cached }
+            var r: [String: Set<String>] = [:]
+            for (char, codes) in reverseTableLocked {
+                let m = codes.min(by: { $0.count < $1.count })?.count ?? 0
+                r[char] = Set(codes.filter { $0.count == m })
+            }
+            _shortestCodes = r; return r
         }
-        _shortestCodes = r; return r
     }
 
     private var _longestCodes: [String: Set<String>]?
     var longestCodesTable: [String: Set<String>] {
-        if let cached = _longestCodes { return cached }
-        var r: [String: Set<String>] = [:]
-        for (char, codes) in reverseTable {
-            let m = codes.max(by: { $0.count < $1.count })?.count ?? 0
-            r[char] = Set(codes.filter { $0.count == m })
+        locked {
+            if let cached = _longestCodes { return cached }
+            var r: [String: Set<String>] = [:]
+            for (char, codes) in reverseTableLocked {
+                let m = codes.max(by: { $0.count < $1.count })?.count ?? 0
+                r[char] = Set(codes.filter { $0.count == m })
+            }
+            _longestCodes = r; return r
         }
-        _longestCodes = r; return r
     }
 
-    private(set) var t2s: [String: String] = [:]
-    private(set) var s2t: [String: String] = [:]
-    private(set) var selKeys: [Character] = Array("1234567890")
-    private(set) var cinName: String = ""
-    var isEmpty: Bool { entryCount == 0 && overlay.isEmpty }
-    private(set) var maxCodeLength: Int = 4
+    // 對外公開的唯讀屬性改為鎖內讀取的 computed property，內部寫入直接動 private 儲存區
+    private var _t2s: [String: String] = [:]
+    var t2s: [String: String] { locked { _t2s } }
+    private var _s2t: [String: String] = [:]
+    var s2t: [String: String] { locked { _s2t } }
+    private var _selKeys: [Character] = Array("1234567890")
+    var selKeys: [Character] { locked { _selKeys } }
+    private var _cinName: String = ""
+    var cinName: String { locked { _cinName } }
+    var isEmpty: Bool { locked { entryCount == 0 && overlay.isEmpty } }
+    private var _maxCodeLength: Int = 4
+    var maxCodeLength: Int { locked { _maxCodeLength } }
 
     func releaseOptionalCaches() {
-        _reverseTable = nil
-        _shortestCodes = nil
-        _longestCodes = nil
+        locked {
+            _reverseTable = nil
+            _shortestCodes = nil
+            _longestCodes = nil
+        }
     }
 
     // MARK: - Load
 
     func reload() {
+        // 鎖外先確保編譯快取新鮮（必要時重編整份 .cin，秒級 I/O），
+        // 避免重載期間以鎖阻塞每鍵的 lookup 熱路徑
+        Self.ensureFreshCompiledBin()
+        locked {
+            reloadLocked()
+        }
+    }
+
+    /// 確保 sharedDir/liu.bin 比 liu.cin 新（mtime 檢查）；過舊或缺檔時重編。
+    /// 必須在鎖外呼叫（編譯是長 I/O）；並發重編為冪等操作，可接受。
+    private static func ensureFreshCompiledBin() {
+        let fm = FileManager.default
+        let cinPath = AppConstants.cinPath
+        let userBin = AppConstants.sharedDir + "/liu.bin"
+        guard fm.fileExists(atPath: cinPath) else { return }
+        let binDate = (try? fm.attributesOfItem(atPath: userBin))?[.modificationDate] as? Date
+        let cinDate = (try? fm.attributesOfItem(atPath: cinPath))?[.modificationDate] as? Date
+        if let binDate, let cinDate, binDate >= cinDate { return }
+        CINCompiler.compile(src: cinPath, dst: userBin)
+    }
+
+    /// reload 本體（須持鎖）
+    private func reloadLocked() {
         binData = nil; entryCount = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
-        t2s = [:]; s2t = [:]
+        _t2s = [:]; _s2t = [:]
 
         // 1. Try mmap binary from shared dir
         let userBin = AppConstants.sharedDir + "/liu.bin"
@@ -93,23 +146,31 @@ final class CINTable {
         // 4. Char maps
         loadCharMaps()
         // 5. maxCodeLength
-        maxCodeLength = 4
+        _maxCodeLength = 4
         if let d = binData {
             for i in 0..<entryCount {
                 let len = Int(d.u16(codesOff + i * 6 + 4))
-                if len > maxCodeLength { maxCodeLength = len }
+                if len > _maxCodeLength { _maxCodeLength = len }
             }
         }
-        for k in overlay.keys { if k.count > maxCodeLength { maxCodeLength = k.count } }
-        DebugLog.log("YabomishIM: maxCodeLength = \(maxCodeLength)")
+        for k in overlay.keys { if k.count > _maxCodeLength { _maxCodeLength = k.count } }
+        DebugLog.log("YabomishIM: maxCodeLength = \(_maxCodeLength)")
     }
 
     /// Load from a .cin text file (compiles to temp .bin first). For tests and on-the-fly use.
     func load(cinPath: String) {
+        locked {
+            loadLocked(cinPath: cinPath)
+        }
+    }
+
+    /// load(cinPath:) 本體（須持鎖）
+    private func loadLocked(cinPath: String) {
         let tmp = NSTemporaryDirectory() + "cin_\(UUID().uuidString).bin"
         CINCompiler.compile(src: cinPath, dst: tmp)
         binData = nil; entryCount = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
+        _maxCodeLength = 4
         do {
             let d = try Data(contentsOf: URL(fileURLWithPath: tmp))
             try? FileManager.default.removeItem(atPath: tmp)
@@ -122,14 +183,21 @@ final class CINTable {
         if let d = binData {
             for i in 0..<entryCount {
                 let len = Int(d.u16(codesOff + i * 6 + 4))
-                if len > maxCodeLength { maxCodeLength = len }
+                if len > _maxCodeLength { _maxCodeLength = len }
             }
         }
-        for k in overlay.keys { if k.count > maxCodeLength { maxCodeLength = k.count } }
+        for k in overlay.keys { if k.count > _maxCodeLength { _maxCodeLength = k.count } }
     }
 
     /// Load from a .cin text file directly (macOS legacy path, also used by reload fallback).
     func load(path: String) {
+        locked {
+            loadLocked(path: path)
+        }
+    }
+
+    /// load(path:) 本體（須持鎖）
+    private func loadLocked(path: String) {
         binData = nil; entryCount = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
         // Try compile to bin first
@@ -144,14 +212,14 @@ final class CINTable {
             parseCINIntoOverlay(path: path)
         }
         loadCharMaps()
-        maxCodeLength = 4
+        _maxCodeLength = 4
         if let d = binData {
             for i in 0..<entryCount {
                 let len = Int(d.u16(codesOff + i * 6 + 4))
-                if len > maxCodeLength { maxCodeLength = len }
+                if len > _maxCodeLength { _maxCodeLength = len }
             }
         }
-        for k in overlay.keys { if k.count > maxCodeLength { maxCodeLength = k.count } }
+        for k in overlay.keys { if k.count > _maxCodeLength { _maxCodeLength = k.count } }
         DebugLog.log("YabomishIM: Loaded \(entryCount) bin entries + \(overlay.count) overlay entries from \(path)")
     }
 
@@ -177,9 +245,9 @@ final class CINTable {
     private func parseBinHeader(_ d: Data) {
         entryCount = Int(d.u32(4))
         let skLen = Int(d[8])
-        if skLen > 0, skLen <= 20, 9 + skLen <= d.count { selKeys = (0..<skLen).map { Character(UnicodeScalar(d[9 + $0])) } }
+        if skLen > 0, skLen <= 20, 9 + skLen <= d.count { _selKeys = (0..<skLen).map { Character(UnicodeScalar(d[9 + $0])) } }
         let cnLen = Int(d.u16(20))
-        if cnLen > 0, 22 + cnLen <= d.count, let s = String(data: d[22..<(22+cnLen)], encoding: .utf8) { cinName = s }
+        if cnLen > 0, 22 + cnLen <= d.count, let s = String(data: d[22..<(22+cnLen)], encoding: .utf8) { _cinName = s }
         codesOff = Int(d.u32(96))
         valsOff = Int(d.u32(100))
         stringsOff = Int(d.u32(104))
@@ -315,10 +383,10 @@ final class CINTable {
             let t = line.trimmingCharacters(in: .whitespaces)
             if t.hasPrefix("%selkey ") {
                 let keys = String(t.dropFirst(8)).trimmingCharacters(in: .whitespaces)
-                if !keys.isEmpty { self.selKeys = Array(keys) }; return
+                if !keys.isEmpty { self._selKeys = Array(keys) }; return
             }
             if t.hasPrefix("%cname ") {
-                self.cinName = String(t.dropFirst(7)).trimmingCharacters(in: .whitespaces); return
+                self._cinName = String(t.dropFirst(7)).trimmingCharacters(in: .whitespaces); return
             }
             if t == "%chardef begin" { inChardef = true; return }
             if t == "%chardef end" { inChardef = false; return }
@@ -370,7 +438,8 @@ final class CINTable {
     private func loadCharMaps() {
         let sharedDir = AppConstants.sharedDir + "/"
         let bundlePath = (Bundle.main.resourcePath ?? "") + "/"
-        for (name, kp) in [("t2s", \CINTable.t2s), ("s2t", \CINTable.s2t)] {
+        // 寫入 private 儲存區（呼叫端已持鎖）
+        for (name, kp) in [("t2s", \CINTable._t2s), ("s2t", \CINTable._s2t)] {
             let shared = sharedDir + name + ".json"
             let bundled = bundlePath + name + ".json"
             let p = FileManager.default.fileExists(atPath: shared) ? shared : bundled
@@ -380,9 +449,14 @@ final class CINTable {
         }
     }
 
-    // MARK: - Lookup (public API)
+    // MARK: - Lookup (public API) — 每個公開方法鎖一次，內部 helper 假設已持鎖
 
     func lookup(_ code: String) -> [String] {
+        locked { lookupLocked(code) }
+    }
+
+    /// lookup 本體（須持鎖）
+    private func lookupLocked(_ code: String) -> [String] {
         let c = code.lowercased()
         var result: [String] = []
         let idx = binSearch(c)
@@ -392,69 +466,75 @@ final class CINTable {
     }
 
     func hasPrefix(_ prefix: String) -> Bool {
-        let p = prefix.lowercased()
-        // Binary: check via binary search
-        if let d = binData {
-            let i = lowerBound(p)
-            if i < entryCount && codeHasPrefix(d, at: i, p.utf8) { return true }
+        locked {
+            let p = prefix.lowercased()
+            // Binary: check via binary search
+            if let d = binData {
+                let i = lowerBound(p)
+                if i < entryCount && codeHasPrefix(d, at: i, p.utf8) { return true }
+            }
+            // Overlay: scan keys
+            return overlay.keys.contains { $0.hasPrefix(p) }
         }
-        // Overlay: scan keys
-        return overlay.keys.contains { $0.hasPrefix(p) }
     }
 
     func validNextKeys(after prefix: String) -> Set<Character> {
-        let p = prefix.lowercased()
-        var result = Set<Character>()
-        let pLen = p.utf8.count
-        // Binary: scan from lowerBound
-        if let d = binData {
-            let start = lowerBound(p)
-            for i in start..<entryCount {
-                guard codeHasPrefix(d, at: i, p.utf8) else { break }
-                let codeLen = Int(d.u16(codesOff + i * 6 + 4))
-                if codeLen > pLen {
-                    let off = stringsOff + Int(d.u32(codesOff + i * 6))
-                    guard off + pLen < d.count else { continue }
-                    result.insert(Character(UnicodeScalar(d[off + pLen])))
+        locked {
+            let p = prefix.lowercased()
+            var result = Set<Character>()
+            let pLen = p.utf8.count
+            // Binary: scan from lowerBound
+            if let d = binData {
+                let start = lowerBound(p)
+                for i in start..<entryCount {
+                    guard codeHasPrefix(d, at: i, p.utf8) else { break }
+                    let codeLen = Int(d.u16(codesOff + i * 6 + 4))
+                    if codeLen > pLen {
+                        let off = stringsOff + Int(d.u32(codesOff + i * 6))
+                        guard off + pLen < d.count else { continue }
+                        result.insert(Character(UnicodeScalar(d[off + pLen])))
+                    }
                 }
             }
+            // Overlay
+            for key in overlay.keys where key.hasPrefix(p) && key.count > p.count {
+                result.insert(key[key.index(key.startIndex, offsetBy: p.count)])
+            }
+            return result
         }
-        // Overlay
-        for key in overlay.keys where key.hasPrefix(p) && key.count > p.count {
-            result.insert(key[key.index(key.startIndex, offsetBy: p.count)])
-        }
-        return result
     }
 
     func wildcardLookup(_ pattern: String) -> [String] {
-        let pat = pattern.lowercased()
-        guard pat.contains("*") else { return lookup(pat) }
-        let regex = "^" + NSRegularExpression.escapedPattern(for: pat)
-            .replacingOccurrences(of: "\\*", with: ".+") + "$"
-        guard let re = try? NSRegularExpression(pattern: regex) else { return [] }
-        let fix = String(pat.prefix(while: { $0 != "*" }))
-        var results: [String] = []; var seen = Set<String>()
-        // Binary
-        if let d = binData {
-            let start = fix.isEmpty ? 0 : lowerBound(fix)
-            for i in start..<entryCount {
-                if !fix.isEmpty && !codeHasPrefix(d, at: i, fix.utf8) { break }
-                let code = readCode(d, at: i)
-                if re.firstMatch(in: code, range: NSRange(code.startIndex..., in: code)) != nil {
-                    for c in readChars(d, at: i) where seen.insert(c).inserted { results.append(c) }
+        locked {
+            let pat = pattern.lowercased()
+            guard pat.contains("*") else { return lookupLocked(pat) }
+            let regex = "^" + NSRegularExpression.escapedPattern(for: pat)
+                .replacingOccurrences(of: "\\*", with: ".+") + "$"
+            guard let re = try? NSRegularExpression(pattern: regex) else { return [] }
+            let fix = String(pat.prefix(while: { $0 != "*" }))
+            var results: [String] = []; var seen = Set<String>()
+            // Binary
+            if let d = binData {
+                let start = fix.isEmpty ? 0 : lowerBound(fix)
+                for i in start..<entryCount {
+                    if !fix.isEmpty && !codeHasPrefix(d, at: i, fix.utf8) { break }
+                    let code = readCode(d, at: i)
+                    if re.firstMatch(in: code, range: NSRange(code.startIndex..., in: code)) != nil {
+                        for c in readChars(d, at: i) where seen.insert(c).inserted { results.append(c) }
+                    }
                 }
             }
-        }
-        // Overlay
-        for (code, chars) in overlay {
-            guard fix.isEmpty || code.hasPrefix(fix) else { continue }
-            if re.firstMatch(in: code, range: NSRange(code.startIndex..., in: code)) != nil {
-                for c in chars where seen.insert(c).inserted { results.append(c) }
+            // Overlay
+            for (code, chars) in overlay {
+                guard fix.isEmpty || code.hasPrefix(fix) else { continue }
+                if re.firstMatch(in: code, range: NSRange(code.startIndex..., in: code)) != nil {
+                    for c in chars where seen.insert(c).inserted { results.append(c) }
+                }
             }
+            return results
         }
-        return results
     }
 
-    func reverseLookup(_ char: String) -> [String] { reverseTable[char] ?? [] }
+    func reverseLookup(_ char: String) -> [String] { locked { reverseTableLocked[char] ?? [] } }
     func convert(_ char: String, map: [String: String]) -> String { map[char] ?? char }
 }
