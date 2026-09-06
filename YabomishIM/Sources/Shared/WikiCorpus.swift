@@ -48,12 +48,6 @@ final class WikiCorpus {
     private var wbKeyIndexOff = 0
     private var wbValIndexOff = 0
 
-    // Chengyu (WBMM)
-    private var cyData: Data?
-    private var cyKeyCount = 0
-    private var cyKeyIndexOff = 0
-    private var cyValIndexOff = 0
-
     // Emoji char map
     private var emojiMap: [String: [String]] = [:]
 
@@ -120,7 +114,6 @@ final class WikiCorpus {
         self.prefs = prefs
         loadTrigram()
         loadWordBigram()
-        loadChengyu()
         loadWordNews()
         loadJingjing()
         loadEmojiMap()
@@ -312,19 +305,6 @@ final class WikiCorpus {
         wbData = d
     }
 
-    private func loadChengyu() {
-        guard let p = resolvePath(name: "chengyu", ext: "bin") else { return }
-        let d: Data
-        do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
-        catch { DebugLog.log("WikiCorpus loadChengyu: \(error.localizedDescription)"); return }
-        guard d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { return }
-        cyKeyCount = Int(d.u32(4))
-        cyKeyIndexOff = Int(d.u32(8))
-        cyValIndexOff = Int(d.u32(12))
-        guard cyKeyIndexOff >= 16, cyKeyIndexOff < cyValIndexOff, cyValIndexOff <= d.count else { return }
-        cyData = d
-    }
-
     private func loadWordNews() {
         guard let p = resolvePath(name: "word_news", ext: "bin") else { return }
         let d: Data
@@ -494,7 +474,7 @@ final class WikiCorpus {
         return r
     }
 
-    // MARK: - Word n-gram / Chengyu
+    // MARK: - Word n-gram
 
     func suggestWordNgram(context: [String], limit: Int = 3) -> [String] {
         if context.count >= 2 {
@@ -508,16 +488,6 @@ final class WikiCorpus {
                              valIndexOff: wbValIndexOff, key: last, limit: limit)
         }
         return []
-    }
-
-    /// Backward compat
-    func suggestWordBigram(after word: String, limit: Int = 3) -> [String] {
-        return suggestWordNgram(context: [word], limit: limit)
-    }
-
-    func suggestChengyu(prefix: String, limit: Int = 3) -> [String] {
-        queryWBMM(data: cyData, keyCount: cyKeyCount, keyIndexOff: cyKeyIndexOff,
-                  valIndexOff: cyValIndexOff, key: prefix, limit: limit)
     }
 
     // MARK: - WBMM binary search

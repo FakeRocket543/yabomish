@@ -88,14 +88,6 @@ final class CINTable {
     private var _maxCodeLength: Int = 4
     var maxCodeLength: Int { locked { _maxCodeLength } }
 
-    func releaseOptionalCaches() {
-        locked {
-            _reverseTable = nil
-            _shortestCodes = nil
-            _longestCodes = nil
-        }
-    }
-
     // MARK: - Load
 
     func reload() {

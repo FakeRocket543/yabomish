@@ -45,10 +45,4 @@ enum MemoryBudget {
         true  // macOS has plenty of memory
         #endif
     }
-
-    /// Call this when memory is tight — release optional caches.
-    static func trimIfNeeded(cinTable: CINTable) {
-        guard currentMB > 65 else { return }
-        cinTable.releaseOptionalCaches()
-    }
 }
