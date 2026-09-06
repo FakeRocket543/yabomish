@@ -34,7 +34,7 @@ build_im() {
     mkdir -p "$IM_APP/Contents/MacOS" "$IM_APP/Contents/Resources"
 
     cp "$IM_RES/Info.plist" "$IM_APP/Contents/Info.plist"
-    local VER; VER=$(grep -m1 '^## \[' "$ROOT/CHANGELOG.md" | sed 's/.*\[\(.*\)\].*/\1/')
+    local VER; VER=$(grep '^## \[' "$ROOT/CHANGELOG.md" | grep -v '\[Unreleased\]' | head -1 | sed 's/.*\[\(.*\)\].*/\1/')
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$IM_APP/Contents/Info.plist"
@@ -87,7 +87,7 @@ build_prefs() {
     cp "$PREFS_DIR/Resources/AppIcon.icns" "$PREFS_APP/Contents/Resources/"
     [ -f "$PREFS_DIR/Resources/help.md" ] && cp "$PREFS_DIR/Resources/help.md" "$PREFS_APP/Contents/Resources/"
 
-    local VER; VER=$(grep -m1 '^## \[' "$ROOT/CHANGELOG.md" | sed 's/.*\[\(.*\)\].*/\1/')
+    local VER; VER=$(grep '^## \[' "$ROOT/CHANGELOG.md" | grep -v '\[Unreleased\]' | head -1 | sed 's/.*\[\(.*\)\].*/\1/')
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$PREFS_APP/Contents/Info.plist"
@@ -106,30 +106,6 @@ build_prefs() {
     ok "YabomishPrefs.app"
 }
 
-build_practice() {
-    local PR_DIR="$ROOT/YabomishPractice"
-    local PR_APP="$PR_DIR/YabomishPractice.app"
-    printf "${C}> 編譯打字練習...${N}\n"
-    rm -rf "$PR_APP"
-    mkdir -p "$PR_APP/Contents/MacOS" "$PR_APP/Contents/Resources"
-
-    cp "$PR_DIR/Resources/Info.plist" "$PR_APP/Contents/"
-    local VER; VER=$(grep -m1 '^## \[' "$ROOT/CHANGELOG.md" | sed 's/.*\[\(.*\)\].*/\1/')
-    local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    local STAMP; STAMP=$(date +%Y%m%d.%H%M)
-    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$PR_APP/Contents/Info.plist"
-    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$PR_APP/Contents/Info.plist"
-
-    swiftc -module-name YabomishPractice \
-        -target arm64-apple-macos14.0 \
-        -sdk "$(xcrun --show-sdk-path)" -O \
-        -framework SwiftUI -framework AppKit \
-        -o "$PR_APP/Contents/MacOS/YabomishPractice" \
-        "$PR_DIR"/Sources/*.swift
-
-    chmod +x "$PR_APP/Contents/MacOS/YabomishPractice"
-    ok "YabomishPractice.app"
-}
 
 install_im() {
     [ ! -d "$IM_APP" ] && err "請先選 1 或 2 編譯"
@@ -229,7 +205,6 @@ show_menu() {
     printf "  ${B}3)${N} 只安裝（已編譯過）\n"
     printf "  ${B}4)${N} 快速重裝偏好設定\n"
     printf "  ${B}5)${N} 移除 Yabomish\n"
-    printf "  ${B}6)${N} 編譯打字練習\n"
     printf "  ${B}0)${N} 離開\n"
     echo "-----------------------------"
     printf "選擇: "
@@ -244,8 +219,7 @@ while true; do
         3) install_im; install_prefs;;
         4) build_prefs; install_prefs;;
         5) do_uninstall;;
-        6) build_practice;;
         0) echo "Bye!"; exit 0;;
-        *) warn "請輸入 0-6";;
+        *) warn "請輸入 0-5";;
     esac
 done
