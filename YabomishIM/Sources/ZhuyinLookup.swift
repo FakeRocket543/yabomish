@@ -9,7 +9,12 @@ final class ZhuyinLookup {
     private var pinyinToChars: [String: [String]] = [:]
     private var charFreq: [String: Int] = [:]
     private var loaded = false
+    /// ensureLoaded 只會真正解析一次；以鎖保護 loaded 旗標與快取寫入（多執行緒首次查詢）
+    private let loadLock = NSLock()
     init() {}
+
+    /// 預熱：在背景執行緒預先載入 JSON，避免首次注音按鍵時才解析
+    func preheat() { ensureLoaded() }
 
     private func dataPath(_ name: String, _ ext: String) -> String? {
         let shared = AppConstants.sharedDir + "/\(name).\(ext)"
@@ -18,6 +23,7 @@ final class ZhuyinLookup {
     }
 
     private func ensureLoaded() {
+        loadLock.lock(); defer { loadLock.unlock() }
         guard !loaded else { return }
         guard MemoryBudget.canAfford(MemoryBudget.zhuyinLookup) else { return }
         guard let p = dataPath("zhuyin_data", "json") else {

@@ -67,6 +67,12 @@ class YabomishInputController: IMKInputController {
     private var lastCommittedLength: Int = 0
     private static var yabomishWasActive = false
 
+    /// App 啟動後的一次性背景任務：字頻同步資料夾合併（syncFolder ↔ freq.db）。
+    /// 於背景執行緒觸發，避免 FreqTracker 首次建立時的 SQLite／JSON I/O 落在主執行緒。
+    static func startBackgroundTasks() {
+        DispatchQueue.global(qos: .utility).async { freqTracker.deferredMerge() }
+    }
+
     private static let inputSourceObserver: Void = {
         DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name("com.apple.Carbon.TISNotifySelectedKeyboardInputSourceChanged"),
@@ -250,6 +256,7 @@ class YabomishInputController: IMKInputController {
                 _ = PhraseLookup.shared
                 _ = WikiCorpus.shared
                 _ = BigramSuggest.shared
+                ZhuyinLookup.shared.preheat()
                 _ = Self.cinTable.shortestCodesTable
             }
         }
@@ -337,7 +344,7 @@ extension YabomishInputController {
     private static var _engineKey = 0
     var engine: InputEngine {
         if let e = objc_getAssociatedObject(self, &Self._engineKey) as? InputEngine { return e }
-        let e = InputEngine(cinTable: Self.cinTable)
+        let e = InputEngine(cinTable: Self.cinTable, freqTracker: Self.freqTracker)
         e.delegate = self
         e.loadTable()
         objc_setAssociatedObject(self, &Self._engineKey, e, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
@@ -695,7 +702,8 @@ extension YabomishInputController: InputEngineDelegate {
             .foregroundColor: NSColor.textColor
         ]
         let marked = NSAttributedString(string: text, attributes: attrs)
-        client.setMarkedText(marked, selectionRange: NSRange(location: text.count, length: 0),
+        // IMK offset 以 UTF-16 code unit 計算，非 text.count（Character 數）
+        client.setMarkedText(marked, selectionRange: NSRange(location: text.utf16.count, length: 0),
                              replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
     }
 
@@ -712,7 +720,7 @@ extension YabomishInputController: InputEngineDelegate {
         guard let client = engineClient else { return }
         let range = client.markedRange()
         let output = text.replacingOccurrences(of: "\\n", with: "\n")
-        if output.count > range.length && range.length > 0 {
+        if output.utf16.count > range.length && range.length > 0 {
             client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                  replacementRange: range)
             client.insertText(output, replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
@@ -727,7 +735,8 @@ extension YabomishInputController: InputEngineDelegate {
         client.insertText(left + right, replacementRange: range)
         let sel = client.selectedRange()
         if sel.location != NSNotFound && sel.location > 0 {
-            client.setMarkedText("", selectionRange: NSRange(location: sel.location - right.count, length: 0),
+            // sel.location 為 UTF-16 offset，回退量須以 UTF-16 計算
+            client.setMarkedText("", selectionRange: NSRange(location: sel.location - right.utf16.count, length: 0),
                                  replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
         }
     }
@@ -750,8 +759,10 @@ extension YabomishInputController: InputEngineDelegate {
     func engineDidDeleteBack() {
         guard let client = engineClient else { return }
         let sel = client.selectedRange()
-        if sel.location != NSNotFound && sel.location > 0 {
-            client.insertText("", replacementRange: NSRange(location: sel.location - 1, length: 1))
+        // 刪除單位以最後送出字的 UTF-16 長度計算，避免刪除代理對（emoji 等）的一半
+        let unit = max(1, engine._lastCommittedText.utf16.count)
+        if sel.location != NSNotFound && sel.location >= unit {
+            client.insertText("", replacementRange: NSRange(location: sel.location - unit, length: unit))
         }
     }
 

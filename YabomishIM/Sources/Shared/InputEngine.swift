@@ -609,6 +609,17 @@ final class InputEngine {
             return
         }
         if cmd == "rh" { freqTracker.clearLookups(); delegate?.engineDidShowToast("查字歷史已清除"); return }
+        if cmd == "rl" {
+            // 說明文字自始宣稱 ,,RL 可用；與 AppDelegate 的 reloadTables
+            // 觀察者執行同一組重載（reload 已把編譯移到鎖外，不阻塞打字）
+            cinTable.reload()
+            CommaCommandRunner.reload()
+            #if !MINIMAL
+            UserSnippets.shared.reload()
+            #endif
+            delegate?.engineDidShowToast("已重載字表與自訂指令")
+            return
+        }
         if cmd == "pin" {
             _isZhuyinMode = false; _clearZhuyinSlots()
             _isSameSoundMode = false; _sameSoundBase = ""

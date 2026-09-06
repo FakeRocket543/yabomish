@@ -33,6 +33,7 @@ final class FreqTracker {
     private var pinnedCache: [String: [String]] = [:]
 
     private var prefsObserver: Any?
+    private var reloadWorkItem: DispatchWorkItem?
 
     init(dir: String? = nil) {
         // SQLite DB always in local App Support (never in iCloud/sync folder —
@@ -51,9 +52,17 @@ final class FreqTracker {
         #if os(macOS)
         prefsObserver = DistributedNotificationCenter.default().addObserver(
             forName: .init("com.yabomish.prefsChanged"), object: nil, queue: .main
-        ) { [weak self] _ in self?.reloadPinned() }
+        ) { [weak self] _ in self?.scheduleReloadPinned() }
         #endif
         bgQueue.sync { loadAllCaches() }
+    }
+
+    /// 去抖 0.5 秒：偏好連續變更（如拖曳字級滑桿）只觸發一次全量快取重載
+    private func scheduleReloadPinned() {
+        reloadWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.reloadPinned() }
+        reloadWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: item)
     }
 
     deinit {
@@ -277,8 +286,9 @@ final class FreqTracker {
     // MARK: - Pinned order
 
     /// Reload pinned cache from DB (called when prefs change from external app).
+    /// 以非同步重載，prefs 變更永不阻塞打字執行緒（短暫讀到舊快取可接受）。
     func reloadPinned() {
-        bgQueue.sync { loadAllCaches() }
+        bgQueue.async { [weak self] in self?.loadAllCaches() }
     }
 
     private func cachedPinned(_ code: String) -> [String]? {
