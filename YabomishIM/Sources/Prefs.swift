@@ -8,107 +8,281 @@ struct YabomishPrefs {
     private static let _standard = UserDefaults.standard
     static let defaults = UserDefaults(suiteName: "com.yabomishim.inputmethod.YabomishIM") ?? _standard
 
+    // MARK: - 偏好快照（按鍵熱路徑效能）
+
+    /// 所有純量偏好的內部快照；欄位預設值與各屬性的 fallback 完全一致。
+    /// 讀取走快照（uncontended NSLock 約數十 ns），setter 寫入 defaults 後
+    /// 立即重讀替換快照；跨行程（YabomishPrefs app）的變更則由
+    /// "com.yabomish.prefsChanged" 廣播觸發重讀。
+    private struct Snapshot {
+        var autoCommit = false
+        var panelPosition = "cursor"
+        var cursorHorizontal = false
+        var fixedAlignment = "center"
+        var fixedAlpha: CGFloat = 0.85
+        var fixedYOffset: CGFloat = 8.0
+        var fontSize: CGFloat = 16.0
+        var fixedFontSize: CGFloat = 18.0
+        var showCodeHint = false
+        var toastFontSize: CGFloat = 36.0
+        var showActivateToast = true
+        var switchDisplay = "繁中"
+        var appearanceMode = "auto"
+        var iconDirection = "left"
+        var homophoneMultiReading = false
+        var homophoneAutoExit = false
+        var suggestEnabled = true
+        var fuzzyMatch = true
+        var suggestStrategy = "general"
+        var wordCorpus = "wiki"
+        var regionVariant = "tw"
+        var charSuggest = true
+        #if os(iOS)
+        var punctuationPairing = true
+        #else
+        var punctuationPairing = false
+        #endif
+        var debugMode = false
+        var highContrast = false
+        var syncFolder: String?
+        #if !MINIMAL
+        var currentContext: String?
+        #endif
+    }
+
+    /// 保護 _snapshot 讀取與替換的鎖。
+    private static let snapshotLock = NSLock()
+
+    /// 偏好快照。static var 的初始值為 lazy + 執行緒安全，
+    /// 首次存取時才呼叫 loadSnapshot() 讀取一次 defaults。
+    private static var _snapshot: Snapshot = loadSnapshot()
+
+    /// 從 UserDefaults 一次性讀取所有偏好建立快照（fallback 與原本各 getter 相同）。
+    private static func loadSnapshot() -> Snapshot {
+        #if os(macOS)
+        // 首次存取快照時順帶註冊跨行程通知；static let 保證只註冊一次。
+        _ = prefsChangedObserver
+        #endif
+        var s = Snapshot()
+        s.autoCommit = defaults.object(forKey: "autoCommit") as? Bool ?? false
+        s.panelPosition = defaults.string(forKey: "panelPosition") ?? "cursor"
+        s.cursorHorizontal = defaults.object(forKey: "cursorHorizontal") as? Bool ?? false
+        s.fixedAlignment = defaults.string(forKey: "fixedAlignment") ?? "center"
+        s.fixedAlpha = CGFloat(defaults.object(forKey: "fixedAlpha") as? Double ?? 0.85)
+        s.fixedYOffset = CGFloat(defaults.object(forKey: "fixedYOffset") as? Double ?? 8.0)
+        s.fontSize = CGFloat(defaults.object(forKey: "fontSize") as? Double ?? 16.0)
+        s.fixedFontSize = CGFloat(defaults.object(forKey: "fixedFontSize") as? Double ?? 18.0)
+        s.showCodeHint = defaults.object(forKey: "showCodeHint") as? Bool ?? false
+        s.toastFontSize = CGFloat(defaults.object(forKey: "toastFontSize") as? Double ?? 36.0)
+        s.showActivateToast = defaults.object(forKey: "showActivateToast") as? Bool ?? true
+        s.switchDisplay = defaults.string(forKey: "switchDisplay") ?? "繁中"
+        s.appearanceMode = defaults.string(forKey: "appearanceMode") ?? "auto"
+        s.iconDirection = defaults.string(forKey: "iconDirection") ?? "left"
+        s.homophoneMultiReading = defaults.object(forKey: "homophoneMultiReading") as? Bool ?? false
+        s.homophoneAutoExit = defaults.object(forKey: "homophoneAutoExit") as? Bool ?? false
+        s.suggestEnabled = defaults.object(forKey: "suggestEnabled") as? Bool ?? true
+        s.fuzzyMatch = defaults.object(forKey: "fuzzyMatch") as? Bool ?? true
+        s.suggestStrategy = defaults.string(forKey: "suggestStrategy") ?? "general"
+        s.wordCorpus = defaults.string(forKey: "wordCorpus") ?? "wiki"
+        s.regionVariant = defaults.string(forKey: "regionVariant") ?? "tw"
+        s.charSuggest = defaults.object(forKey: "charSuggest") as? Bool ?? true
+        #if os(iOS)
+        s.punctuationPairing = defaults.object(forKey: "punctuationPairing") as? Bool ?? true
+        #else
+        s.punctuationPairing = defaults.object(forKey: "punctuationPairing") as? Bool ?? false
+        #endif
+        s.debugMode = defaults.object(forKey: "debugMode") as? Bool ?? false
+        s.highContrast = defaults.object(forKey: "highContrast") as? Bool ?? false
+        s.syncFolder = defaults.string(forKey: "syncFolder")
+        #if !MINIMAL
+        s.currentContext = defaults.string(forKey: "currentContext")
+        #endif
+        return s
+    }
+
+    /// 重讀 defaults 並替換快照。讀取與替換同在鎖內：並發 refresh 依完成
+    /// 序序列化，後完成者必讀到較新的 defaults，不會以舊值蓋回新值。
+    /// setter 寫入後立即呼叫，讓同行程的變更（如引擎的 ,,SG 切換）即刻生效。
+    private static func refreshSnapshot() {
+        snapshotLock.lock()
+        _snapshot = loadSnapshot()
+        snapshotLock.unlock()
+    }
+
+    #if os(macOS)
+    /// 跨行程偏好變更通知：YabomishPrefs app 寫入 defaults 後廣播此名稱。
+    /// 以 static let 的 lazy 執行緒安全初始化保證整個程式生命週期只註冊一次。
+    private static let prefsChangedObserver: Void = {
+        DistributedNotificationCenter.default().addObserver(
+            forName: .init("com.yabomish.prefsChanged"), object: nil, queue: .main
+        ) { _ in YabomishPrefs.refreshSnapshot() }
+    }()
+    #endif
+
     /// Auto-commit when single candidate and code cannot extend further
     static var autoCommit: Bool {
-        get { defaults.object(forKey: "autoCommit") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "autoCommit") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.autoCommit
+        }
+        set {
+            defaults.set(newValue, forKey: "autoCommit")
+            refreshSnapshot()
+        }
     }
 
     /// Candidate panel position: "cursor" (near input) or "fixed" (screen bottom-center)
     static var panelPosition: String {
-        get { defaults.string(forKey: "panelPosition") ?? "cursor" }
-        set { defaults.set(newValue, forKey: "panelPosition") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.panelPosition
+        }
+        set {
+            defaults.set(newValue, forKey: "panelPosition")
+            refreshSnapshot()
+        }
     }
 
     /// Cursor mode layout: when true, display candidates horizontally instead of vertically
     static var cursorHorizontal: Bool {
-        get { defaults.object(forKey: "cursorHorizontal") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "cursorHorizontal") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.cursorHorizontal
+        }
+        set {
+            defaults.set(newValue, forKey: "cursorHorizontal")
+            refreshSnapshot()
+        }
     }
 
     // MARK: - Fixed-mode panel settings
 
     /// Horizontal alignment: "center", "left", "right"
     static var fixedAlignment: String {
-        get { defaults.string(forKey: "fixedAlignment") ?? "center" }
-        set { defaults.set(newValue, forKey: "fixedAlignment") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.fixedAlignment
+        }
+        set {
+            defaults.set(newValue, forKey: "fixedAlignment")
+            refreshSnapshot()
+        }
     }
 
     /// Panel opacity 0.3–1.0
     static var fixedAlpha: CGFloat {
         get {
-            let v = defaults.object(forKey: "fixedAlpha") as? Double ?? 0.85
-            return CGFloat(v)
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.fixedAlpha
         }
-        set { defaults.set(Double(newValue), forKey: "fixedAlpha") }
+        set {
+            defaults.set(Double(newValue), forKey: "fixedAlpha")
+            refreshSnapshot()
+        }
     }
 
     /// Y offset above Dock (points)
     static var fixedYOffset: CGFloat {
-        get { CGFloat(defaults.object(forKey: "fixedYOffset") as? Double ?? 8.0) }
-        set { defaults.set(Double(newValue), forKey: "fixedYOffset") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.fixedYOffset
+        }
+        set {
+            defaults.set(Double(newValue), forKey: "fixedYOffset")
+            refreshSnapshot()
+        }
     }
 
     // MARK: - Font size
 
     /// Candidate panel font size (cursor mode)
     static var fontSize: CGFloat {
-        get { CGFloat(defaults.object(forKey: "fontSize") as? Double ?? 16.0) }
-        set { defaults.set(Double(newValue), forKey: "fontSize") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.fontSize
+        }
+        set {
+            defaults.set(Double(newValue), forKey: "fontSize")
+            refreshSnapshot()
+        }
     }
 
     /// Fixed-mode font size
     static var fixedFontSize: CGFloat {
-        get { CGFloat(defaults.object(forKey: "fixedFontSize") as? Double ?? 18.0) }
-        set { defaults.set(Double(newValue), forKey: "fixedFontSize") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.fixedFontSize
+        }
+        set {
+            defaults.set(Double(newValue), forKey: "fixedFontSize")
+            refreshSnapshot()
+        }
     }
 
     // MARK: - Learning aids
 
     /// Show Boshiamy code after committing a character
     static var showCodeHint: Bool {
-        get { defaults.object(forKey: "showCodeHint") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "showCodeHint") }
-    }
-
-    /// Zhuyin reverse lookup mode (type zhuyin → see Boshiamy code)
-    static var zhuyinReverseLookup: Bool {
-        get { defaults.object(forKey: "zhuyinReverseLookup") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "zhuyinReverseLookup") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.showCodeHint
+        }
+        set {
+            defaults.set(newValue, forKey: "showCodeHint")
+            refreshSnapshot()
+        }
     }
 
     // MARK: - Mode toast
 
     /// Toast font size
     static var toastFontSize: CGFloat {
-        get { CGFloat(defaults.object(forKey: "toastFontSize") as? Double ?? 36.0) }
-        set { defaults.set(Double(newValue), forKey: "toastFontSize") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.toastFontSize
+        }
+        set {
+            defaults.set(Double(newValue), forKey: "toastFontSize")
+            refreshSnapshot()
+        }
     }
 
     /// 切換進 Yabomish 時顯示模式 toast
     static var showActivateToast: Bool {
-        get { defaults.object(forKey: "showActivateToast") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "showActivateToast") }
-    }
-
-    /// 狀態列顯示名稱: "yabo" / "yabomish"
-    static var menuBarLabel: String {
-        get { defaults.string(forKey: "menuBarLabel") ?? "yabomish" }
-        set { defaults.set(newValue, forKey: "menuBarLabel") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.showActivateToast
+        }
+        set {
+            defaults.set(newValue, forKey: "showActivateToast")
+            refreshSnapshot()
+        }
     }
 
     /// 切換顯示（切入提示 / 狀態列名稱）: "繁中" / "Yabomish" / "🦐"
     static var switchDisplay: String {
-        get { defaults.string(forKey: "switchDisplay") ?? "繁中" }
-        set { defaults.set(newValue, forKey: "switchDisplay") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.switchDisplay
+        }
+        set {
+            defaults.set(newValue, forKey: "switchDisplay")
+            refreshSnapshot()
+        }
     }
 
     // MARK: - Appearance
 
     /// 介面外觀（候選字窗／提示窗）: "auto"（跟隨系統）/ "light" / "dark"
     static var appearanceMode: String {
-        get { defaults.string(forKey: "appearanceMode") ?? "auto" }
-        set { defaults.set(newValue, forKey: "appearanceMode") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.appearanceMode
+        }
+        set {
+            defaults.set(newValue, forKey: "appearanceMode")
+            refreshSnapshot()
+        }
     }
 
     /// 浮動視窗套用的 NSAppearance；nil = 跟隨系統
@@ -121,20 +295,38 @@ struct YabomishPrefs {
     }
 
     static var iconDirection: String {
-        get { defaults.string(forKey: "iconDirection") ?? "left" }
-        set { defaults.set(newValue, forKey: "iconDirection") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.iconDirection
+        }
+        set {
+            defaults.set(newValue, forKey: "iconDirection")
+            refreshSnapshot()
+        }
     }
 
     /// 同音字查詢包含多音字的罕見讀音（如「色」的 ㄕㄜˋ）
     static var homophoneMultiReading: Bool {
-        get { defaults.object(forKey: "homophoneMultiReading") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "homophoneMultiReading") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.homophoneMultiReading
+        }
+        set {
+            defaults.set(newValue, forKey: "homophoneMultiReading")
+            refreshSnapshot()
+        }
     }
 
     /// 同音字模式：選字送出後自動退出（預設關閉，維持既有行為）
     static var homophoneAutoExit: Bool {
-        get { defaults.object(forKey: "homophoneAutoExit") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "homophoneAutoExit") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.homophoneAutoExit
+        }
+        set {
+            defaults.set(newValue, forKey: "homophoneAutoExit")
+            refreshSnapshot()
+        }
     }
 
     /// Deprecated — 舊版用 bigramSuggest 控制所有聯想，已遷移。
@@ -163,6 +355,8 @@ struct YabomishPrefs {
                     defaults.set(value, forKey: key)
                 }
             }
+            // 上面是直接寫 defaults（未走 setter），需手動重讀讓快照同步。
+            refreshSnapshot()
             _standard.set(true, forKey: migrationFlag)
         }
 
@@ -179,44 +373,74 @@ struct YabomishPrefs {
 
     /// Master switch for suggestion system
     static var suggestEnabled: Bool {
-        get { defaults.object(forKey: "suggestEnabled") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "suggestEnabled") }
-    }
-
-    /// Use the new shared InputEngine (from iOS). Set to false to use legacy controller.
-    static var useNewEngine: Bool {
-        get { defaults.object(forKey: "useNewEngine") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "useNewEngine") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.suggestEnabled
+        }
+        set {
+            defaults.set(newValue, forKey: "suggestEnabled")
+            refreshSnapshot()
+        }
     }
 
     /// Fuzzy match: try adjacent-key substitution when no candidates found
     static var fuzzyMatch: Bool {
-        get { defaults.object(forKey: "fuzzyMatch") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "fuzzyMatch") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.fuzzyMatch
+        }
+        set {
+            defaults.set(newValue, forKey: "fuzzyMatch")
+            refreshSnapshot()
+        }
     }
 
     /// 策略：general（詞級→詞庫→字級）/ domain（詞庫→詞級→字級）/ char（字級→詞級→詞庫）
     static var suggestStrategy: String {
-        get { defaults.string(forKey: "suggestStrategy") ?? "general" }
-        set { defaults.set(newValue, forKey: "suggestStrategy") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.suggestStrategy
+        }
+        set {
+            defaults.set(newValue, forKey: "suggestStrategy")
+            refreshSnapshot()
+        }
     }
 
     /// 詞級語料：moedict / wiki / news
     static var wordCorpus: String {
-        get { defaults.string(forKey: "wordCorpus") ?? "wiki" }
-        set { defaults.set(newValue, forKey: "wordCorpus") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.wordCorpus
+        }
+        set {
+            defaults.set(newValue, forKey: "wordCorpus")
+            refreshSnapshot()
+        }
     }
 
     /// 地區用詞：tw / cn
     static var regionVariant: String {
-        get { defaults.string(forKey: "regionVariant") ?? "tw" }
-        set { defaults.set(newValue, forKey: "regionVariant") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.regionVariant
+        }
+        set {
+            defaults.set(newValue, forKey: "regionVariant")
+            refreshSnapshot()
+        }
     }
 
     /// Char-level suggestions (bigram, trigram)
     static var charSuggest: Bool {
-        get { defaults.object(forKey: "charSuggest") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "charSuggest") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.charSuggest
+        }
+        set {
+            defaults.set(newValue, forKey: "charSuggest")
+            refreshSnapshot()
+        }
     }
 
     /// Domain dictionary toggle (per-domain key, e.g. "domain_it")
@@ -238,40 +462,64 @@ struct YabomishPrefs {
     /// 標點配對：打「自動補」（iOS 風格）。關閉則各別輸出（macOS 傳統）。
     static var punctuationPairing: Bool {
         get {
-            #if os(iOS)
-            return defaults.object(forKey: "punctuationPairing") as? Bool ?? true
-            #else
-            return defaults.object(forKey: "punctuationPairing") as? Bool ?? false
-            #endif
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.punctuationPairing
         }
-        set { defaults.set(newValue, forKey: "punctuationPairing") }
+        set {
+            defaults.set(newValue, forKey: "punctuationPairing")
+            refreshSnapshot()
+        }
     }
 
 
     /// Debug mode: write detailed logs to AppConstants.sharedDir/debug.log
     static var debugMode: Bool {
-        get { defaults.object(forKey: "debugMode") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "debugMode") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.debugMode
+        }
+        set {
+            defaults.set(newValue, forKey: "debugMode")
+            refreshSnapshot()
+        }
     }
 
     /// 候選字高對比模式：加粗 + 文字陰影
     static var highContrast: Bool {
-        get { defaults.object(forKey: "highContrast") as? Bool ?? false }
-        set { defaults.set(newValue, forKey: "highContrast") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.highContrast
+        }
+        set {
+            defaults.set(newValue, forKey: "highContrast")
+            refreshSnapshot()
+        }
     }
 
     /// 同步資料夾（nil = 不開啟，使用本機 AppConstants.sharedDir）— 同步 freq.json + tables/*.txt
     static var syncFolder: String? {
-        get { defaults.string(forKey: "syncFolder") }
-        set { defaults.set(newValue, forKey: "syncFolder") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.syncFolder
+        }
+        set {
+            defaults.set(newValue, forKey: "syncFolder")
+            refreshSnapshot()
+        }
     }
 
     // MARK: - Context Switcher
 
     #if !MINIMAL
     static var currentContext: String? {
-        get { defaults.string(forKey: "currentContext") }
-        set { defaults.set(newValue, forKey: "currentContext") }
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.currentContext
+        }
+        set {
+            defaults.set(newValue, forKey: "currentContext")
+            refreshSnapshot()
+        }
     }
 
     static func applyProfile(_ profile: ContextProfile) {
