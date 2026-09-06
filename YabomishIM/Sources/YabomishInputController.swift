@@ -121,6 +121,7 @@ class YabomishInputController: IMKInputController {
         win.level = .popUpMenu
         win.isOpaque = false
         win.backgroundColor = .clear
+        win.appearance = YabomishPrefs.resolvedAppearance
         let bg = NSVisualEffectView(frame: NSRect(origin: .zero, size: rect.size))
         bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = 12
         win.contentView = bg
@@ -153,6 +154,7 @@ class YabomishInputController: IMKInputController {
         let win = NSPanel(contentRect: rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         win.level = .popUpMenu
         win.isOpaque = false; win.backgroundColor = .clear
+        win.appearance = YabomishPrefs.resolvedAppearance
         let bg = NSVisualEffectView(frame: NSRect(origin: .zero, size: rect.size))
         bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = 8
         win.contentView = bg

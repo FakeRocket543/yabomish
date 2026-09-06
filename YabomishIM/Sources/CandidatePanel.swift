@@ -46,6 +46,7 @@ final class CandidatePanel: NSPanel {
     private var cachedHighlightAttrs: [NSAttributedString.Key: Any]?
 
     private var lastA11yNotify: TimeInterval = 0
+    private var prefsChangedToken: (any NSObjectProtocol)?
 
     // MARK: - Shared state
 
@@ -87,6 +88,14 @@ final class CandidatePanel: NSPanel {
         self.hasShadow = true
         self.isMovableByWindowBackground = false
         self.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
+        self.appearance = YabomishPrefs.resolvedAppearance
+
+        // 外觀模式變更即時套用（偏好設定 app 廣播 prefsChanged）
+        prefsChangedToken = DistributedNotificationCenter.default().addObserver(
+            forName: .init("com.yabomish.prefsChanged"), object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.appearance = YabomishPrefs.resolvedAppearance
+        }
 
         let contentVisual = NSVisualEffectView()
         contentVisual.material = .popover
@@ -164,6 +173,12 @@ final class CandidatePanel: NSPanel {
         )
 
         setupAccessibility()
+    }
+
+    deinit {
+        if let token = prefsChangedToken {
+            DistributedNotificationCenter.default().removeObserver(token)
+        }
     }
 
     // MARK: - Accessibility

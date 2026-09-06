@@ -54,6 +54,11 @@ import Foundation
 
     // MARK: - Panel
 
+    /// 介面外觀: "auto"（跟隨系統）/ "light" / "dark"
+    var appearanceMode: String {
+        get { access(keyPath: \.appearanceMode); return ud.string(forKey: "appearanceMode") ?? "auto" }
+        set { withMutation(keyPath: \.appearanceMode) { ud.set(newValue, forKey: "appearanceMode") }; postChange() }
+    }
     var fixedAlpha: Double {
         get { access(keyPath: \.fixedAlpha); return ud.object(forKey: "fixedAlpha") as? Double ?? 0.85 }
         set { withMutation(keyPath: \.fixedAlpha) { ud.set(newValue, forKey: "fixedAlpha") }; postChange() }

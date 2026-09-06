@@ -3,12 +3,23 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var store: PrefsStore
 
-    var body: some View {
-        if store.hasSeenWelcome {
-            mainView
-        } else {
-            WelcomeView { store.hasSeenWelcome = true }
+    private var colorScheme: ColorScheme? {
+        switch store.appearanceMode {
+        case "light": return .light
+        case "dark":  return .dark
+        default:      return nil
         }
+    }
+
+    var body: some View {
+        Group {
+            if store.hasSeenWelcome {
+                mainView
+            } else {
+                WelcomeView { store.hasSeenWelcome = true }
+            }
+        }
+        .preferredColorScheme(colorScheme)
     }
 
     private var mainView: some View {

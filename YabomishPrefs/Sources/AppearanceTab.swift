@@ -25,6 +25,12 @@ private let switchOptions: [ToggleOption] = [
     .init(id: "🦐",       label: "🦐",       icon: "face.smiling",  desc: "蝦子 emoji"),
 ]
 
+private let appearanceOptions: [ToggleOption] = [
+    .init(id: "auto",  label: "自動", icon: "circle.lefthalf.filled", desc: "跟隨系統外觀"),
+    .init(id: "light", label: "淺色", icon: "sun.max",                desc: "固定淺色模式"),
+    .init(id: "dark",  label: "深色", icon: "moon",                   desc: "固定深色模式"),
+]
+
 struct AppearanceTab: View {
     @Bindable var store: PrefsStore
 
@@ -34,6 +40,17 @@ struct AppearanceTab: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
 
+                Label("介面外觀", systemImage: "circle.lefthalf.filled").font(Typo.h2)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    ForEach(appearanceOptions) { opt in
+                        appearanceModeCard(opt)
+                    }
+                }
+                Text("套用對象：候選字窗、固定模式列與切換提示。設為「自動」時跟隨系統深淺色。")
+                    .font(Typo.caption)
+                    .foregroundStyle(.secondary)
+
+                SectionDivider()
                 Label("字型大小", systemImage: "textformat.size").font(Typo.h2)
                 VStack(spacing: 10) {
                     HStack {
@@ -202,6 +219,43 @@ struct AppearanceTab: View {
     private func iconCard(_ opt: ToggleOption) -> some View {
         let selected = store.iconDirection == opt.id
         Button { store.iconDirection = opt.id } label: {
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 5) {
+                    Image(systemName: opt.icon)
+                        .font(Typo.cardIcon)
+                        .foregroundStyle(selected ? Typo.accent : .secondary)
+                    Text(opt.label)
+                        .font(Typo.cardTitle)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                    Text(opt.desc)
+                        .font(Typo.cardDesc)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, minHeight: 90)
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Typo.accent)
+                        .padding(6)
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: 10)
+                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
+            .overlay(RoundedRectangle(cornerRadius: 10)
+                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
+                        lineWidth: selected ? 1.5 : 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(opt.label)
+        .accessibilityValue(selected ? "已選擇" : "未選擇")
+    }
+
+    @ViewBuilder
+    private func appearanceModeCard(_ opt: ToggleOption) -> some View {
+        let selected = store.appearanceMode == opt.id
+        Button { store.appearanceMode = opt.id } label: {
             ZStack(alignment: .topTrailing) {
                 VStack(spacing: 5) {
                     Image(systemName: opt.icon)

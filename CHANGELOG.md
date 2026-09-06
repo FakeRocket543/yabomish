@@ -1,6 +1,16 @@
 # Changelog
 
 
+## [Unreleased]
+
+### 新功能
+
+- **介面外觀三態切換** — YabomishPrefs「外觀」頁新增自動（跟隨系統）／淺色／深色選項：候選字窗（游標＋固定模式）、切入提示與字根提示即時套用所選外觀，不必重登輸入法；偏好設定視窗本身同步切換方便預覽。預設「自動」，既有使用者行為不變；舊版偏好遷移已涵蓋 `appearanceMode` key
+
+### 移除
+
+- **打字練習 YabomishPractice** — 已拆分至獨立倉庫 `yabomish_cahiers`（打字練習程式自成一體）；`yabomish.sh` 選單 6 同步移除。執行期資料（liu.bin／char_freq.json／freq.db、profiles 結構、UserDefaults key）完全相容，舊練習記錄在新倉庫版直接沿用
+
 ## [0.3.61] — 2026-08-25
 
 ### 新功能

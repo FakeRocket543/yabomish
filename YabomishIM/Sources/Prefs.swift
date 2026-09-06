@@ -103,6 +103,23 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "switchDisplay") }
     }
 
+    // MARK: - Appearance
+
+    /// 介面外觀（候選字窗／提示窗）: "auto"（跟隨系統）/ "light" / "dark"
+    static var appearanceMode: String {
+        get { defaults.string(forKey: "appearanceMode") ?? "auto" }
+        set { defaults.set(newValue, forKey: "appearanceMode") }
+    }
+
+    /// 浮動視窗套用的 NSAppearance；nil = 跟隨系統
+    static var resolvedAppearance: NSAppearance? {
+        switch appearanceMode {
+        case "light": return NSAppearance(named: .aqua)
+        case "dark":  return NSAppearance(named: .darkAqua)
+        default:      return nil
+        }
+    }
+
     static var iconDirection: String {
         get { defaults.string(forKey: "iconDirection") ?? "left" }
         set { defaults.set(newValue, forKey: "iconDirection") }
@@ -130,6 +147,7 @@ struct YabomishPrefs {
                 "autoCommit", "panelPosition", "fixedAlignment", "fixedAlpha", "fixedYOffset",
                 "fontSize", "fixedFontSize", "showCodeHint", "zhuyinReverseLookup",
                 "toastFontSize", "showActivateToast", "menuBarLabel", "iconDirection",
+                "appearanceMode",
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
                 "punctuationPairing", "debugMode", "highContrast", "syncFolder", "currentContext",
