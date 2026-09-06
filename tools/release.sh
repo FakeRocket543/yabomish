@@ -11,7 +11,7 @@ cd "$ROOT"
 # 2. APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID
 # 3. ASC_PRIVATE_KEY (path or content) + ASC_KEY_ID + ASC_ISSUER_ID
 
-VER=$(grep -m1 '^## \[' "$ROOT/CHANGELOG.md" | sed 's/.*\[\(.*\)\].*/\1/')
+VER=$(grep '^## \[' "$ROOT/CHANGELOG.md" | grep -v '\[Unreleased\]' | head -1 | sed 's/.*\[\(.*\)\].*/\1/')
 HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 STAMP=$(date +%Y%m%d.%H%M)
 IM_BUILD="$ROOT/YabomishIM/build"

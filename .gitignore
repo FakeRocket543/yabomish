@@ -36,4 +36,4 @@ test_0414/
 yabomish_data/ner/wiki_ner_entities.parquet
 site/node_modules/
 site/dist/
-site/.astro/YabomishPractice/YabomishPractice.app/
+site/.astro/
