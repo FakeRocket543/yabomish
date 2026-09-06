@@ -23,10 +23,15 @@ struct LookupHistorySection: View {
             }
         }
 
-        var timeText: String {
+        /// 每列顯示都用到的格式：static 快取，避免上千筆記錄各建一個 formatter
+        private static let listTime: DateFormatter = {
             let f = DateFormatter()
             f.dateFormat = "MM/dd HH:mm"
-            return f.string(from: Date(timeIntervalSince1970: ts))
+            return f
+        }()
+
+        var timeText: String {
+            Self.listTime.string(from: Date(timeIntervalSince1970: ts))
         }
     }
 
@@ -52,7 +57,7 @@ struct LookupHistorySection: View {
             }
 
             if entries.isEmpty {
-                Text("在輸入法裡用 ,，ZH／,，TO／,，PYS／,，PYT 反查並選字後，會自動記錄在這裡（上限 1000 筆）。")
+                Text("在輸入法裡用 ,,ZH／,,TO／,,PYS／,,PYT 反查並選字後，會自動記錄在這裡（上限 1000 筆）。")
                     .font(Typo.hint).foregroundStyle(.tertiary)
             } else {
                 ScrollView {
@@ -93,7 +98,7 @@ struct LookupHistorySection: View {
                 clearAll()
             }
         } message: {
-            Text("此操作不可復原。字頻學習資料不受影響（,，RS 只重置字頻、,，RH 只清查字歷史）。")
+            Text("此操作不可復原。字頻學習資料不受影響（,,RS 只重置字頻、,,RH 只清查字歷史）。")
         }
     }
 
@@ -127,7 +132,7 @@ struct LookupHistorySection: View {
         var lines = ["時間,模式,查詢,字,嘸蝦米碼"]
         for e in entries {
             let time = f.string(from: Date(timeIntervalSince1970: e.ts))
-            lines.append("\(csv(time)),\(csv(e.mode)),\(csv(e.query)),\(csv(e.char)),\(csv(e.code))")
+            lines.append("\(csvEscape(time)),\(csvEscape(e.mode)),\(csvEscape(e.query)),\(csvEscape(e.char)),\(csvEscape(e.code))")
         }
         // UTF-8 BOM：讓 Excel 直接開啟中文不亂碼
         let text = "\u{FEFF}" + lines.joined(separator: "\n") + "\n"
@@ -137,14 +142,6 @@ struct LookupHistorySection: View {
         } catch {
             exportedPath = nil
         }
-    }
-
-    /// CSV field escaping：含逗號／引號／換行時以引號包夾
-    private func csv(_ s: String) -> String {
-        if s.contains(",") || s.contains("\"") || s.contains("\n") {
-            return "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\""
-        }
-        return s
     }
 
     // MARK: - SQLite（唯讀）

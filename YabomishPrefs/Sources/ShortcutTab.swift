@@ -441,13 +441,15 @@ struct ShortcutTab: View {
         panel.nameFieldStringValue = "詞庫查詢_\(corpusQuery).csv"
         panel.allowedContentTypes = [.commaSeparatedText]
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        var csv = "詞庫,詞條\n"
+        var lines = ["詞庫,詞條"]
         for hit in hits {
             for word in hit.words {
-                csv += "\(hit.label),\(word)\n"
+                lines.append("\(csvEscape(hit.label)),\(csvEscape(word))")
             }
         }
-        try? csv.write(to: url, atomically: true, encoding: .utf8)
+        // UTF-8 BOM：讓 Excel 直接開啟中文不亂碼（與查字歷史匯出一致）
+        let text = "\u{FEFF}" + lines.joined(separator: "\n") + "\n"
+        try? text.write(to: url, atomically: true, encoding: .utf8)
     }
 
     private struct CorpusHit: Equatable {

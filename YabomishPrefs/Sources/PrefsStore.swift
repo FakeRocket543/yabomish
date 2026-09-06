@@ -3,7 +3,7 @@ import Foundation
 /// Thin @Observable wrapper over the same UserDefaults keys used by YabomishPrefs (in the IM bundle).
 /// All reads/writes go directly through UserDefaults — no stored copies, no duplicated defaults.
 @Observable final class PrefsStore {
-    @ObservationIgnored private let ud = UserDefaults(suiteName: "com.yabomishim.inputmethod.YabomishIM")!
+    @ObservationIgnored private let ud = UserDefaults(suiteName: "com.yabomishim.inputmethod.YabomishIM") ?? .standard
 
     // MARK: - Suggestion
 

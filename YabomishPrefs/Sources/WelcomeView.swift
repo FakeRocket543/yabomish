@@ -41,7 +41,7 @@ struct WelcomeView: View {
                     title: "常用快捷鍵",
                     lines: [
                         "Shift 單擊　　切換中／英文",
-                        "';　　　　　　注音反查模式",
+                        ",,ZH　　　　　注音反查模式",
                         "Shift+Space　全形空白",
                         "Shift+*　　　萬用字元",
                         "Tab / 方向鍵　翻頁選字",

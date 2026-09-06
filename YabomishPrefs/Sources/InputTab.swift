@@ -16,7 +16,7 @@ private let inputOptions: [InputOption] = {
     opts += [
     .init(id: "autoCommit",           label: "自動送字",  icon: "arrow.right.circle",    desc: "滿碼自動送出"),
     .init(id: "showCodeHint",         label: "拆碼提示",  icon: "eye",                   desc: "送字後顯示碼"),
-    .init(id: "zhuyinReverseLookup",  label: "注音反查",  icon: "character.phonetic",    desc: "'; 切換"),
+    .init(id: "zhuyinReverseLookup",  label: "注音反查",  icon: "character.phonetic",    desc: ",,ZH 切換"),
     .init(id: "homophoneMultiReading",label: "同音多讀",  icon: "speaker.wave.2",        desc: "含罕見讀音"),
     .init(id: "homophoneAutoExit",    label: "同音字選後自動退出", icon: "arrow.turn.up.left",  desc: "選字後退出模式"),
     .init(id: "fuzzyMatch",           label: "鄰鍵容錯",  icon: "magnifyingglass",       desc: "打錯相鄰鍵時自動容錯修正"),
@@ -32,8 +32,16 @@ private let panelOptions: [InputOption] = [
 
 struct InputTab: View {
     @Bindable var store: PrefsStore
+    @State private var importResult: ImportResult?
 
     private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
+
+    /// 匯入結果回饋（成功／失敗共用同一個 alert）
+    struct ImportResult: Identifiable {
+        let id = UUID()
+        let success: Bool
+        let message: String
+    }
 
     var body: some View {
         ScrollView {
@@ -56,11 +64,7 @@ struct InputTab: View {
                                 panel.allowsOtherFileTypes = true
                                 panel.message = "選擇嘸蝦米字表（.cin）或擴充表（.txt）"
                                 guard panel.runModal() == .OK, let url = panel.url else { return }
-                                let dest = NSHomeDirectory() + "/Library/YabomishIM/"
-                                try? FileManager.default.createDirectory(atPath: dest, withIntermediateDirectories: true)
-                                let target = dest + url.lastPathComponent
-                                try? FileManager.default.copyItem(atPath: url.path, toPath: target)
-                                DistributedNotificationCenter.default().post(name: .init("com.yabomish.reloadTables"), object: nil)
+                                importTable(from: url)
                             } label: {
                                 Label("匯入字表⋯", systemImage: "folder.badge.plus")
                             }
@@ -129,6 +133,90 @@ struct InputTab: View {
             }
             .padding(20)
         }
+        .alert(importResult?.success == true ? "字表匯入成功" : "匯入失敗",
+               isPresented: Binding(
+                   get: { importResult != nil },
+                   set: { if !$0 { importResult = nil } }
+               )) {
+            Button("好") { importResult = nil }
+        } message: {
+            Text(importResult?.message ?? "")
+        }
+    }
+
+    // MARK: - 字表匯入
+
+    /// 匯入字表／擴充表：寫入輸入法實際讀取的正規路徑（與 AppConstants.sharedDir 一致）：
+    /// 主表固定為 ~/Library/Application Support/Yabomish/liu.cin（IM 只認這個檔名），
+    /// 擴充表放入 tables/ 保留原檔名（CINTable.loadExtras 逐一把 *.txt 疊加上去）。
+    private func importTable(from url: URL) {
+        switch url.pathExtension.lowercased() {
+        case "cin":
+            importFile(from: url, to: sharedDir + "/liu.cin", clearCompiledCache: true)
+        case "txt":
+            importFile(from: url, to: sharedDir + "/tables/" + url.lastPathComponent, clearCompiledCache: false)
+        default:
+            importResult = ImportResult(success: false,
+                                        message: "不支援的檔案類型「.\(url.pathExtension)」。\n請選擇 .cin 主字表或 .txt 擴充表。")
+        }
+    }
+
+    private func importFile(from src: URL, to dest: String, clearCompiledCache: Bool) {
+        let fm = FileManager.default
+        do {
+            // 來源驗證：存在且非空
+            let srcSize = (try fm.attributesOfItem(atPath: src.path)[.size] as? NSNumber)?.int64Value ?? 0
+            guard srcSize > 0 else {
+                importResult = ImportResult(success: false, message: "檔案是空的：\(src.lastPathComponent)")
+                return
+            }
+            // .cin 內容嗅探：正規 .cin 必含 %chardef 段（只讀前 64KB）
+            if clearCompiledCache {
+                let head: String = {
+                    guard let fh = try? FileHandle(forReadingFrom: src),
+                          let data = try? fh.read(upToCount: 65536) else { return "" }
+                    try? fh.close()
+                    return String(decoding: data, as: UTF8.self)
+                }()
+                guard head.contains("%chardef") else {
+                    importResult = ImportResult(success: false,
+                                                message: "這不像正規 .cin 字表（找不到 %chardef 段）：\n\(src.lastPathComponent)")
+                    return
+                }
+            }
+            try fm.createDirectory(atPath: (dest as NSString).deletingLastPathComponent,
+                                   withIntermediateDirectories: true)
+            // 原子替換：先拷到同目錄暫存檔再取代，失敗不會弄丟舊表
+            let tmp = dest + ".tmp-\(UUID().uuidString.prefix(8))"
+            defer { try? fm.removeItem(atPath: tmp) }  // 成功時已搬走，此為失敗殘留清理
+            try fm.copyItem(atPath: src.path, toPath: tmp)
+            let destURL = URL(fileURLWithPath: dest)
+            if fm.fileExists(atPath: dest) {
+                _ = try fm.replaceItemAt(destURL, withItemAt: URL(fileURLWithPath: tmp))
+            } else {
+                try fm.moveItem(atPath: tmp, toPath: dest)
+            }
+            // 清除輸入法真正的編譯快取（liu.bin）；reload 端另有 mtime 檢查雙保險
+            if clearCompiledCache { try? fm.removeItem(atPath: sharedDir + "/liu.bin") }
+            // 目的地驗證：存在且非空
+            let destSize = (try? fm.attributesOfItem(atPath: dest)[.size] as? NSNumber)?.int64Value ?? 0
+            guard fm.fileExists(atPath: dest), destSize > 0 else {
+                importResult = ImportResult(success: false, message: "複製後驗證失敗：\n\(dest)")
+                return
+            }
+            // 通知輸入法即時重載（AppDelegate 監聽 com.yabomish.reloadTables）
+            DistributedNotificationCenter.default().post(name: .init("com.yabomish.reloadTables"), object: nil)
+            importResult = ImportResult(success: true,
+                                        message: "已匯入 \(src.lastPathComponent)（\(destSize) 位元組）→\n\(dest)\n輸入法已收到重載通知。")
+        } catch {
+            importResult = ImportResult(success: false, message: error.localizedDescription)
+        }
+    }
+
+    /// 正規資料目錄：~/Library/Application Support/Yabomish（與 IM 的 AppConstants.sharedDir 相同）
+    private var sharedDir: String {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return appSupport.appendingPathComponent("Yabomish", isDirectory: true).path
     }
 
     @ViewBuilder
@@ -170,39 +258,9 @@ struct InputTab: View {
 
     @ViewBuilder
     private func panelCard(_ opt: InputOption) -> some View {
-        let selected = store.panelPosition == opt.id
-        Button { store.panelPosition = opt.id } label: {
-            ZStack(alignment: .topTrailing) {
-                VStack(spacing: 5) {
-                    Image(systemName: opt.icon)
-                        .font(Typo.cardIcon)
-                        .foregroundStyle(selected ? Typo.accent : .secondary)
-                    Text(opt.label)
-                        .font(Typo.cardTitle)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                    Text(opt.desc)
-                        .font(Typo.cardDesc)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, minHeight: 90)
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.accent)
-                        .padding(6)
-                }
-            }
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: selected ? 1.5 : 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(opt.label)
-        .accessibilityValue(selected ? "已選擇" : "未選擇")
+        SelectableCardView(label: opt.label, desc: opt.desc,
+                           selected: store.panelPosition == opt.id,
+                           icon: opt.icon) { store.panelPosition = opt.id }
     }
 
     private func binding(for key: String) -> Binding<Bool> {

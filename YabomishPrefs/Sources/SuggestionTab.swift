@@ -156,27 +156,13 @@ struct SuggestionTab: View {
     @ViewBuilder
     private func layerCard(_ layer: SuggestLayer) -> some View {
         let enabled = layer.id == "char" ? store.charSuggest : true
-        Button { if layer.id == "char" { store.charSuggest.toggle() } } label: {
-            VStack(spacing: 5) {
-                Image(systemName: layer.icon)
-                    .font(Typo.cardIcon)
-                    .foregroundStyle(enabled ? Typo.accent : .secondary)
-                Text(layer.label)
-                    .font(Typo.cardTitle)
-                    .lineLimit(1)
-                Text(layer.desc)
-                    .font(Typo.cardDesc)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, minHeight: 90)
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(enabled ? Typo.accent.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(enabled ? Typo.accent.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: enabled ? 1.5 : 1))
+        SelectableCardView(label: layer.label, desc: layer.desc,
+                           selected: enabled,
+                           icon: layer.icon,
+                           showCheckmark: false,
+                           labelLineLimit: 1) {
+            if layer.id == "char" { store.charSuggest.toggle() }
         }
-        .buttonStyle(.plain)
         .draggable(layer.id)
     }
 
@@ -184,28 +170,11 @@ struct SuggestionTab: View {
 
     @ViewBuilder
     private func corpusCard(_ entry: CorpusEntry) -> some View {
-        let selected = store.wordCorpus == entry.id
-        Button { store.wordCorpus = entry.id } label: {
-            VStack(spacing: 5) {
-                Image(systemName: entry.icon)
-                    .font(Typo.cardIcon)
-                    .foregroundStyle(selected ? Typo.accent : .secondary)
-                Text(entry.label)
-                    .font(Typo.cardTitle)
-                    .lineLimit(1)
-                Text(entry.desc)
-                    .font(Typo.cardDesc)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, minHeight: 90)
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: selected ? 1.5 : 1))
-        }
-        .buttonStyle(.plain)
+        SelectableCardView(label: entry.label, desc: entry.desc,
+                           selected: store.wordCorpus == entry.id,
+                           icon: entry.icon,
+                           showCheckmark: false,
+                           labelLineLimit: 1) { store.wordCorpus = entry.id }
     }
 
     // MARK: - Domain grid (reuses DomainCardView)
@@ -370,25 +339,12 @@ struct SuggestionTab: View {
 
     @ViewBuilder
     private func regionCard(_ id: String, label: String, icon: String, desc: String) -> some View {
-        let selected = store.regionVariant == id
-        Button { store.regionVariant = id } label: {
-            VStack(spacing: 5) {
-                Text(icon)
-                    .font(.system(size: 28, weight: .bold, design: .serif))
-                    .foregroundStyle(selected ? Typo.accent : .secondary)
-                Text(label).font(Typo.cardTitle)
-                    .foregroundStyle(selected ? .primary : .secondary).lineLimit(1)
-                Text(desc).font(Typo.cardDesc)
-                    .foregroundStyle(selected ? .secondary : .tertiary).lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, minHeight: 90)
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: selected ? 1.5 : 1))
-        }
-        .buttonStyle(.plain)
+        SelectableCardView(label: label, desc: desc,
+                           selected: store.regionVariant == id,
+                           iconText: icon,
+                           showCheckmark: false,
+                           highlightText: true,
+                           labelLineLimit: 1) { store.regionVariant = id }
     }
 }
 #endif

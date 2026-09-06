@@ -217,113 +217,23 @@ struct AppearanceTab: View {
 
     @ViewBuilder
     private func iconCard(_ opt: ToggleOption) -> some View {
-        let selected = store.iconDirection == opt.id
-        Button { store.iconDirection = opt.id } label: {
-            ZStack(alignment: .topTrailing) {
-                VStack(spacing: 5) {
-                    Image(systemName: opt.icon)
-                        .font(Typo.cardIcon)
-                        .foregroundStyle(selected ? Typo.accent : .secondary)
-                    Text(opt.label)
-                        .font(Typo.cardTitle)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                    Text(opt.desc)
-                        .font(Typo.cardDesc)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, minHeight: 90)
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.accent)
-                        .padding(6)
-                }
-            }
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: selected ? 1.5 : 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(opt.label)
-        .accessibilityValue(selected ? "已選擇" : "未選擇")
+        SelectableCardView(label: opt.label, desc: opt.desc,
+                           selected: store.iconDirection == opt.id,
+                           icon: opt.icon) { store.iconDirection = opt.id }
     }
 
     @ViewBuilder
     private func appearanceModeCard(_ opt: ToggleOption) -> some View {
-        let selected = store.appearanceMode == opt.id
-        Button { store.appearanceMode = opt.id } label: {
-            ZStack(alignment: .topTrailing) {
-                VStack(spacing: 5) {
-                    Image(systemName: opt.icon)
-                        .font(Typo.cardIcon)
-                        .foregroundStyle(selected ? Typo.accent : .secondary)
-                    Text(opt.label)
-                        .font(Typo.cardTitle)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                    Text(opt.desc)
-                        .font(Typo.cardDesc)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, minHeight: 90)
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.accent)
-                        .padding(6)
-                }
-            }
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: selected ? 1.5 : 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(opt.label)
-        .accessibilityValue(selected ? "已選擇" : "未選擇")
+        SelectableCardView(label: opt.label, desc: opt.desc,
+                           selected: store.appearanceMode == opt.id,
+                           icon: opt.icon) { store.appearanceMode = opt.id }
     }
 
     @ViewBuilder
     private func switchDisplayCard(_ opt: ToggleOption) -> some View {
-        let selected = store.switchDisplay == opt.id
-        Button { store.switchDisplay = opt.id } label: {
-            ZStack(alignment: .topTrailing) {
-                VStack(spacing: 5) {
-                    Image(systemName: opt.icon)
-                        .font(Typo.cardIcon)
-                        .foregroundStyle(selected ? Typo.accent : .secondary)
-                    Text(opt.label)
-                        .font(Typo.cardTitle)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                    Text(opt.desc)
-                        .font(Typo.cardDesc)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, minHeight: 90)
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.accent)
-                        .padding(6)
-                }
-            }
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(selected ? Typo.accent.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(selected ? Typo.accent.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: selected ? 1.5 : 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(opt.label)
-        .accessibilityValue(selected ? "已選擇" : "未選擇")
+        SelectableCardView(label: opt.label, desc: opt.desc,
+                           selected: store.switchDisplay == opt.id,
+                           icon: opt.icon) { store.switchDisplay = opt.id }
     }
 
     private func binding(for key: String) -> Binding<Bool> {
