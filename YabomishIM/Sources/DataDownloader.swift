@@ -2,12 +2,58 @@ import Foundation
 import CommonCrypto
 
 /// 語料下載：從 GitHub Release 下載語料 zip 並解壓至 Application Support
+///
+/// 下載網址與預期 SHA-256 改由 Bundle 資源 `corpus_manifest.json` 驅動；
+/// 更新語料時以 tools/make_corpus_manifest.py 重新產生清單即可，不必改 Swift。
+/// 清單缺失或無法解析時，退回下列硬編碼後備常數。
 enum DataDownloader {
-    static let dataURL = "https://github.com/FakeRocket543/yabomish/releases/download/v0.3.59/yabomish-corpus-lite-0.3.59.zip"
+    /// 後備常數：manifest 缺失或解析失敗時使用（對應 0.3.59 版語料）
+    static let fallbackURL = "https://github.com/FakeRocket543/yabomish/releases/download/v0.3.59/yabomish-corpus-lite-0.3.59.zip"
+    /// 後備常數：Expected SHA-256 of the zip file — update when releasing new data
+    static let fallbackSHA256 = "c020b544ca5376b675e68a07d0d8d26b50cff6c484a4b22267b88c00607210c3"
+    /// 預留值：沿用舊版語意，設為此值時略過 SHA-256 驗證
+    private static let shaPlaceholder = "UPDATE_THIS_HASH_ON_RELEASE"
+
+    private struct CorpusManifest: Decodable {
+        let version: String?
+        let url: String?
+        let sha256: String?
+        let fileName: String?
+    }
+
+    private static let manifest: CorpusManifest? = {
+        guard let url = Bundle.main.url(forResource: "corpus_manifest", withExtension: "json") else {
+            DebugLog.log("DataDownloader: 找不到 corpus_manifest.json，改用內建後備常數")
+            return nil
+        }
+        guard let data = try? Data(contentsOf: url) else {
+            DebugLog.log("DataDownloader: corpus_manifest.json 讀取失敗，改用內建後備常數")
+            return nil
+        }
+        do {
+            return try JSONDecoder().decode(CorpusManifest.self, from: data)
+        } catch {
+            DebugLog.log("DataDownloader: corpus_manifest.json 解析失敗（\(error.localizedDescription)），改用內建後備常數")
+            return nil
+        }
+    }()
+
+    /// 語料 zip 下載網址。url 與 sha256 視為一組：manifest 任一缺漏時整組
+    /// 退回後備常數，避免「新網址配舊雜湊」造成下載永久失敗。
+    static let dataURL: String = {
+        if let u = manifest?.url, let s = manifest?.sha256, !s.isEmpty { return u }
+        return fallbackURL
+    }()
+    /// 預期 SHA-256；空字串或預留值代表略過驗證（語意同舊版 UPDATE_THIS_HASH_ON_RELEASE）
+    static let expectedSHA256: String = {
+        if let u = manifest?.url, let s = manifest?.sha256, !s.isEmpty { return s }
+        return fallbackSHA256
+    }()
+    /// 語料版本（僅供記錄用）
+    static let manifestVersion = manifest?.version ?? "0.3.59"
+
     static let supportDir = AppConstants.sharedDir
     private static let marker = "bigram.bin"
-    /// Expected SHA-256 of the zip file — update when releasing new data
-    static let expectedSHA256 = "c020b544ca5376b675e68a07d0d8d26b50cff6c484a4b22267b88c00607210c3"
 
     static var isDataAvailable: Bool {
         // Check App Support first, then bundle Resources
@@ -68,7 +114,7 @@ enum DataDownloader {
     static func ensureData(completion: @escaping (Bool) -> Void) {
         if isDataAvailable { completion(true); return }
 
-        DebugLog.log("YabomishIM: 語料不存在，開始下載 \(dataURL)")
+        DebugLog.log("YabomishIM: 語料不存在（v\(manifestVersion)），開始下載 \(dataURL)")
         guard let url = URL(string: dataURL) else { completion(false); return }
 
         let task = URLSession.shared.downloadTask(with: url) { tmpURL, response, error in
@@ -84,8 +130,11 @@ enum DataDownloader {
                 if fm.fileExists(atPath: zipPath) { try fm.removeItem(atPath: zipPath) }
                 try fm.moveItem(atPath: tmpURL.path, toPath: zipPath)
 
-                // Integrity check
-                if expectedSHA256 != "UPDATE_THIS_HASH_ON_RELEASE" {
+                // Integrity check — manifest 的 sha256 為空（或為預留值）時略過，
+                // 語意同舊版 UPDATE_THIS_HASH_ON_RELEASE 分支
+                if expectedSHA256.isEmpty || expectedSHA256 == shaPlaceholder {
+                    DebugLog.log("YabomishIM: 未設定預期 SHA-256，略過完整性驗證")
+                } else {
                     guard let actual = sha256(of: URL(fileURLWithPath: zipPath)) else {
                         DebugLog.log("YabomishIM: SHA-256 計算失敗")
                         try? fm.removeItem(atPath: zipPath)

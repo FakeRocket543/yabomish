@@ -43,7 +43,7 @@ build_im() {
     # 核心資源（所有版本都包含：打字、查碼、繁簡轉換）
     for f in icon.tiff icon.icns icon_right.tiff icon_left.tiff \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json \
-             char_freq.json; do
+             char_freq.json corpus_manifest.json; do
         [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
     done
     [ -d "$IM_RES/tables" ] && cp -R "$IM_RES/tables" "$IM_APP/Contents/Resources/"
