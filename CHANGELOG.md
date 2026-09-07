@@ -21,10 +21,16 @@
 
 ### 重構
 
+- **repo 瘦身：大型資料檔遷移 Git LFS** — 歷史中的 `.bin`（911MB）／`.csv`／`.ods`／`.tsv`／`.parquet` 共約 1.1GB 以 `lfs migrate import --everything` 全歷史改寫（343 commits），新 clone 僅取現役資料。⚠️ 歷史 hash 全變，其他機器需重新 clone；遷移前備份 bundle 保留於 `/tmp/yabomish-pre-lfs-backup.bundle`
 - **偏好快照** — 熱路徑每擊鍵 6–10 次 UserDefaults 讀取改為內部快照（NSLock 保護、setter 即時刷新、跨程 prefsChanged 通知同步），打字手感更穩
 - **YabomishPrefs 卡片元件統一** — 7–8 份近乎相同的選擇卡片抽成共用 `SelectableCardView`（視覺逐欄位等價），順帶補齊聯想頁卡片的無障礙標籤；CSV 跳脫抽成共用 `csvEscape()`；查字歷史 DateFormatter 改 static 快取
 - **輸入法去重** — toast 建視窗×2、候選導航×3、「送首選或跳離」×4、候選索引反查×7、拼音聲調×2 各合併為單一實作（行為逐項保持；行為已分歧的死版 `selectCandidate` 隨死碼刪除）
 - **死碼清理（−500+ 行）** — 刪除 `PhraseLookup`（省 SQLite 常駐快取）、`UserPhrases`、`DomainMerger` 整檔與 `htmlToMarkdown` 等零引用程式碼；引擎死 API（`undoLastLetter`／`selectByDigit` 等）；「注音反查」「新引擎」等無效開關與對應死偏好屬性；README／測試腳本過期條目
+
+### 行為變更
+
+- **切換視窗時丟棄組字** — `deactivateServer` 不再代送第一候選字：使用者切換視窗／app 時，未經確認的組字一律丟棄（macOS 內建注音等多數 IM 慣例），不再憑空落入底文
+- **實驗分支 `experiment/async-suggest`** — 聯想查詢移出主執行緒（可注入 executor＋世代防護），附帶為 WikiCorpus 補上完全缺失的併發鎖（lazy init 背景載入與主執行緒 reloadDomains 的既有競態）；**未定案合併**，待真實打字評估
 
 ### 移除
 
