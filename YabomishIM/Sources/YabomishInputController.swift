@@ -321,14 +321,11 @@ class YabomishInputController: IMKInputController {
                 client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             } else if !engine.composing.isEmpty {
-                if !engine.currentCandidates.isEmpty {
-                    engineClient = client
-                    engine.handleSpace()
-                } else {
-                    engine.handleEscape()
-                    client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
-                                         replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-                }
+                // 切換視窗／輸入法時丟棄組字（多數 IM 慣例：未確認的字不代送）。
+                // 舊行為有候選時以空白鍵代送第一候選，使用者切個視窗字就憑空落底文。
+                engine.handleEscape()
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             }
         }
         panel.hide()
