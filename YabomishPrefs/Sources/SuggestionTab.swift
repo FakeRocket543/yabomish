@@ -34,6 +34,10 @@ struct SuggestionTab: View {
     @State private var generalOrder: [DomainEntry] = []
     @State private var proOrder: [DomainEntry] = []
     @State private var showResetConfirm = false
+    /// 拖放落點換算用網格寬度。量測掛在 background（不佔版面）——
+    /// 不能用 GeometryReader 包住網格：它在 ScrollView 裡會塌陷成極小
+    /// 高度，內容溢出與後續區塊重疊。
+    @State private var layerGridWidth: CGFloat = 0
 
     private let threeColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
     private let domainColumns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
@@ -83,21 +87,28 @@ struct SuggestionTab: View {
 
                 // 2. Layer order
                 Label("聯想層順序", systemImage: "square.3.layers.3d").font(Typo.h2)
-                GeometryReader { geo in
-                    LazyVGrid(columns: threeColumns, spacing: 8) {
-                        ForEach(layerOrder) { layer in
-                            layerCard(layer)
-                        }
+                LazyVGrid(columns: threeColumns, spacing: 8) {
+                    ForEach(layerOrder) { layer in
+                        layerCard(layer)
                     }
-                    .dropDestination(for: String.self) { items, location in
-                        guard let draggedID = items.first,
-                              let srcIdx = layerOrder.firstIndex(where: { $0.id == draggedID }) else { return false }
-                        let item = layerOrder.remove(at: srcIdx)
-                        let col = max(0, min(2, Int(location.x / (geo.size.width / 3))))
-                        layerOrder.insert(item, at: min(layerOrder.count, col))
-                        saveStrategy()
-                        return true
+                }
+                .background {
+                    GeometryReader { g in
+                        Color.clear
+                            .onAppear { layerGridWidth = g.size.width }
+                            .onChange(of: g.size.width) { _, new in layerGridWidth = new }
                     }
+                }
+                .dropDestination(for: String.self) { items, location in
+                    guard let draggedID = items.first,
+                          let srcIdx = layerOrder.firstIndex(where: { $0.id == draggedID }) else { return false }
+                    let item = layerOrder.remove(at: srcIdx)
+                    let col = layerGridWidth > 0
+                        ? max(0, min(2, Int(location.x / (layerGridWidth / 3))))
+                        : min(2, layerOrder.count)
+                    layerOrder.insert(item, at: min(layerOrder.count, col))
+                    saveStrategy()
+                    return true
                 }
 
                 // 3. Word corpus source
@@ -179,10 +190,17 @@ struct SuggestionTab: View {
 
     // MARK: - Domain grid (reuses DomainCardView)
 
-    @ViewBuilder
-    private func domainGrid(entries: Binding<[DomainEntry]>, color: Color) -> some View {
-        GeometryReader { geo in
-            LazyVGrid(columns: domainColumns, spacing: 8) {
+    /// 詞庫網格＋拖放排序。量測掛 background 而非 GeometryReader 包裹——
+    /// 後者在 ScrollView 裡會塌陷，導致內容與後續區塊重疊（舊疾）。
+    private struct DomainDropGrid: View {
+        @Bindable var store: PrefsStore
+        let entries: Binding<[DomainEntry]>
+        let color: Color
+        let onReorder: () -> Void
+        @State private var gridWidth: CGFloat = 0
+
+        var body: some View {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], spacing: 8) {
                 ForEach(entries.wrappedValue) { entry in
                     DomainCardView(
                         entry: entry,
@@ -194,12 +212,19 @@ struct SuggestionTab: View {
                     )
                 }
             }
+            .background {
+                GeometryReader { g in
+                    Color.clear
+                        .onAppear { gridWidth = g.size.width }
+                        .onChange(of: g.size.width) { _, new in gridWidth = new }
+                }
+            }
             .dropDestination(for: String.self) { items, location in
                 guard let draggedID = items.first else { return false }
                 var arr = entries.wrappedValue
                 guard let srcIdx = arr.firstIndex(where: { $0.id == draggedID }) else { return false }
                 let item = arr.remove(at: srcIdx)
-                let gridWidth = geo.size.width
+                let gridWidth = self.gridWidth
                 let spacing: CGFloat = 8
                 let minCell: CGFloat = 104
                 let numCols = max(1, Int((gridWidth + spacing) / (minCell + spacing)))
@@ -210,10 +235,15 @@ struct SuggestionTab: View {
                 let destIdx = min(arr.count, row * numCols + col)
                 arr.insert(item, at: destIdx)
                 entries.wrappedValue = arr
-                saveDomainOrder()
+                onReorder()
                 return true
             }
         }
+    }
+
+    @ViewBuilder
+    private func domainGrid(entries: Binding<[DomainEntry]>, color: Color) -> some View {
+        DomainDropGrid(store: store, entries: entries, color: color, onReorder: { saveDomainOrder() })
     }
 
     // MARK: - Pro domain chips (compact layout)
