@@ -4,9 +4,11 @@ llm-poc/
 pocs/
 .kiro/
 doc/
-docs/
+docs/*
 !docs/usage.md
 !docs/images/
+!docs/audits/
+!docs/design/
 doct/
 jingjing_ti_dictionary.txt
 liu.cin
