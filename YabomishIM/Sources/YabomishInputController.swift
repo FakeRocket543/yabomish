@@ -481,14 +481,12 @@ extension YabomishInputController {
         case 36: // Enter
             if engine.composing.isEmpty && engine.currentCandidates.isEmpty { return false }
             if engine.composing.isEmpty && !engine.currentCandidates.isEmpty {
-                // Suggestion/emoji mode — confirm highlighted candidate
-                if let selected = panel.selectedCandidate() {
-                    let idx = candidateIndex(of: selected)
-                    engine.selectCandidate(at: idx)
-                    return true
-                }
-                engine.clearCandidates(); panel.hide()
-                return true
+                // 純聯想顯示（組字已空）：Enter 不代選第一個聯想詞 —
+                // 收掉提示、把換行原樣還給 app。選詞請用數字鍵或空白鍵以外的
+                // 導航＋選取；Escape 亦可收掉提示
+                engine.clearCandidates()
+                panel.hide()
+                return false
             }
             engine.handleEnter()
             return true
