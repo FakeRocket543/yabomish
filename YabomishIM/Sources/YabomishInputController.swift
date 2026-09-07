@@ -782,8 +782,23 @@ extension YabomishInputController: InputEngineDelegate {
     func engineDidPasteText(_ text: String) {
         // Replace clipboard with processed text, then simulate Cmd+V
         // This preserves newlines better than insertText through IMK
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        let pb = NSPasteboard.general
+        // 覆蓋剪貼簿前先保存使用者原內容：逐 pasteboard item 記下所有型別的
+        // 資料；原剪貼簿為空時 savedItems 為空陣列，稍後還原為空。
+        var savedItems: [[NSPasteboard.PasteboardType: Data]] = []
+        for item in pb.pasteboardItems ?? [] {
+            var data: [NSPasteboard.PasteboardType: Data] = [:]
+            for type in item.types {
+                // 跳過 promise 型別：data(forType:) 會同步向來源 app 索取資料，
+                // 在打字熱路徑上可能卡頓，且還原後亦無法真正復原該能力
+                if type.rawValue.contains("promised-") { continue }
+                if let d = item.data(forType: type) { data[type] = d }
+            }
+            savedItems.append(data)
+        }
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+        let ourChangeCount = pb.changeCount
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             let src = CGEventSource(stateID: .hidSystemState)
             let vDown = CGEvent(keyboardEventSource: src, virtualKey: 0x09, keyDown: true)
@@ -792,6 +807,20 @@ extension YabomishInputController: InputEngineDelegate {
             vUp?.flags = .maskCommand
             vDown?.post(tap: .cghidEventTap)
             vUp?.post(tap: .cghidEventTap)
+        }
+        // 貼上通常在數十毫秒內完成，留 0.5 秒緩衝後還原原剪貼簿。僅在
+        // changeCount 仍為我們寫入的值時還原（期間使用者未複製其他內容，
+        // 也不會和 Maccy 一類剪貼簿管理器的寫入互搶）。靜默還原，不顯示提示。
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+            guard NSPasteboard.general.changeCount == ourChangeCount else { return }
+            NSPasteboard.general.clearContents()
+            guard !savedItems.isEmpty else { return }
+            let items: [NSPasteboardItem] = savedItems.map { saved in
+                let it = NSPasteboardItem()
+                for (type, data) in saved { it.setData(data, forType: type) }
+                return it
+            }
+            NSPasteboard.general.writeObjects(items)
         }
     }
 

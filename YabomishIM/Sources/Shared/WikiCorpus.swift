@@ -144,13 +144,27 @@ final class WikiCorpus {
     }
 
     private func loadRegionSets() {
-        if let p = resolvePath(name: "region_tw", ext: "txt"),
-           let s = try? String(contentsOfFile: p, encoding: .utf8) {
-            regionTW = Set(s.split(separator: "\n").map(String.init))
+        // 兩岸詞集載入：找不到檔或讀取失敗都要留下線索（檔案路徑＋錯誤描述），
+        // 不再 silently try? — 否則過濾功能靜默失效難以診斷。
+        if let p = resolvePath(name: "region_tw", ext: "txt") {
+            do {
+                let s = try String(contentsOfFile: p, encoding: .utf8)
+                regionTW = Set(s.split(separator: "\n").map(String.init))
+            } catch {
+                DebugLog.log("WikiCorpus loadRegionSets: read region_tw failed (\(p)): \(error.localizedDescription)")
+            }
+        } else {
+            DebugLog.log("WikiCorpus loadRegionSets: region_tw.txt not found")
         }
-        if let p = resolvePath(name: "region_cn", ext: "txt"),
-           let s = try? String(contentsOfFile: p, encoding: .utf8) {
-            regionCN = Set(s.split(separator: "\n").map(String.init))
+        if let p = resolvePath(name: "region_cn", ext: "txt") {
+            do {
+                let s = try String(contentsOfFile: p, encoding: .utf8)
+                regionCN = Set(s.split(separator: "\n").map(String.init))
+            } catch {
+                DebugLog.log("WikiCorpus loadRegionSets: read region_cn failed (\(p)): \(error.localizedDescription)")
+            }
+        } else {
+            DebugLog.log("WikiCorpus loadRegionSets: region_cn.txt not found")
         }
         DebugLog.log("WikiCorpus: region sets loaded — TW \(regionTW.count), CN \(regionCN.count)")
     }

@@ -47,6 +47,7 @@ final class CandidatePanel: NSPanel {
 
     private var lastA11yNotify: TimeInterval = 0
     private var prefsChangedToken: (any NSObjectProtocol)?
+    private var dragCursorPushed = false
 
     // MARK: - Shared state
 
@@ -660,18 +661,24 @@ final class CandidatePanel: NSPanel {
     // MARK: - Fixed mode: dragging (vertical only)
 
     override func mouseDown(with event: NSEvent) {
-        if isFixed {
+        if isFixedMode {
             // 命中測試：把點擊位置換算到 contentView 座標（左下原點），
             // 只有點在候選字範圍內才送出該候選字；未命中則不做任何事
-            //（絕不誤送字），其餘區域維持原本的拖曳行為
+            //（絕不誤送字）。fallbackFixed（不相容 app 的退回顯示）同樣
+            // 走這條路，否則 stackView 已隱藏、點擊會完全沒作用。
             let loc = contentView!.convert(event.locationInWindow, from: nil)
             for hit in fixedHitRects where hit.rect.contains(loc) {
                 guard hit.candIdx < candidates.count else { break }
                 onCandidateSelected?(candidates[hit.candIdx])
                 return
             }
-            dragOffset = event.locationInWindow
-            NSCursor.closedHand.push()
+            // 拖曳僅限真正的固定模式：fallbackFixed 的視窗位置由
+            // repositionFixed 決定，拖曳寫回 fixedYOffset 偏好毫無意義。
+            if isFixed {
+                dragOffset = event.locationInWindow
+                NSCursor.closedHand.push()
+                dragCursorPushed = true
+            }
         } else {
             // Cursor mode: check which label was clicked
             let loc = event.locationInWindow
@@ -706,6 +713,11 @@ final class CandidatePanel: NSPanel {
 
     override func mouseUp(with event: NSEvent) {
         guard isFixed else { super.mouseUp(with: event); return }
+        // 只有真的進入拖曳（mouseDown push 過 closedHand）才 pop 與寫回
+        // 偏好 — 點選候選字的 early-return 路徑沒有 push，無條件 pop 會
+        // 把 mouseEntered 的 openHand 彈掉，懸停游標靜默失效
+        guard dragCursorPushed else { return }
+        dragCursorPushed = false
         let screen = effectiveScreen
         NSCursor.pop()
         let dockH = dockBottomHeight(screen: screen)
