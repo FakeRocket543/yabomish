@@ -15,6 +15,18 @@
 
 **效果**：新 clone 只取現役資料（~150MB LFS 物件）；本機舊歷史 1.1GB 物件在 refs 翻轉後可 gc 回收。⚠️ 注意：此操作改寫全部歷史 hash，**其他機器的 clone 需重新 clone**（或跟隨 force push），舊 bundle 備份保留於 /tmp。
 
+**除錯插曲 — Gitea href port bug＋nginx body 限制（未完項）**：git push 卡死在上傳階段（0 位元組、無進度）數十分鐘。逐層排查：
+1. LFS batch API 以 curl 實測 0.7 秒回應 200（伺服器與認證正常）→ 檢查 batch 回應發現 **upload href 是 `https://git.lcn.tw/...`，少了 `:33333`** — Gitea 的 `ROOT_URL` 與實際 listen port 不一致，git-lfs 拿錯誤 href 對 443 上傳（該 port 黑洞、60 秒逾時 0 位元組），永遠卡住。
+2. **繞道手動上傳 LFS**：`/tmp/lfs_upload.py` 對 batch API 取憑證、修正 port 後 4 路並行 curl PUT — **689 個物件中 470 個成功（全部 ≤1MB）**；219 個（978MB，含 tip 現役 13 個 1–5.8MB 大檔）被 **nginx `client_max_body_size 1m`** 以 413 拒絕（實測：900KB 過、2.5MB 413）。
+3. git 資料推送同受 1m 限制：tag／小封包 commit 可過（已推 94/345＋全部 tags），卡在需重傳 ≥1MB 非 LFS blob 的 commit（origin 端已 gc 掉歷史中曾被刪除的大 blob，如 trigram_suggest.json 5.4MB；其餘為 region txt／word_bigram.json／AppIcon.icns 等現役合法檔）。
+
+**需伺服器端（git.lcn.tw）兩處修正後即可一次完成**：
+- nginx vhost 加 `client_max_body_size 100m;`（git smart-http 與 LFS PUT 共用此限制）
+- Gitea `ROOT_URL` 補上 `:33333`（根治 LFS href；clone／pull 新機器目前同樣會踩坑）
+修正後執行：`/tmp/lfs_upload.py .git`（補 219 個 LFS 物件）→ `/tmp/incremental_push.sh`（續推剩餘 commit）→ `git push origin experiment/async-suggest`。
+
+**效果（本機已完成）**：歷史已改寫、工作樹真實內容還原（指針殘留 0）；⚠️ 歷史 hash 全變，其他機器需重新 clone；遷移前備份 bundle 保留於 `/tmp/yabomish-pre-lfs-backup.bundle`（431MB，含完整舊歷史）。
+
 ## ④ deactivateServer 行為決策：改 discard
 
 **舊行為**：切換視窗／輸入法時，若組字區有候選，以 `handleSpace()` **代送第一候選字** — 未經使用者確認的字憑空落入底文。
@@ -42,7 +54,7 @@
 |---|---|
 | IM full／min＋Prefs full／min 編譯 | 0 error 0 warning |
 | `run_tests.sh` | 138 passed, 0 failed（item 4 與實驗分支各自驗證） |
-| LFS 遷移 | 343 commits 改寫、387 檔轉 LFS、指針殘留 0 |
+| LFS 遷移 | 343 commits 改寫、387 檔轉 LFS、指針殘留 0；LFS 物件 470/689 已上傳（伺服器 nginx 1m 限制擋下 219 個 >1MB 物件） |
 | 實驗分支 | `git diff main --stat` 僅 InputEngine＋WikiCorpus（WikiCorpus 為 thread-safety 必要偏差） |
 
 ## 下一輪 Backlog（滾動）
