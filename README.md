@@ -211,8 +211,11 @@ cd yabomish && ./yabomish.sh
 | 資料 | 來源 | 授權 |
 |------|------|------|
 | 注音對照表 | [威注音 VanguardLexicon](https://atomgit.com/vChewing/vChewing-VanguardLexicon) | MIT |
+| 拼音對照表 | 由注音對照表推導（`tools/gen_pinyin_data.py`） | MIT（同源） |
 | 繁簡對照表 | [OpenCC](https://github.com/BYVoid/OpenCC) | Apache 2.0 |
 | 成語 | 教育部成語典 | 政府開放資料 |
+| 萌典詞組 | [萌典](https://www.moedict.tw/)／[g0v/moedict-data](https://github.com/g0v/moedict-data)（教育部國語辭典） | CC0 |
+| NER 詞組 | 中文維基百科＋[ckip-transformers](https://github.com/ckiplab/ckip-transformers) | CC-BY-SA 3.0 |
 | 台灣俗諺 | [教育部台灣閩南語常用詞辭典](https://sutian.moe.edu.tw/) | 政府開放資料 |
 | 客語辭典 | [教育部臺灣客語辭典](https://hakkadict.moe.edu.tw/)（六腔） | 政府開放資料 |
 | 台灣地名 | [教育部本土語言標注臺灣地名](https://language.moe.gov.tw/) | CC-BY 3.0 TW |
@@ -221,12 +224,22 @@ cd yabomish && ./yabomish.sh
 | 專業詞典 ×28 | [國家教育研究院 樂詞網](https://terms.naer.edu.tw/) | 政府開放資料 |
 | 歇後語 | [chinese-xinhua](https://github.com/pwxcoo/chinese-xinhua) | MIT |
 | 韓語漢字詞 | [Kengdic](https://github.com/garfieldnate/kengdic) | MPL 2.0 / LGPL 2.0+ |
+| 日本熟語 | MDict 日語辭典資料抽取四字熟語（去重整理） | 衍生整理 |
+| 晶晶體 | 自建（台灣社群中英夾雜用語觀察） | 自建 |
+| 中式流行語 | 網路整理（簡體→繁體轉換） | 整理 |
 | 維基語料 | 中文維基百科 zhwiki dump | CC-BY-SA 3.0 |
 | 新聞詞頻 | 國家教育研究院 新聞語料庫 | 政府開放資料 |
 | 萌典字頻 | [萌典](https://www.moedict.tw/) | CC0 |
 | Emoji | [Unicode CLDR](https://cldr.unicode.org/) | Unicode License |
 
 明碼語料及各自的授權、格式、build 指令詳見 [`yabomish_data/README.md`](yabomish_data/README.md)。
+
+## 誌謝
+
+- 感謝 **g0v 台灣零時政府社群**與萌典貢獻者，讓教育部辭典資料得以機器可讀的形式流通
+- 感謝 **國家教育研究院（樂詞網／新聞語料庫）** 與**教育部**各辭典計畫（閩南語、客語、成語典、學科術語）的開放資料
+- 感謝開源計畫 **OpenCC**、**vChewing／VanguardLexicon**、**Kengdic**、**chinese-xinhua**、**ckip-transformers** 的維護者
+- **商標與字表聲明**：「嘸蝦米輸入法」為行易有限公司之產品與商標；本專案**不散布任何嘸蝦米官方拆碼表**，使用者須自備合法取得之 `liu.cin` 字表檔
 
 ## 架構
 
