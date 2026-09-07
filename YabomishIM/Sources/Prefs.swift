@@ -37,6 +37,8 @@ struct YabomishPrefs {
         var wordCorpus = "wiki"
         var regionVariant = "tw"
         var charSuggest = true
+        var emojiSuggest = true
+        var emojiFirst = true
         #if os(iOS)
         var punctuationPairing = true
         #else
@@ -86,6 +88,8 @@ struct YabomishPrefs {
         s.wordCorpus = defaults.string(forKey: "wordCorpus") ?? "wiki"
         s.regionVariant = defaults.string(forKey: "regionVariant") ?? "tw"
         s.charSuggest = defaults.object(forKey: "charSuggest") as? Bool ?? true
+        s.emojiSuggest = defaults.object(forKey: "emojiSuggest") as? Bool ?? true
+        s.emojiFirst = defaults.object(forKey: "emojiFirst") as? Bool ?? true
         #if os(iOS)
         s.punctuationPairing = defaults.object(forKey: "punctuationPairing") as? Bool ?? true
         #else
@@ -342,6 +346,7 @@ struct YabomishPrefs {
                 "appearanceMode",
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
+                "emojiSuggest", "emojiFirst",
                 "punctuationPairing", "debugMode", "highContrast", "syncFolder", "currentContext",
                 "domainOrder"
             ]
@@ -439,6 +444,30 @@ struct YabomishPrefs {
         }
         set {
             defaults.set(newValue, forKey: "charSuggest")
+            refreshSnapshot()
+        }
+    }
+
+    /// 聯想列是否包含 Emoji 建議（Unicode CLDR 字元對照）
+    static var emojiSuggest: Bool {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.emojiSuggest
+        }
+        set {
+            defaults.set(newValue, forKey: "emojiSuggest")
+            refreshSnapshot()
+        }
+    }
+
+    /// Emoji 建議位置：true = 排聯想列最前（既有行為）；false = 文字聯想優先，有剩餘空間才顯示
+    static var emojiFirst: Bool {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.emojiFirst
+        }
+        set {
+            defaults.set(newValue, forKey: "emojiFirst")
             refreshSnapshot()
         }
     }

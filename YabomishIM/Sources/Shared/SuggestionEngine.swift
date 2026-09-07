@@ -74,10 +74,16 @@ final class SuggestionEngine {
             pool4 += bigramSuggest.suggest(after: lastText)
         }
 
-        // Emoji first — they were being truncated when other pools filled the 10-slot limit.
-        for e in wikiCorpus.suggestEmoji(for: lastChar, limit: 3) {
-            if seen.insert(e).inserted { suggestions.append(e) }
+        // Emoji suggestions: first (default — they were being truncated when other
+        // pools filled the 10-slot limit), last (text wins, shown only if slots
+        // remain), or off.
+        var emojiPool: [String] = []
+        if prefs.emojiSuggest {
+            for e in wikiCorpus.suggestEmoji(for: lastChar, limit: 3) {
+                if seen.insert(e).inserted { emojiPool.append(e) }
+            }
         }
+        if prefs.emojiFirst { suggestions.append(contentsOf: emojiPool) }
 
         let ordered: [[String]]
         switch strategy {
@@ -90,6 +96,9 @@ final class SuggestionEngine {
                 if !wikiCorpus.isRegionDemoted(s) { suggestions.append(s) }
             }
         }
+
+        // emojiFirst == false：文字聯想填完後才補上，超過 10 格自然截斷
+        if !prefs.emojiFirst { suggestions.append(contentsOf: emojiPool) }
 
         return Array(suggestions.prefix(10))
     }

@@ -10,6 +10,8 @@ protocol IMEPreferences {
     var suggestStrategy: String { get }
     var wordCorpus: String { get }
     var charSuggest: Bool { get }
+    var emojiSuggest: Bool { get }
+    var emojiFirst: Bool { get }
     var regionVariant: String { get }
     func domainEnabled(_ key: String) -> Bool
     func domainPriority(_ key: String) -> Int
@@ -28,6 +30,8 @@ final class DefaultPreferences: IMEPreferences {
     var suggestStrategy: String { YabomishPrefs.suggestStrategy }
     var wordCorpus: String { YabomishPrefs.wordCorpus }
     var charSuggest: Bool { YabomishPrefs.charSuggest }
+    var emojiSuggest: Bool { YabomishPrefs.emojiSuggest }
+    var emojiFirst: Bool { YabomishPrefs.emojiFirst }
     var regionVariant: String { YabomishPrefs.regionVariant }
     func domainEnabled(_ key: String) -> Bool { YabomishPrefs.domainEnabled(key) }
     func domainPriority(_ key: String) -> Int { YabomishPrefs.domainPriority(key) }

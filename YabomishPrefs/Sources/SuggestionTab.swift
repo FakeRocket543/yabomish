@@ -13,6 +13,7 @@ private let allLayers = [
     SuggestLayer(id: "word", label: "詞級語料", icon: "text.book.closed", desc: "萌典/維基/新聞"),
     SuggestLayer(id: "domain", label: "詞庫", icon: "books.vertical", desc: "專業詞典聯想"),
     SuggestLayer(id: "char", label: "字級聯想", icon: "character.textbox", desc: "bigram / trigram"),
+    SuggestLayer(id: "emoji", label: "Emoji 聯想", icon: "face.smiling", desc: "依最後送字聯想"),
 ]
 
 private struct CorpusEntry: Identifiable {
@@ -40,6 +41,7 @@ struct SuggestionTab: View {
     @State private var layerGridWidth: CGFloat = 0
 
     private let threeColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+    private let layerColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
     private let domainColumns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
     private var hasProDomains: Bool {
@@ -87,7 +89,9 @@ struct SuggestionTab: View {
 
                 // 2. Layer order
                 Label("聯想層順序", systemImage: "square.3.layers.3d").font(Typo.h2)
-                LazyVGrid(columns: threeColumns, spacing: 8) {
+                Text("Emoji 排最前時一定看得到；排其餘位置則文字聯想優先，聯想列有空位才顯示。")
+                    .font(Typo.hint).foregroundStyle(.secondary)
+                LazyVGrid(columns: layerColumns, spacing: 8) {
                     ForEach(layerOrder) { layer in
                         layerCard(layer)
                     }
@@ -104,8 +108,8 @@ struct SuggestionTab: View {
                           let srcIdx = layerOrder.firstIndex(where: { $0.id == draggedID }) else { return false }
                     let item = layerOrder.remove(at: srcIdx)
                     let col = layerGridWidth > 0
-                        ? max(0, min(2, Int(location.x / (layerGridWidth / 3))))
-                        : min(2, layerOrder.count)
+                        ? max(0, min(3, Int(location.x / (layerGridWidth / 4))))
+                        : min(3, layerOrder.count)
                     layerOrder.insert(item, at: min(layerOrder.count, col))
                     saveStrategy()
                     return true
@@ -166,13 +170,21 @@ struct SuggestionTab: View {
 
     @ViewBuilder
     private func layerCard(_ layer: SuggestLayer) -> some View {
-        let enabled = layer.id == "char" ? store.charSuggest : true
+        let enabled = switch layer.id {
+        case "char":  store.charSuggest
+        case "emoji": store.emojiSuggest
+        default:      true
+        }
         SelectableCardView(label: layer.label, desc: layer.desc,
                            selected: enabled,
                            icon: layer.icon,
                            showCheckmark: false,
                            labelLineLimit: 1) {
-            if layer.id == "char" { store.charSuggest.toggle() }
+            switch layer.id {
+            case "char":  store.charSuggest.toggle()
+            case "emoji": store.emojiSuggest.toggle()
+            default: break
+            }
         }
         .draggable(layer.id)
     }
@@ -315,12 +327,13 @@ struct SuggestionTab: View {
     private func loadOrder() {
         let strategy = store.suggestStrategy
         let lookup = Dictionary(uniqueKeysWithValues: allLayers.map { ($0.id, $0) })
-        let order: [String]
+        var order: [String]
         switch strategy {
         case "domain": order = ["domain", "word", "char"]
         case "char":   order = ["char", "word", "domain"]
         default:       order = ["word", "domain", "char"]
         }
+        order.insert("emoji", at: store.emojiFirst ? 0 : order.count)
         layerOrder = order.compactMap { lookup[$0] }
     }
 
@@ -348,9 +361,13 @@ struct SuggestionTab: View {
 
     private func saveStrategy() {
         let ids = layerOrder.map(\.id)
-        if ids.first == "domain" { store.suggestStrategy = "domain" }
-        else if ids.first == "char" { store.suggestStrategy = "char" }
-        else { store.suggestStrategy = "general" }
+        // Emoji 只有「最前／其餘」兩種位置：非首位一律視為文字聯想優先
+        store.emojiFirst = ids.first == "emoji"
+        switch ids.first(where: { $0 != "emoji" }) {
+        case "domain": store.suggestStrategy = "domain"
+        case "char":   store.suggestStrategy = "char"
+        default:       store.suggestStrategy = "general"
+        }
     }
 
     private func saveDomainOrder() {
@@ -361,6 +378,8 @@ struct SuggestionTab: View {
         store.suggestStrategy = "general"
         store.wordCorpus = "wiki"
         store.charSuggest = true
+        store.emojiSuggest = true
+        store.emojiFirst = true
         store.regionVariant = "tw"
         loadOrder()
         generalOrder = DomainData.generalDomains

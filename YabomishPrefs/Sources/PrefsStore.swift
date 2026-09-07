@@ -28,6 +28,14 @@ import Foundation
         get { access(keyPath: \.charSuggest); return ud.object(forKey: "charSuggest") as? Bool ?? true }
         set { withMutation(keyPath: \.charSuggest) { ud.set(newValue, forKey: "charSuggest") }; postChange() }
     }
+    var emojiSuggest: Bool {
+        get { access(keyPath: \.emojiSuggest); return ud.object(forKey: "emojiSuggest") as? Bool ?? true }
+        set { withMutation(keyPath: \.emojiSuggest) { ud.set(newValue, forKey: "emojiSuggest") }; postChange() }
+    }
+    var emojiFirst: Bool {
+        get { access(keyPath: \.emojiFirst); return ud.object(forKey: "emojiFirst") as? Bool ?? true }
+        set { withMutation(keyPath: \.emojiFirst) { ud.set(newValue, forKey: "emojiFirst") }; postChange() }
+    }
 
     // MARK: - Domain ordering
 
