@@ -28,7 +28,7 @@ enum CommaCommandHelp {
 
         ▎特殊指令（輸入 ,, 開頭）
         • ,,T 繁體  ,,S 簡體  ,,J 日文
-        • ,,SP 速成  ,,SL 慢打
+        • ,,SP 速打  ,,SL 慢打
         • ,,TS 繁→簡  ,,ST 簡→繁
         • ,,ZH 注音查碼  ,,TO 同音字
         • ,,PYS 拼音(簡)  ,,PYT 拼音(繁)

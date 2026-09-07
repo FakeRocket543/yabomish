@@ -167,7 +167,7 @@ struct AppearanceTab: View {
                 if store.debugMode {
                     Button {
                         let url = URL(fileURLWithPath: NSHomeDirectory())
-                            .appendingPathComponent("Library/YabomishIM/debug.log")
+                            .appendingPathComponent("Library/Application Support/Yabomish/debug.log")
                         NSWorkspace.shared.open(url)
                     } label: {
                         Label("打開 debug.log⋯", systemImage: "doc.text.magnifyingglass")

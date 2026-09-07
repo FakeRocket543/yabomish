@@ -302,11 +302,14 @@ class YabomishInputController: IMKInputController {
                 self?.showModeToast("空白鍵送字 ｜ Shift 切英文 ｜ ,,H 說明")
             }
         }
+        #if !MINIMAL
+        // 極簡版不含語料，不應默默向 GitHub 下載（安裝器宣稱 ~2MB）
         if !DataDownloader.isDataAvailable {
             DataDownloader.ensureData { ok in
                 if !ok { DebugLog.log("YabomishIM: 語料尚未下載，聯想/重排功能停用") }
             }
         }
+        #endif
     }
 
     override func deactivateServer(_ sender: Any!) {
