@@ -408,20 +408,24 @@ extension YabomishInputController {
         // Shift held: temporary English / wildcard / full-width space
         if flags.contains(.shift) && !flags.contains(.command) && !flags.contains(.control) && !flags.contains(.option) {
             newEngineShiftUsed = true
-            // Shift+digit while candidates showing
+            // 萬用碼先於數字分支：組字中 Shift+8 一律萬用碼（不受 shiftDigitOutput 偏好影響）。
+            // 原本數字分支在前，會把 Shift+8 攔成「送出第一候選＋插入字面 8」，萬用碼幾乎不可達。
+            if keyCode == 28 && !engine.composing.isEmpty {
+                engine.handleWildcard()
+                return true
+            }
+            // Shift+digit while candidates showing: symbol (default) or digit per pref
             if let digit = keyCodeToDigit[keyCode], !engine.currentCandidates.isEmpty {
-                // Shift+digit: output digit
                 if !engine.composing.isEmpty {
                     commitOrEscapeComposing()
                 } else {
                     engine.clearCandidates()
                     panel.hide()
                 }
-                client.insertText(String(digit), replacementRange: notFoundRange)
-                return true
-            }
-            if keyCode == 28 && !engine.composing.isEmpty {
-                engine.handleWildcard()
+                let out = YabomishPrefs.shiftDigitOutput == "digit"
+                    ? String(digit)
+                    : String(keyCodeToShifted[keyCode] ?? digit)
+                client.insertText(out, replacementRange: notFoundRange)
                 return true
             }
             if keyCode == 49 {

@@ -39,6 +39,7 @@ struct YabomishPrefs {
         var charSuggest = true
         var emojiSuggest = true
         var emojiFirst = true
+        var shiftDigitOutput = "symbol"
         #if os(iOS)
         var punctuationPairing = true
         #else
@@ -90,6 +91,7 @@ struct YabomishPrefs {
         s.charSuggest = defaults.object(forKey: "charSuggest") as? Bool ?? true
         s.emojiSuggest = defaults.object(forKey: "emojiSuggest") as? Bool ?? true
         s.emojiFirst = defaults.object(forKey: "emojiFirst") as? Bool ?? true
+        s.shiftDigitOutput = defaults.string(forKey: "shiftDigitOutput") ?? "symbol"
         #if os(iOS)
         s.punctuationPairing = defaults.object(forKey: "punctuationPairing") as? Bool ?? true
         #else
@@ -346,7 +348,7 @@ struct YabomishPrefs {
                 "appearanceMode",
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
-                "emojiSuggest", "emojiFirst",
+                "emojiSuggest", "emojiFirst", "shiftDigitOutput",
                 "punctuationPairing", "debugMode", "highContrast", "syncFolder", "currentContext",
                 "domainOrder"
             ]
@@ -468,6 +470,19 @@ struct YabomishPrefs {
         }
         set {
             defaults.set(newValue, forKey: "emojiFirst")
+            refreshSnapshot()
+        }
+    }
+
+    /// 候選／聯想顯示時 Shift+數字鍵的輸出："symbol"（預設，!@#$%^&*()）或 "digit"（1234567890）。
+    /// 僅影響候選顯示中；idle 狀態的 Shift+數字恆為符號，組字中的 Shift+8 萬用碼不受此偏好影響。
+    static var shiftDigitOutput: String {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.shiftDigitOutput
+        }
+        set {
+            defaults.set(newValue, forKey: "shiftDigitOutput")
             refreshSnapshot()
         }
     }

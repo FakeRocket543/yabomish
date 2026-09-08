@@ -115,6 +115,16 @@ struct InputTab: View {
                     }
                 }
 
+                // ── Shift+數字鍵輸出 ──
+                SectionDivider()
+                Label("Shift＋數字鍵（候選顯示時）", systemImage: "shift").font(Typo.h2)
+                Text("候選字／聯想顯示中，按住 Shift 再按數字列的輸出。閒置狀態恆為符號；組字中 Shift+8 萬用碼不受影響。")
+                    .font(Typo.hint).foregroundStyle(.secondary)
+                LazyVGrid(columns: columns, spacing: 8) {
+                    shiftDigitCard("symbol", label: "符號 !@#$%", icon: "exclamationmark", desc: "全系統慣例（預設）")
+                    shiftDigitCard("digit", label: "數字 12345", icon: "number", desc: "候選顯示時快速輸入數字")
+                }
+
                 // ── 固定排序 ──
                 SectionDivider()
                 Label("固定同碼字排序", systemImage: "pin.fill").font(Typo.h2)
@@ -260,6 +270,15 @@ struct InputTab: View {
         SelectableCardView(label: opt.label, desc: opt.desc,
                            selected: store.panelPosition == opt.id,
                            icon: opt.icon) { store.panelPosition = opt.id }
+    }
+
+    @ViewBuilder
+    private func shiftDigitCard(_ id: String, label: String, icon: String, desc: String) -> some View {
+        SelectableCardView(label: label, desc: desc,
+                           selected: store.shiftDigitOutput == id,
+                           icon: icon,
+                           showCheckmark: false,
+                           labelLineLimit: 1) { store.shiftDigitOutput = id }
     }
 
     private func binding(for key: String) -> Binding<Bool> {

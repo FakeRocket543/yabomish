@@ -28,6 +28,11 @@ import Foundation
         get { access(keyPath: \.charSuggest); return ud.object(forKey: "charSuggest") as? Bool ?? true }
         set { withMutation(keyPath: \.charSuggest) { ud.set(newValue, forKey: "charSuggest") }; postChange() }
     }
+    /// 候選顯示時 Shift+數字鍵輸出："symbol"（預設）／"digit"
+    var shiftDigitOutput: String {
+        get { access(keyPath: \.shiftDigitOutput); return ud.string(forKey: "shiftDigitOutput") ?? "symbol" }
+        set { withMutation(keyPath: \.shiftDigitOutput) { ud.set(newValue, forKey: "shiftDigitOutput") }; postChange() }
+    }
     var emojiSuggest: Bool {
         get { access(keyPath: \.emojiSuggest); return ud.object(forKey: "emojiSuggest") as? Bool ?? true }
         set { withMutation(keyPath: \.emojiSuggest) { ud.set(newValue, forKey: "emojiSuggest") }; postChange() }
