@@ -27,12 +27,12 @@ order: 1
 
 ### 方式一：DMG 安裝包（推薦）
 
-從 [GitHub Releases](https://github.com/FakeRocket543/yabomish/releases) 下載安裝包，雙擊打開：
+從 [GitHub Releases](https://github.com/FakeRocket543/yabomish/releases) 下載安裝包（各約 2.8MB），雙擊打開：
 
 | 安裝包 | 內容 | 首次下載語料 |
 |--------|------|------------|
 | **Yabomish-精簡.dmg** | 輸入法＋設定程式＋基礎聯想（萌典／維基／新聞、成語、兩岸用詞） | 約 15MB |
-| **Yabomish-全量.dmg** | 同上＋36 部專業詞典 | 約 100MB |
+| **Yabomish-全量.dmg** | 同上＋28 部專業詞典＋一般詞庫 | 約 100MB |
 
 流程：雙擊「安裝 Yabomish.app」→ 管理員授權 → 自動安裝輸入法與設定程式、重啟輸入法，並**自動開啟系統設定的輸入方式列表**（直接按 + 加入 Yabomish）。安裝訊息依系統語言顯示繁中／簡中／英文。
 
@@ -59,8 +59,10 @@ cd yabomish
 |------|------|------|
 | **1) 完整安裝** | 基礎聯想 + 28 專業詞典 | ~98MB |
 | **2) 精簡安裝** | 基礎聯想，不含專業詞典 | ~18MB |
+| **3) 極簡安裝** | 無聯想、無詞庫，僅打字＋查碼＋繁簡轉換＋字頻排序 | ~2MB |
 
 > 精簡版包含字級聯想、詞級語料（萌典/維基/新聞）、成語、兩岸用詞切換等基礎功能。專業詞典可之後重裝補上。
+> 「極簡」僅原始碼安裝可選，不隨 Release DMG 發佈。
 
 ### 3. 安裝過程
 
@@ -69,8 +71,8 @@ cd yabomish
 1. **編譯**輸入法本體（`YabomishIM.app`）與設定程式（`YabomishPrefs.app`）
 2. 將 `YabomishIM.app` 安裝到 `/Library/Input Methods/`
 3. 將 `YabomishPrefs.app` 安裝到 `/Applications/`
-4. 詢問**蝦頭方向**（狀態列圖示朝向）
-5. 詢問**狀態列名稱**（顯示在選單列的文字）
+4. 自動套用既有的**蝦頭方向**與**狀態列名稱**偏好（可在 YabomishPrefs → 外觀調整）
+5. 部署使用者層資源（`commands.json` 範例、擴充表目錄）
 
 安裝完成後，終端機會提示下一步操作。
 
@@ -115,10 +117,10 @@ cd yabomish
 
 除了 `.cin` 主表，Yabomish 也支援 `.txt` 擴充表：
 
-- 擴充表放在 `~/Library/YabomishIM/tables/` 目錄
+- 擴充表放在 `~/Library/Application Support/Yabomish/tables/` 目錄
 - 格式為 tab 分隔：`編碼<Tab>內容`
-- 安裝時預設包含 Emoji 聯想擴充表
-- 修改後輸入 `,,RL` + Space 即可即時重載
+- 修改後輸入 `,,RL` + Space 即可即時重載（一併重載自訂指令與 snippets）
+- Emoji 聯想不是擴充表——由語料檔 `emoji_char_map.json` 驅動，隨安裝或首次語料下載提供
 
 ---
 
@@ -135,7 +137,7 @@ git pull
 ./yabomish.sh
 ```
 
-選擇 **`4) 快速重裝`**——只重新編譯並安裝，保留你的字頻資料和設定。
+選擇 **`1) 編譯 + 安裝`**——重新編譯並安裝，保留你的字頻資料和設定（`4) 快速重裝偏好設定` 只重裝設定程式）。
 
 ---
 
@@ -146,8 +148,8 @@ cd yabomish
 ./yabomish.sh
 ```
 
-選擇 **`6) 移除 Yabomish`**，腳本會清除輸入法和設定程式。
+選擇 **`5) 移除 Yabomish`**，腳本會清除輸入法和設定程式。
 
-> **提示**：移除前建議先到系統設定將 Yabomish 從輸入方式中移除。使用者資料（字頻、擴充表）位於 `~/Library/YabomishIM/`，移除腳本不會自動刪除，如需清除請手動刪除該目錄。
+> **提示**：移除前建議先到系統設定將 Yabomish 從輸入方式中移除。使用者資料（字表、字頻、擴充表）位於 `~/Library/Application Support/Yabomish/`（舊版安裝可能在 `~/Library/YabomishIM/`）；移除腳本會詢問「一併刪除使用者資料？」，確認後自動清除。
 
 ---

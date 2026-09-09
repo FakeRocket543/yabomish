@@ -3,18 +3,18 @@ import Manual from '../layouts/Manual.astro';
 const base = import.meta.env.BASE_URL;
 
 const chapters = [
-  { slug: '01-installation', num: '01', title: '安裝與設定', desc: '系統需求、編譯安裝、加入輸入方式、匯入字表', icon: '⚙️' },
+  { slug: '01-installation', num: '01', title: '安裝與設定', desc: 'DMG／原始碼安裝、加入輸入方式、匯入字表、更新與移除', icon: '⚙️' },
   { slug: '02-basic-typing', num: '02', title: '基本打字', desc: '組字、送字、選字、補碼、萬用碼、中英切換', icon: '⌨️' },
   { slug: '03-candidate-panel', num: '03', title: '選字窗', desc: '游標跟隨模式、固定位置模式、多螢幕、VoiceOver', icon: '🪟' },
   { slug: '04-modes-and-commands', num: '04', title: '模式與命令', desc: '繁簡切換、速打慢打、日文假名、,, 命令系統', icon: '🎛️' },
-  { slug: '05-suggestion-engine', num: '05', title: '聯想引擎', desc: '三層架構、詞庫管理、用詞習慣、Emoji 聯想', icon: '🧠' },
+  { slug: '05-suggestion-engine', num: '05', title: '聯想引擎', desc: '層序與 Emoji 卡、詞庫管理、用詞習慣', icon: '🧠' },
   { slug: '06-lookup-modes', num: '06', title: '查碼模式', desc: '同音字查詢、注音反查、拼音查碼', icon: '🔍' },
   { slug: '07-shortcuts-and-extensions', num: '07', title: '快捷碼與擴充表', desc: '空碼綁定、擴充表格式、匯入匯出、iCloud 同步', icon: '⚡' },
   { slug: '08-preferences', num: '08', title: '偏好設定', desc: '設定程式五分頁完整說明', icon: '🎨' },
   { slug: '09-data-and-files', num: '09', title: '資料與檔案', desc: '資料路徑、語料架構、資料來源與授權', icon: '📁' },
   { slug: '10-faq', num: '10', title: '常見問題', desc: '疑難排解、已知限制', icon: '❓' },
   { slug: '11-domain-glossary', num: '11', title: '詞庫介紹', desc: '12 一般詞庫 + 28 專業詞典完整列表', icon: '📚' },
-  { slug: '12-ios', num: '12', title: 'iOS 版', desc: '零權限鍵盤、跨裝置同步、Hermes 詢問', icon: '📱' },
+  { slug: '12-ios', num: '12', title: 'iOS 版', desc: '零權限鍵盤、功能現況、與 macOS 對照', icon: '📱' },
 ];
 
 const keys = [

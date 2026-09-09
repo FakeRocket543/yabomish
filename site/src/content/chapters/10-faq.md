@@ -44,7 +44,7 @@ order: 10
 
 ### Q：想用台灣用詞，不想看到中國用詞？
 
-設定程式 → **輸入** → **用詞習慣** → 選擇「**臺灣正體**」。
+設定程式 → **聯想與詞庫** → **用詞習慣** → 選擇「**臺灣正體**」。
 
 中國用詞不會完全消失，而是會被**降權**——排到候選列表的後面。這樣偶爾需要時仍然找得到。
 
@@ -80,16 +80,14 @@ order: 10
 ### Q：字頻學習資料在哪？
 
 ```
-~/Library/YabomishIM/freq.db
+~/Library/Application Support/Yabomish/freq.db
 ```
 
 這是一個 SQLite 資料庫（WAL 模式）。如需重置字頻統計，輸入 `,,RS` + 空白鍵。
 
 ### Q：可以跨機同步嗎？
 
-可以。設定程式 → **輸入** → **同步資料夾**，指定一個 iCloud Drive 路徑即可。
-
-同步範圍包含字頻學習資料和擴充表。
+可以，但屬進階用法：設定程式的「同步資料夾」UI 已移除，需以 `defaults write` 設定 `syncFolder` 偏好指向 iCloud Drive 路徑（詳見[第七章 7.3](/yabomish/chapters/07-shortcuts-and-extensions)）。同步範圍包含字頻學習資料和擴充表；一般單機使用不需要設定。
 
 ### Q：liu.cin 會上傳嗎？
 
@@ -106,7 +104,7 @@ order: 10
 日誌會寫入：
 
 ```
-~/Library/YabomishIM/debug.log
+~/Library/Application Support/Yabomish/debug.log
 ```
 
 回報問題時，請附上此日誌檔的相關片段。
@@ -120,11 +118,11 @@ cd yabomish
 ./yabomish.sh
 ```
 
-選擇 **6) 移除 Yabomish**。會刪除：
+選擇 **5) 移除 Yabomish**。會刪除：
 
 - `/Library/Input Methods/YabomishIM.app`
 - `/Applications/YabomishPrefs.app`
 
-移除過程中會詢問是否一併刪除使用者資料（`~/Library/YabomishIM/`）。如果你打算日後重新安裝，建議保留使用者資料以保存字頻學習紀錄。
+移除過程中會詢問是否一併刪除使用者資料（`~/Library/Application Support/Yabomish/`）。如果你打算日後重新安裝，建議保留使用者資料以保存字頻學習紀錄。
 
 ---

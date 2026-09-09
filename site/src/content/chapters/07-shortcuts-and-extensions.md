@@ -54,7 +54,7 @@ alog	print("DEBUG: \(#function) line \(#line)")
 ### 檔案位置
 
 ```
-~/Library/YabomishIM/tables/*.txt
+~/Library/Application Support/Yabomish/tables/*.txt
 ```
 
 此資料夾下的所有 `.txt` 檔案都會被載入。安裝時預設包含 Emoji 聯想表。
@@ -81,7 +81,7 @@ xstr	⭐
 透過設定程式管理的快捷碼，實際上儲存在：
 
 ```
-~/Library/YabomishIM/tables/user_shortcuts.txt
+~/Library/Application Support/Yabomish/tables/user_shortcuts.txt
 ```
 
 你也可以直接用文字編輯器修改這個檔案，效果完全相同。
@@ -98,24 +98,16 @@ xstr	⭐
 
 ---
 
-## 7.3 iCloud 同步
+## 7.3 多台 Mac 共用資料（進階）
 
-如果你有多台 Mac，可以透過 iCloud 同步快捷碼和學習資料，讓每台電腦都保持一致的輸入體驗。
-
-### 設定方式
-
-在設定程式中，可以指定一個**同步資料夾**（例如 iCloud Drive 中的某個目錄）。
-
-### 同步內容
+設定程式中的「同步資料夾」UI 已移除；如需在多台 Mac 之間共用資料，進階使用者可直接以 `defaults write` 設定 `syncFolder` 偏好（指向 iCloud Drive 等同步目錄），同步範圍為：
 
 | 項目 | 說明 |
 |------|------|
+| `freq.json`（字頻快照） | 你的選字習慣與頻率統計 |
 | `tables/` 擴充表 | 包含快捷碼在內的所有擴充表檔案 |
-| 字頻學習資料 | 你的選字習慣與頻率統計 |
 
-設定完成後，所有同步資料夾內的變更會透過 iCloud Drive 自動在多台 Mac 之間同步。在任何一台電腦上新增的快捷碼或累積的字頻學習，都會反映到其他電腦上。
-
-> **注意**：字表檔案（`liu.cin` / `liu.bin`）不在同步範圍內，每台電腦需各自匯入。
+> 一般使用者可忽略本節——單機使用不需要任何設定。字表檔案（`liu.cin` / `liu.bin`）不在同步範圍內，每台電腦需各自匯入。
 
 ---
 
@@ -129,7 +121,7 @@ xstr	⭐
 ~/Library/Application Support/Yabomish/commands.json
 ```
 
-macOS、iOS 共用同一份檔案格式（透過跨裝置同步保持一致）。iOS 鍵盤只執行 `text` 型，其餘型別在 macOS 上生效。
+macOS、iOS 共用同一份檔案格式（檔案格式相同，可手動複製共用）。iOS 鍵盤只執行 `text` 型，其餘型別在 macOS 上生效。
 
 ### 四種型別
 

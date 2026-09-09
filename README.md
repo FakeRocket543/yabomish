@@ -1,27 +1,40 @@
 # Yabomish 🦐
 
-macOS 嘸蝦米輸入法 — 純 Swift、零依賴、離線聯想。
+macOS 嘸蝦米輸入法 — 純 Swift、零依賴。聯想語料於首次打字時下載後離線可用（打字、查碼、繁簡轉換全程離線不受影響）。
 
 📖 **[使用手冊](https://fakerocket543.github.io/yabomish/)**
 
 ## 需求
 
 - macOS 14.0+（Apple Silicon）
-- Xcode Command Line Tools
 - 嘸蝦米 CIN 字表（`liu.cin`，使用者自行取得）
+- 原始碼安裝另需 Xcode Command Line Tools（DMG 安裝不需要）
 
 ## 安裝
+
+### 方式一：DMG 安裝包（推薦）
+
+從 [Releases](https://github.com/FakeRocket543/yabomish/releases) 下載（各約 2.8MB）：
+
+| 安裝包 | 內容 | 首次下載語料 |
+|--------|------|------------|
+| **Yabomish-精簡.dmg** | 輸入法＋設定程式＋基礎聯想（萌典／維基／新聞、成語、兩岸用詞） | 約 15MB |
+| **Yabomish-全量.dmg** | 同上＋28 專業詞典＋一般詞庫 | 約 100MB |
+
+雙擊「安裝 Yabomish.app」→ 管理員授權 → 自動安裝並重啟輸入法、自動開啟系統設定的輸入方式列表（安裝訊息繁／簡／英三語）。語料在首次打字時自動下載（SHA-256 驗證，下載完成即時生效；離線時打字、查碼、繁簡轉換不受影響）。
+
+### 方式二：原始碼安裝（開發者）
 
 ```bash
 git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabomish.sh
 ```
 
-選擇 `1) 完整安裝`、`2) 精簡安裝` 或 `3) 極簡安裝`。
+選擇 `1) 完整安裝`、`2) 精簡安裝` 或 `3) 極簡安裝`（極簡僅原始碼安裝可選，不隨 Release 發佈）：
 
 | 模式 | 說明 | 大小 |
 |------|------|------|
-| 完整安裝 | 含聯想語料（28 專業詞典 + bigram/trigram + 詞庫） | ~98MB |
-| 精簡安裝 | 無專業詞典，仍有成語、用語、兩岸用詞聯想 | ~18MB |
+| 完整安裝 | 含聯想語料（28 專業詞典 + bigram/trigram + 詞庫，語料內含） | ~98MB |
+| 精簡安裝 | 無專業詞典，仍有成語、用語、兩岸用詞聯想（語料內含） | ~18MB |
 | 極簡安裝 | 無聯想、無詞庫，僅打字＋查碼＋繁簡轉換＋字頻排序 | ~2MB |
 
 安裝過程會：
@@ -55,7 +68,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | 拼音查碼 | `,,PYS` / `,,PYT` |
 | 同音字 | `,,TO` |
 | 查字歷史 | `,,LH`（檢視）／`,,RH`（清除） |
-| 送出原始碼 | Enter |
+| 送出原始碼 | Enter（純聯想顯示時＝收提示並換行，不代選） |
 
 完整使用說明見 [docs/usage.md](docs/usage.md)。
 
@@ -105,9 +118,9 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | `,,XI` | 顯示當前語境 |
 | `,,XRS` | 重置語境（= ,,XDF） |
 | `,,H` | 命令說明 |
-| `,,V` | 貼上純文字（去格式） |
-| `,,VT` | 貼上簡→繁 |
-| `,,VS` | 貼上繁→簡 |
+| `,,V` | 貼上純文字（去格式）——0.55 秒後自動還原剪貼簿 |
+| `,,VT` | 貼上簡→繁（同樣自動還原） |
+| `,,VS` | 貼上繁→簡（同樣自動還原） |
 
 ### 聯想輸入
 
@@ -120,7 +133,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 - 三層順序可拖拉調整（詞級優先 / 詞庫優先 / 字級優先）
 - 詞庫可逐一啟用／停用，拖拉調整優先順序
 - 晶晶體（台式中英夾雜）為獨立聯想池
-- Emoji 聯想（依前一字自動建議）
+- Emoji 聯想（依前一字自動建議；卡片可調排序或關閉）
 - 虛詞結尾自動停止聯想
 
 ### 智慧排序
@@ -164,10 +177,10 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 
 獨立 GUI 設定 App，五個分頁：
 
-- **輸入** — 選字窗模式（含 demo 預覽）、聯想輸入、自動送字、拆碼提示、注音反查、同音字自動退出、模糊匹配、標點配對、固定同碼字排序
-- **聯想與詞庫** — 語境切換器、用詞習慣、三層順序拖拉、詞級語料來源切換、一般詞庫與專業詞典啟用／排序
+- **輸入** — 選字窗模式（含 demo 預覽）、聯想輸入、聯想預先反白（預設關）、Shift＋數字鍵輸出、自動送字、拆碼提示、同音多讀、同音字自動退出、鄰鍵容錯、標點配對、固定同碼字排序、查字歷史（檢視／CSV 匯出／清除）
+- **聯想與詞庫** — 語境切換器、用詞習慣、層序拖拉（含第四張 Emoji 聯想卡，可關閉）、詞級語料來源切換、一般詞庫與專業詞典啟用／排序
 - **快捷碼** — 空碼綁定自訂文字／指令，新增與匯入時自動驗證碼長度（2–4 碼）及字表衝突
-- **外觀** — 字體大小（滑桿+即時預覽）、透明度、高對比模式、蝦頭方向、Debug 模式
+- **外觀** — 介面外觀三態（自動/淺色/深色）、切換顯示（繁中/Yabomish/🦐）、字體大小（滑桿+即時預覽）、透明度、高對比模式、蝦頭方向（即時換圖）、Debug 模式
 - **關於** — 使用方法、快捷鍵速查、語料來源與授權、版本號（亦可在 menu「關於 Yabomish 設定」查看）
 
 | 輸入 | 聯想與詞庫 |
@@ -204,7 +217,6 @@ cd yabomish && ./yabomish.sh
 | `tables/` | 擴充表資料夾 |
 | `tables/user_shortcuts.txt` | 使用者自訂快捷碼 |
 | `commands.json` | 自訂 `,,` 指令設定檔 |
-| `user_phrases.txt` | 使用者自訂詞組 |
 | `debug.log` | Debug 日誌（開啟時） |
 
 ## 資料來源
@@ -283,7 +295,7 @@ YabomishPrefs/Sources/             # 獨立設定程式（SwiftUI）
 ├── Typo.swift                     # 設計 token（字型、色彩、SectionDivider）
 ├── PinnedOrderSection.swift       # 固定同碼字排序 UI
 ├── DomainCardView.swift           # 詞庫卡片元件
-└── DomainData.swift               # 詞庫定義（6 一般 + 28 專業）
+└── DomainData.swift               # 詞庫定義（12 一般 + 28 專業）
 
 tools/                             # 知識挖掘 Pipeline
 ├── wiki_ngram_pipeline.py         # 維基 → ckip 斷詞 → n-gram 統計

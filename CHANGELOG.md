@@ -19,9 +19,10 @@
 
 ### 改進
 
+- **手冊與 README 全面修訂**（`docs/audits/20260910-manual-review.md`）— 雙子代理逐章對照程式碼審計後修訂：iOS 章移除已刪的跨裝置同步／Hermes 並補新功能現況；安裝章／README 改為 DMG 兩包制為主；修正 yabomish.sh 選項號（更新 4→1、移除 6→5）與「移除不刪使用者資料」錯述；`~/Library/YabomishIM/` 舊路徑全改為 `Application Support/Yabomish/`；刪 `user_phrases.txt` 與「注音反查」開關（均已不存在）；`Shift+Tab` 上一頁、日文 toast「仮」、虛詞清單、自動送字條件等描述對齊程式碼；命令表補 `,,LH/,,RH/,,SG/,,V 系列/,,X 系列`；偏好章補查字歷史 GUI、Emoji 第四卡、外觀三態；「36 部專業詞典」口徑統一為 28（36 為 terms bin 檔數，含 8 個一般詞庫）
 - **發佈改為兩包制：「精簡」與「全量」，各為可雙擊安裝的 DMG（2.8MB），訊息繁／簡／英三語** —
   `tools/release.sh`（`lite` 預設／`full`）產出 **Yabomish-精簡.dmg** 與 **Yabomish-全量.dmg**：包名即選項，雙擊「安裝 Yabomish.app」→ 管理員授權 → 自動安裝輸入法到 `/Library/Input Methods`、偏好設定到 `/Applications` → 佈署使用者層資源並寫入語料等級偏好（`corpusVariant=lite/full`）→ 重啟輸入法 → **自動開啟系統設定的輸入方式列表**（`?InputSources` 深連結，實測可跳過上層頁面直接按 +）。安裝訊息依系統語言顯示繁中／簡中／英文。
-  差異只在首次打字的自動下載（SHA-256 驗證，存於 `~/Library/Application Support/Yabomish/`，`WikiCorpus.resolvePath` 優先讀取故下載後即生效）：**精簡**＝基礎語料（約 15MB）；**全量**＝全量語料＋36 部專業詞典（約 100MB）。離線時打字、查碼、繁簡轉換不受影響。
+  差異只在首次打字的自動下載（SHA-256 驗證，存於 `~/Library/Application Support/Yabomish/`，`WikiCorpus.resolvePath` 優先讀取故下載後即生效）：**精簡**＝基礎語料（約 15MB）；**全量**＝全量語料＋28 部專業詞典＋一般詞庫（約 100MB）。離線時打字、查碼、繁簡轉換不受影響。
   語料 zip 已備於 `build/`（`yabomish-corpus-{lite,full}-0.3.64.zip`，雜湊見 `build/corpus-hashes.txt`），Release 上傳後以 `tools/make_corpus_manifest.py --tag vX --sha256 <lite> --full-sha256 <full>` 重產清單；manifest 未含 full 段時「全量」自動降級下載基礎語料。極簡版退出預設發佈（`yabomish.sh` 仍可安裝）。
   **Yabomish-精簡.pkg／全量.pkg 為選配**：需 Developer ID Installer 憑證（存在時自動偵測並簽署，`WITH_PKG=1` 強制產出未簽署測試版）；notarytool 公證流程涵蓋 DMG 與 pkg
 - **Emoji 聯想可調整與關閉** — 設定程式「聯想與詞庫」頁的聯想層順序新增第四張「Emoji 聯想」卡片（原為硬編碼固定排最前且無法關閉）：拖到最前維持既有行為、移到其他位置則文字聯想優先（聯想列 10 格有空位才顯示 Emoji）、點擊卡片完全關閉。此偏好為全域設定，不隨語境設定檔切換；MINIMAL 版與極簡安裝（無 emoji 字元對照表）不受影響

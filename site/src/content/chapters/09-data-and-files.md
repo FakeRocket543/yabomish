@@ -17,7 +17,6 @@ Yabomish 的使用者資料存放於 `~/Library/Application Support/Yabomish/`�
 ├── tables/                    # 擴充表資料夾
 │   └── user_shortcuts.txt     # 使用者快捷碼
 ├── commands.json              # 自訂 ,, 指令
-├── user_phrases.txt           # 使用者自訂詞組
 └── debug.log                  # Debug 日誌（開啟時才產生）
 ```
 
@@ -27,12 +26,12 @@ Yabomish 的使用者資料存放於 `~/Library/Application Support/Yabomish/`�
 |------|------|
 | `liu.cin` | 使用者自行取得的嘸蝦米 CIN 字表原始檔。透過設定程式匯入；若 `~/Library/Application Support/Yabomish/liu.cin` 不存在，會向後相容 `~/Library/YabomishIM/liu.cin`。 |
 | `liu.bin` | 由 `liu.cin` 在裝置上編譯而成的二進位格式。採用 mmap zero-copy 載入，啟動極快。 |
-| `freq.db` | SQLite 資料庫，記錄 unigram、bigram、trigram 字頻。使用 WAL 模式，每 500 次自動 decay。 |
+| `freq.db` | SQLite 資料庫，記錄 unigram、bigram、trigram 字頻與 `lookup_history` 查字歷史（上限 1000 筆）。使用 WAL 模式，每 500 次自動 decay。 |
 | `tables/` | 擴充表資料夾。可自行新增 tab-separated 格式的 `.txt` 檔。 |
 | `user_shortcuts.txt` | 空碼快捷碼綁定，由設定程式的「快捷碼」分頁管理。 |
-| `user_phrases.txt` | 使用者自訂詞組。 |
 | `commands.json` | 自訂 `,,` 指令設定檔。 |
 | `debug.log` | 開啟 Debug 模式後產生的日誌檔，位於 `~/Library/Application Support/Yabomish/debug.log`。 |
+| `bigram.bin` 等 | 網路版安裝（DMG）首次打字時自動下載的語料檔（`bigram`／`trigram`／`word_ngram`／`phrases`／`chengyu`／`ner_phrases`／`yoji`／`terms_*`／`emoji_char_map`／`corpus_manifest`），解壓至同一目錄，下載完成即時生效。 |
 
 > **提示**：修改擴充表後，輸入 `,,RL` + 空白鍵即可即時重載，不需重新啟動。
 
@@ -62,7 +61,7 @@ Yabomish 的語料分為四層，由底層到高層依序為：
 - **Layer 0**：最基礎的編碼對應。使用者匯入 `liu.cin` 後編譯為 `liu.bin`。
 - **Layer 1**：排序依據。unigram 字頻由使用者打字習慣累積，bigram/trigram 提供前後文預測。權重為 70% unigram + 30% bigram。
 - **Layer 2**：聯想輸入的詞級來源。可在設定程式中切換萌典、維基百科斷詞、新聞斷詞三種語料。
-- **Layer 3**：最上層的詞庫系統。包含一般詞庫（成語、歇後語、台灣俗諺、客語辭典、台灣地名、學科術語、韓語漢字詞、日本熟語等 13 類）和 28 個專業詞典（資訊、商業、醫學、法律等，資料來源為樂詞網 NAER 及維基百科）。兩岸用詞標記可依使用者偏好降權對側用詞。晶晶體為獨立聯想池。
+- **Layer 3**：最上層的詞庫系統。包含一般詞庫（成語、歇後語、台灣俗諺、客語辭典、台灣地名、學科術語、韓語漢字詞、日本熟語等 12 類）和 28 個專業詞典（資訊、商業、醫學、法律等，資料來源為樂詞網 NAER 及維基百科）。兩岸用詞標記可依使用者偏好降權對側用詞。晶晶體為獨立聯想池。
 
 三層聯想的順序可在設定程式中拖拉調整。
 

@@ -238,7 +238,7 @@ Yabomish 安裝說明（全量版）
 1. 雙擊「安裝 Yabomish.app」，輸入管理員密碼
    （輸入法 → /Library/Input Methods；偏好設定 → /Applications）
 2. 安裝完成會自動開啟「輸入方式」列表：按 + 加入 Yabomish
-3. 首次打字時自動從 GitHub 下載全量語料＋36 部專業詞典（約 100MB，
+3. 首次打字時自動從 GitHub 下載全量語料＋28 部專業詞典（約 100MB，
    SHA-256 驗證後存於 ~/Library/Application Support/Yabomish/）
 離線時打字、查碼、繁簡轉換不受影響，僅聯想功能等語料就緒後生效。
 
@@ -254,7 +254,7 @@ Yabomish 安裝說明（精簡版）
 3. 首次打字時自動從 GitHub 下載聯想語料（約 15MB，
    SHA-256 驗證後存於 ~/Library/Application Support/Yabomish/）
 離線時打字、查碼、繁簡轉換不受影響，僅聯想功能等語料就緒後生效。
-需要 36 部專業詞典請改用「全量版」。
+需要 28 部專業詞典請改用「全量版」。
 
 macOS 14.0+ (Apple Silicon) 適用。
 EOF
@@ -339,7 +339,7 @@ EOF
     chmod +x "$STAGE/scripts/postinstall"
 
     local WELCOME_NOTE="網路版：首次打字時自動從 GitHub 下載聯想語料（約 15MB）；離線時打字、查碼、繁簡轉換不受影響。"
-    [ "$variant" = "full" ] && WELCOME_NOTE="全量版：首次打字時自動從 GitHub 下載全量語料＋36 部專業詞典（約 100MB）。"
+    [ "$variant" = "full" ] && WELCOME_NOTE="全量版：首次打字時自動從 GitHub 下載全量語料＋28 部專業詞典（約 100MB）。"
 
     cat > "$STAGE/res/zh_TW.lproj/welcome.html" <<EOF
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,"PingFang TC";font-size:13px;line-height:1.6}</style></head>
