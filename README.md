@@ -45,6 +45,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | 選字 | 1–9 |
 | 補碼 | `v`/`r`/`s`/`f`（第 2–5 候選） |
 | 萬用碼 | `*`（Shift+8） |
+| 候選中插符號/數字 | Shift+數字列（預設符號 `!@#$%`，可改數字） |
 | 頓號 | `vv` + 空白鍵 |
 | 中英切換 | 快按 Shift（composing 中會先清除字根） |
 | 暫時英文 | 按住 Shift |

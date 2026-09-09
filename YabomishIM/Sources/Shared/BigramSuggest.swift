@@ -49,8 +49,9 @@ final class BigramSuggest {
     }
 
     func suggest(after prev: String, limit: Int = 6) -> [String] {
+        // 以「最後」字元為條件：多字送出（詞/snippet）時才會接對上文（與 iOS 版對齊）
         guard let data, keyCount > 0,
-              let scalar = prev.unicodeScalars.first else { return [] }
+              let scalar = prev.unicodeScalars.last else { return [] }
         let target = scalar.value
         var lo = 0, hi = keyCount - 1
         while lo <= hi {

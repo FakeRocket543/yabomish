@@ -10,6 +10,7 @@
 
 ### 修正
 
+- **字級聯想條件字元取 `.first` → `.last`** — `BigramSuggest.suggest` 原以條件字串的首字元查表，多字送出（詞／snippet）時會接錯上文（例如送出「很好」後以「很」而非「好」預測下一字）；改取尾字，與 iOS 版對齊
 - **網路版語料下載完成後即時生效** — `DataDownloader.ensureData` 原本只下載解壓，沒有任何重載路徑：`WikiCorpus`／`BigramSuggest` 為 singleton、僅在 init 讀檔，首次下載完成后聯想要等輸入法行程重啟才會活。現補上重載鏈（`WikiCorpus.reload()`＋`BigramSuggest.reload()`→`SuggestionEngine.reloadCorpus()`→`InputEngine.reloadSuggestionCorpus()`，於引擎鎖內執行避免與查詢競態），並在下載開始／完成時顯示提示（「下載聯想語料中…」／「聯想語料就緒」）、防重複下載（activateServer 每次切換視窗都會觸發）。失敗維持靜默記錄，下次啟用自動重試
 - **純聯想顯示時空白鍵不收提示** — v0.3.63 起 Enter 會收掉聯想提示並把換行還給 app，但空白鍵輸出空白後提示窗仍滯留。現比照 Enter：輸出空白並收掉提示。注音／拼音反查等組字路徑不受影響
 - **極簡版偏好設定無法編譯** — 未發行的 Shift＋數字鍵區塊引用 `#if !MINIMAL` 下的 `shiftDigitOutput`，`-DMINIMAL` 建置直接編譯失敗；區塊與卡片 helper 補上編譯旗標

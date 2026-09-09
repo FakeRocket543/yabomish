@@ -12,10 +12,10 @@ order: 1
 |------|------|
 | 作業系統 | macOS 14.0 Sonoma 或以上 |
 | 處理器 | Apple Silicon（M1 / M2 / M3 / M4） |
-| 開發工具 | Xcode Command Line Tools |
 | 字表 | 嘸蝦米 CIN 字表（`liu.cin`，使用者自行取得） |
 
-> **注意**：Yabomish 目前僅支援 Apple Silicon。如尚未安裝 Xcode Command Line Tools，請在終端機執行：
+> **注意**：Yabomish 目前僅支援 Apple Silicon。採用 DMG 安裝包（方式一）不需要任何開發工具；
+> 使用原始碼安裝（方式二）需先安裝 Xcode Command Line Tools：
 >
 > ```bash
 > xcode-select --install
@@ -24,6 +24,21 @@ order: 1
 ---
 
 ## 安裝步驟
+
+### 方式一：DMG 安裝包（推薦）
+
+從 [GitHub Releases](https://github.com/FakeRocket543/yabomish/releases) 下載安裝包，雙擊打開：
+
+| 安裝包 | 內容 | 首次下載語料 |
+|--------|------|------------|
+| **Yabomish-精簡.dmg** | 輸入法＋設定程式＋基礎聯想（萌典／維基／新聞、成語、兩岸用詞） | 約 15MB |
+| **Yabomish-全量.dmg** | 同上＋36 部專業詞典 | 約 100MB |
+
+流程：雙擊「安裝 Yabomish.app」→ 管理員授權 → 自動安裝輸入法與設定程式、重啟輸入法，並**自動開啟系統設定的輸入方式列表**（直接按 + 加入 Yabomish）。安裝訊息依系統語言顯示繁中／簡中／英文。
+
+語料在首次打字時自動下載（SHA-256 驗證，存放於 `~/Library/Application Support/Yabomish/`），下載完成即時生效；下載前打字、查碼、繁簡轉換均可正常使用，離線也不受影響。
+
+### 方式二：原始碼安裝（開發者）
 
 ### 1. 取得原始碼
 
@@ -110,6 +125,9 @@ cd yabomish
 ## 更新
 
 當有新版本時：
+
+- **DMG 安裝**：下載新版的 DMG，重新執行一次「安裝 Yabomish.app」即可（覆蓋安裝，使用者資料與字表保留）。
+- **原始碼安裝**：
 
 ```bash
 cd yabomish
