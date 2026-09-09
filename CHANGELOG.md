@@ -5,15 +5,24 @@
 
 ### 新功能
 
+- **聯想預先反白可開啟，預設關閉**（`docs/audits/20260909-suggest-preselect-option.md`）— 接續 0.3.63「Enter 不再代選第一個聯想詞」：剩下的「聯想列第 0 候選預先反白」做成開關，**預設關閉**——升級後純聯想顯示不再反白任何候選，數字鍵仍可直接選詞、方向鍵從第一個候選開始導航；偏好舊觀感者可在設定開啟。僅影響純聯想顯示（組字已空）；組字候選一律反白第一個。設定→輸入功能頁「聯想輸入」旁新卡片
 - **Shift＋數字鍵輸出選項**（`docs/audits/20260908-shift-digit-option.md`）— 候選／聯想顯示中按住 Shift 再按數字列的輸出可選：「符號 !@#$%」（預設，全系統慣例）或「數字 12345」（原行為，聯想中快速插數字的出口）。設定→輸入功能頁兩卡單選。idle 狀態恆為符號；行為與 iOS 版對齊
 
 ### 修正
 
+- **網路版語料下載完成後即時生效** — `DataDownloader.ensureData` 原本只下載解壓，沒有任何重載路徑：`WikiCorpus`／`BigramSuggest` 為 singleton、僅在 init 讀檔，首次下載完成后聯想要等輸入法行程重啟才會活。現補上重載鏈（`WikiCorpus.reload()`＋`BigramSuggest.reload()`→`SuggestionEngine.reloadCorpus()`→`InputEngine.reloadSuggestionCorpus()`，於引擎鎖內執行避免與查詢競態），並在下載開始／完成時顯示提示（「下載聯想語料中…」／「聯想語料就緒」）、防重複下載（activateServer 每次切換視窗都會觸發）。失敗維持靜默記錄，下次啟用自動重試
+- **純聯想顯示時空白鍵不收提示** — v0.3.63 起 Enter 會收掉聯想提示並把換行還給 app，但空白鍵輸出空白後提示窗仍滯留。現比照 Enter：輸出空白並收掉提示。注音／拼音反查等組字路徑不受影響
+- **極簡版偏好設定無法編譯** — 未發行的 Shift＋數字鍵區塊引用 `#if !MINIMAL` 下的 `shiftDigitOutput`，`-DMINIMAL` 建置直接編譯失敗；區塊與卡片 helper 補上編譯旗標
 - **組字中 Shift+8 萬用碼被攔截** — shift 區塊內數字分支排在萬用碼分支之前，組字中（候選非空）按 Shift+8 會變成「送出第一候選＋插入字面 8」，萬用碼幾乎不可達；現萬用碼分支移至最前，一律生效
 - **行為自相矛盾消除** — 原「有候選時 Shift+數字→數字、idle 時→符號」改為「有候選→依偏好、idle→恆符號」
 
 ### 改進
 
+- **發佈改為兩包制：「精簡」與「全量」，各為可雙擊安裝的 DMG（2.8MB），訊息繁／簡／英三語** —
+  `tools/release.sh`（`lite` 預設／`full`）產出 **Yabomish-精簡.dmg** 與 **Yabomish-全量.dmg**：包名即選項，雙擊「安裝 Yabomish.app」→ 管理員授權 → 自動安裝輸入法到 `/Library/Input Methods`、偏好設定到 `/Applications` → 佈署使用者層資源並寫入語料等級偏好（`corpusVariant=lite/full`）→ 重啟輸入法 → **自動開啟系統設定的輸入方式列表**（`?InputSources` 深連結，實測可跳過上層頁面直接按 +）。安裝訊息依系統語言顯示繁中／簡中／英文。
+  差異只在首次打字的自動下載（SHA-256 驗證，存於 `~/Library/Application Support/Yabomish/`，`WikiCorpus.resolvePath` 優先讀取故下載後即生效）：**精簡**＝基礎語料（約 15MB）；**全量**＝全量語料＋36 部專業詞典（約 100MB）。離線時打字、查碼、繁簡轉換不受影響。
+  語料 zip 已備於 `build/`（`yabomish-corpus-{lite,full}-0.3.64.zip`，雜湊見 `build/corpus-hashes.txt`），Release 上傳後以 `tools/make_corpus_manifest.py --tag vX --sha256 <lite> --full-sha256 <full>` 重產清單；manifest 未含 full 段時「全量」自動降級下載基礎語料。極簡版退出預設發佈（`yabomish.sh` 仍可安裝）。
+  **Yabomish-精簡.pkg／全量.pkg 為選配**：需 Developer ID Installer 憑證（存在時自動偵測並簽署，`WITH_PKG=1` 強制產出未簽署測試版）；notarytool 公證流程涵蓋 DMG 與 pkg
 - **Emoji 聯想可調整與關閉** — 設定程式「聯想與詞庫」頁的聯想層順序新增第四張「Emoji 聯想」卡片（原為硬編碼固定排最前且無法關閉）：拖到最前維持既有行為、移到其他位置則文字聯想優先（聯想列 10 格有空位才顯示 Emoji）、點擊卡片完全關閉。此偏好為全域設定，不隨語境設定檔切換；MINIMAL 版與極簡安裝（無 emoji 字元對照表）不受影響
 
 

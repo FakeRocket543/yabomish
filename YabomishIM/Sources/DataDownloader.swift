@@ -19,6 +19,13 @@ enum DataDownloader {
         let url: String?
         let sha256: String?
         let fileName: String?
+        /// corpusVariant == "full" 時使用（全量語料＋專業詞典）；缺漏時退回 lite
+        let full: FullEntry?
+
+        struct FullEntry: Decodable {
+            let url: String?
+            let sha256: String?
+        }
     }
 
     private static let manifest: CorpusManifest? = {
@@ -40,12 +47,22 @@ enum DataDownloader {
 
     /// 語料 zip 下載網址。url 與 sha256 視為一組：manifest 任一缺漏時整組
     /// 退回後備常數，避免「新網址配舊雜湊」造成下載永久失敗。
+    /// corpusVariant == "full"（安裝時選「完整」）且 manifest 有 full 段時用全量語料；
+    /// manifest 缺 full 段則退回 lite zip（優雅降級，避免 404 空手而回）。
     static let dataURL: String = {
+        if YabomishPrefs.corpusVariant == "full",
+           let u = manifest?.full?.url, let s = manifest?.full?.sha256, !s.isEmpty {
+            return u
+        }
         if let u = manifest?.url, let s = manifest?.sha256, !s.isEmpty { return u }
         return fallbackURL
     }()
     /// 預期 SHA-256；空字串或預留值代表略過驗證（語意同舊版 UPDATE_THIS_HASH_ON_RELEASE）
     static let expectedSHA256: String = {
+        if YabomishPrefs.corpusVariant == "full",
+           let u = manifest?.full?.url, let s = manifest?.full?.sha256, !s.isEmpty {
+            return s
+        }
         if let u = manifest?.url, let s = manifest?.sha256, !s.isEmpty { return s }
         return fallbackSHA256
     }()
@@ -54,6 +71,10 @@ enum DataDownloader {
 
     static let supportDir = AppConstants.sharedDir
     private static let marker = "bigram.bin"
+
+    /// 下載進行中旗標（含鎖）：activateServer 每次切換視窗都會觸發 ensureData
+    private static let downloadLock = NSLock()
+    private static var isDownloading = false
 
     static var isDataAvailable: Bool {
         // Check App Support first, then bundle Resources
@@ -114,13 +135,28 @@ enum DataDownloader {
     static func ensureData(completion: @escaping (Bool) -> Void) {
         if isDataAvailable { completion(true); return }
 
+        // 防重複下載：activateServer 每次切換視窗都會觸發，下載期間的重入
+        // 直接略過（由進行中的下載負責回報）
+        downloadLock.lock()
+        if isDownloading {
+            downloadLock.unlock()
+            DebugLog.log("YabomishIM: 語料下載進行中，略過重複觸發")
+            completion(false); return
+        }
+        isDownloading = true
+        downloadLock.unlock()
+        let finish: (Bool) -> Void = { ok in
+            downloadLock.lock(); isDownloading = false; downloadLock.unlock()
+            completion(ok)
+        }
+
         DebugLog.log("YabomishIM: 語料不存在（v\(manifestVersion)），開始下載 \(dataURL)")
-        guard let url = URL(string: dataURL) else { completion(false); return }
+        guard let url = URL(string: dataURL) else { finish(false); return }
 
         let task = URLSession.shared.downloadTask(with: url) { tmpURL, response, error in
             guard let tmpURL = tmpURL, error == nil else {
                 DebugLog.log("YabomishIM: 下載失敗 — \(error?.localizedDescription ?? "unknown")")
-                completion(false)
+                finish(false)
                 return
             }
             do {
@@ -138,12 +174,12 @@ enum DataDownloader {
                     guard let actual = sha256(of: URL(fileURLWithPath: zipPath)) else {
                         DebugLog.log("YabomishIM: SHA-256 計算失敗")
                         try? fm.removeItem(atPath: zipPath)
-                        completion(false); return
+                        finish(false); return
                     }
                     guard actual == expectedSHA256 else {
                         DebugLog.log("YabomishIM: SHA-256 不符 expected=\(expectedSHA256) actual=\(actual)")
                         try? fm.removeItem(atPath: zipPath)
-                        completion(false); return
+                        finish(false); return
                     }
                 }
 
@@ -151,16 +187,16 @@ enum DataDownloader {
                 guard safeUnzip(zipPath: zipPath, destDir: supportDir) else {
                     DebugLog.log("YabomishIM: 解壓失敗或偵測到不安全路徑")
                     try? fm.removeItem(atPath: zipPath)
-                    completion(false); return
+                    finish(false); return
                 }
 
                 try? fm.removeItem(atPath: zipPath)
                 let ok = fm.fileExists(atPath: supportDir + "/" + marker)
                 DebugLog.log("YabomishIM: 語料下載\(ok ? "完成" : "失敗（解壓後找不到檔案）")")
-                completion(ok)
+                finish(ok)
             } catch {
                 DebugLog.log("YabomishIM: 解壓失敗 — \(error.localizedDescription)")
-                completion(false)
+                finish(false)
             }
         }
         task.resume()

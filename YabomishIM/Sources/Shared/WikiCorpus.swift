@@ -121,6 +121,19 @@ final class WikiCorpus {
         reloadDomains()
     }
 
+    /// 語料下載完成後重讀：與 init 同一組載入器。各 loader 皆為取代語意
+    /// （讀檔失敗僅保留原狀），重複呼叫安全。解析約 15MB 表需數秒，
+    /// 呼叫端應在 InputEngine.sync 內執行，避免與查詢競態。
+    func reload() {
+        loadTrigram()
+        loadWordBigram()
+        loadWordNews()
+        loadJingjing()
+        loadEmojiMap()
+        loadRegionSets()
+        reloadDomains()
+    }
+
     private func resolvePath(name: String, ext: String) -> String? {
         let shared = AppConstants.sharedDir + "/\(name).\(ext)"
         if FileManager.default.fileExists(atPath: shared) { return shared }

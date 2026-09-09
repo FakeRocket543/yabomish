@@ -303,10 +303,20 @@ class YabomishInputController: IMKInputController {
             }
         }
         #if !MINIMAL
-        // 極簡版不含語料，不應默默向 GitHub 下載（安裝器宣稱 ~2MB）
+        // 網路版（dl）安裝：首次啟用自動下載語料。完成後即時重載，不需重啟輸入法。
+        // 失敗時靜默（僅記錄），下次啟用自動重試；離線時打字／查碼不受影響。
         if !DataDownloader.isDataAvailable {
-            DataDownloader.ensureData { ok in
-                if !ok { DebugLog.log("YabomishIM: 語料尚未下載，聯想/重排功能停用") }
+            showModeToast("下載聯想語料中…")
+            DataDownloader.ensureData { [weak self] ok in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    guard ok else {
+                        DebugLog.log("YabomishIM: 語料尚未下載，聯想/重排功能停用")
+                        return
+                    }
+                    self.engine.reloadSuggestionCorpus()
+                    self.showModeToast("聯想語料就緒")
+                }
             }
         }
         #endif
@@ -459,7 +469,14 @@ extension YabomishInputController {
         // Special keys
         switch keyCode {
         case 49: // Space
-            if engine.composing.isEmpty { return false }
+            if engine.composing.isEmpty {
+                // 純聯想顯示（組字已空）：空白鍵輸出空白，並比照 Enter 收掉提示
+                if !engine.currentCandidates.isEmpty {
+                    engine.clearCandidates()
+                    panel.hide()
+                }
+                return false
+            }
             engine.handleSpace()
             return true
         case 51: // Backspace
@@ -643,9 +660,16 @@ extension YabomishInputController {
             if keyCode == 49 { panel.pageDown(); return true }
             if navigateCandidates(keyCode) { return true }
             if keyCode == 48 { panel.pageDown(); return true }
-            if keyCode == 36, let sel = panel.selectedCandidate() {
-                let idx = candidateIndex(of: sel)
-                engine.selectCandidate(at: idx)
+            if keyCode == 36 {
+                // 無反白（純聯想顯示＋預選關閉）時 Enter 不代選，換行還給 app
+                if let sel = panel.selectedCandidate() {
+                    let idx = candidateIndex(of: sel)
+                    engine.selectCandidate(at: idx)
+                } else {
+                    engine.clearCandidates()
+                    panel.hide()
+                    return false
+                }
                 return true
             }
             return true
@@ -681,9 +705,16 @@ extension YabomishInputController {
             if keyCode == 49 { panel.pageDown(); return true }
             if navigateCandidates(keyCode) { return true }
             if keyCode == 48 { panel.pageDown(); return true }
-            if keyCode == 36, let sel = panel.selectedCandidate() {
-                let idx = candidateIndex(of: sel)
-                engine.selectPinyinCandidate(at: idx)
+            if keyCode == 36 {
+                // 無反白（純聯想顯示＋預選關閉）時 Enter 不代選，換行還給 app
+                if let sel = panel.selectedCandidate() {
+                    let idx = candidateIndex(of: sel)
+                    engine.selectPinyinCandidate(at: idx)
+                } else {
+                    engine.clearCandidates()
+                    panel.hide()
+                    return false
+                }
                 return true
             }
             return true
@@ -863,7 +894,11 @@ extension YabomishInputController: InputEngineDelegate {
         }
 
         panel.modeTag = engine.currentModeLabel
-        panel.show(candidates: candidates, selKeys: engine.selKeys, at: origin, composing: engine.composing)
+        // 純聯想顯示（組字已空）依偏好決定是否預先反白第一個候選；
+        // 組字候選一律反白第一個
+        let preselect = !engine.composing.isEmpty || YabomishPrefs.suggestPreselect
+        panel.show(candidates: candidates, selKeys: engine.selKeys, at: origin, composing: engine.composing,
+                   preselectFirst: preselect)
     }
 
     // MARK: - Cursor rect (OpenVanilla approach, fixes Chrome omnibox)

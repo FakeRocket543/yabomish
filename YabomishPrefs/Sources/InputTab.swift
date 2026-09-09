@@ -12,6 +12,7 @@ private let inputOptions: [InputOption] = {
     var opts: [InputOption] = []
     #if !MINIMAL
     opts.append(.init(id: "suggestEnabled", label: "聯想輸入", icon: "lightbulb", desc: "送字後推薦候選"))
+    opts.append(.init(id: "suggestPreselect", label: "聯想預先反白", icon: "highlighter", desc: "反白聯想列第一個候選（預設關）"))
     #endif
     opts += [
     .init(id: "autoCommit",           label: "自動送字",  icon: "arrow.right.circle",    desc: "滿碼自動送出"),
@@ -116,6 +117,7 @@ struct InputTab: View {
                 }
 
                 // ── Shift+數字鍵輸出 ──
+                #if !MINIMAL
                 SectionDivider()
                 Label("Shift＋數字鍵（候選顯示時）", systemImage: "shift").font(Typo.h2)
                 Text("候選字／聯想顯示中，按住 Shift 再按數字列的輸出。閒置狀態恆為符號；組字中 Shift+8 萬用碼不受影響。")
@@ -124,6 +126,7 @@ struct InputTab: View {
                     shiftDigitCard("symbol", label: "符號 !@#$%", icon: "exclamationmark", desc: "全系統慣例（預設）")
                     shiftDigitCard("digit", label: "數字 12345", icon: "number", desc: "候選顯示時快速輸入數字")
                 }
+                #endif
 
                 // ── 固定排序 ──
                 SectionDivider()
@@ -272,6 +275,7 @@ struct InputTab: View {
                            icon: opt.icon) { store.panelPosition = opt.id }
     }
 
+    #if !MINIMAL
     @ViewBuilder
     private func shiftDigitCard(_ id: String, label: String, icon: String, desc: String) -> some View {
         SelectableCardView(label: label, desc: desc,
@@ -280,11 +284,13 @@ struct InputTab: View {
                            showCheckmark: false,
                            labelLineLimit: 1) { store.shiftDigitOutput = id }
     }
+    #endif
 
     private func binding(for key: String) -> Binding<Bool> {
         switch key {
         #if !MINIMAL
         case "suggestEnabled":        return $store.suggestEnabled
+        case "suggestPreselect":      return $store.suggestPreselect
         #endif
         case "autoCommit":            return $store.autoCommit
         case "showCodeHint":          return $store.showCodeHint

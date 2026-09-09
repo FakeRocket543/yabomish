@@ -37,3 +37,4 @@ yabomish_data/ner/wiki_ner_entities.parquet
 site/node_modules/
 site/dist/
 site/.astro/
+*.pkg

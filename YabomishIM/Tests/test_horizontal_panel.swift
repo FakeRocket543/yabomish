@@ -153,6 +153,79 @@ func testPanelPaging() {
     YabomishPrefs.cursorHorizontal = false
 }
 
+// --- Suggestion preselect (聯想預先反白開關) ---
+
+func testPreselectPrefToggle() {
+    // 預設值（false）由 Snapshot 建立時決定，無法在單一 process 內重載驗證；
+    // 此處驗證 setter／getter round-trip
+    YabomishPrefs.suggestPreselect = false
+    checkEqual(YabomishPrefs.suggestPreselect, false, "set to false")
+    YabomishPrefs.suggestPreselect = true
+    checkEqual(YabomishPrefs.suggestPreselect, true, "set back to true")
+    YabomishPrefs.suggestPreselect = false
+    checkEqual(YabomishPrefs.suggestPreselect, false, "restore default (off)")
+}
+
+func testPanelShowDefaultsToPreselect() {
+    // panel API 層預設反白（組字候選安全）；偏好層預設關，由 controller 傳參決定
+    UserDefaults.standard.set("cursor", forKey: "panelPosition")
+
+    let panel = CandidatePanel.shared
+    let cands = ["好", "號", "毫"]
+    let selKeys: [Character] = ["1", "2", "3"]
+
+    panel.show(candidates: cands, selKeys: selKeys, at: NSPoint(x: 200, y: 400))
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+
+    checkEqual(panel.selectedCandidate(), "好", "default show preselects first candidate")
+
+    panel.hide()
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+}
+
+func testPreselectOffNoHighlight() {
+    UserDefaults.standard.set("cursor", forKey: "panelPosition")
+
+    let panel = CandidatePanel.shared
+    let cands = ["好", "號", "毫"]
+    let selKeys: [Character] = ["1", "2", "3"]
+
+    panel.show(candidates: cands, selKeys: selKeys, at: NSPoint(x: 200, y: 400), preselectFirst: false)
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+
+    check(panel.selectedCandidate() == nil, "preselect off: no highlighted candidate")
+    checkEqual(panel.selectByKey("2"), "號", "preselect off: number key still selects")
+
+    // 方向鍵從未反白狀態進入列表：落在第一個候選
+    panel.moveNext()
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+    checkEqual(panel.selectedCandidate(), "好", "moveNext from none → first")
+
+    panel.moveNext()
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+    checkEqual(panel.selectedCandidate(), "號", "moveNext → second")
+
+    panel.movePrev()
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+    checkEqual(panel.selectedCandidate(), "好", "movePrev → back to first")
+
+    panel.movePrev()
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+    checkEqual(panel.selectedCandidate(), "好", "movePrev at first stays")
+
+    // moveUp 對未反白狀態同樣落在第一個候選
+    panel.hide()
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+    panel.show(candidates: cands, selKeys: selKeys, at: NSPoint(x: 200, y: 400), preselectFirst: false)
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+    panel.moveUp()
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+    checkEqual(panel.selectedCandidate(), "好", "moveUp from none → first")
+
+    panel.hide()
+    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+}
+
 // --- Run ---
 
 @main
@@ -163,11 +236,14 @@ struct TestRunner {
 
         testPrefDefaultFalse()
         testPrefToggle()
+        testPreselectPrefToggle()
         testPanelVerticalLayout()
         testPanelHorizontalLayout()
         testPanelNavigationHorizontal()
         testPanelSelectByKey()
         testPanelPaging()
+        testPanelShowDefaultsToPreselect()
+        testPreselectOffNoHighlight()
 
         print("\n\(passed) passed, \(failed) failed")
         exit(failed > 0 ? 1 : 0)

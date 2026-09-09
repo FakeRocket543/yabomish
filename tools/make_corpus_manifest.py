@@ -44,6 +44,12 @@ def main() -> int:
                     help="manifest 的 version 欄位；預設由 tag 去掉前導 v 推導")
     ap.add_argument("--file-name", dest="file_name", default=None,
                     help="manifest 的 fileName 欄位；預設取網址的檔名部分")
+    ap.add_argument("--full-url", default=None,
+                    help="全量語料 zip（基礎語料＋專業詞典）下載網址；未指定時依 tag 推導 "
+                         "(yabomish-corpus-full-<版本>.zip)")
+    ap.add_argument("--full-sha256", default=None,
+                    help="全量語料 zip 的 SHA-256；提供時 manifest 寫入 full 段，"
+                         "安裝時選「完整」的使用者改下載全量語料")
     ap.add_argument("--output", default=os.path.join("YabomishIM", "Resources",
                                                      "corpus_manifest.json"),
                     help="輸出路徑")
@@ -76,6 +82,22 @@ def main() -> int:
         "fileName": file_name,
     }
 
+    if args.full_sha256:
+        fsha = args.full_sha256.strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", fsha):
+            ap.error("--full-sha256 必須是 64 個十六進位字元：%r" % fsha)
+        full_url = args.full_url if args.full_url else (
+            "https://github.com/%s/releases/download/%s/yabomish-corpus-full-%s.zip"
+            % (args.repo, args.tag, version))
+        fparsed = urlparse(full_url)
+        if fparsed.scheme not in ("http", "https") or not fparsed.netloc:
+            ap.error("--full-url 格式不正確：%r" % full_url)
+        manifest["full"] = {
+            "url": full_url,
+            "sha256": fsha,
+            "fileName": os.path.basename(fparsed.path),
+        }
+
     out_dir = os.path.dirname(os.path.abspath(args.output))
     os.makedirs(out_dir, exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as fh:
@@ -87,6 +109,9 @@ def main() -> int:
     print("  url     : %s" % manifest["url"])
     print("  sha256  : %s" % manifest["sha256"])
     print("  fileName: %s" % manifest["fileName"])
+    if "full" in manifest:
+        print("  full.url : %s" % manifest["full"]["url"])
+        print("  full.sha256: %s" % manifest["full"]["sha256"])
     print("下一步：重新執行 yabomish.sh 建置，把清單帶進 app bundle。")
     return 0
 

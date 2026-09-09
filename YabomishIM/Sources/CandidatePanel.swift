@@ -53,7 +53,8 @@ final class CandidatePanel: NSPanel {
 
     private var candidates: [String] = []
     private var selKeys: [Character] = []
-    private var highlightIndex = 0
+    /// 目前反白的候選索引；nil = 不反白（純聯想顯示且使用者關閉預選）。
+    private var highlightIndex: Int? = 0
     private let pageSize = 9
     private var showGeneration = 0
     var onCandidateSelected: ((String) -> Void)?
@@ -220,9 +221,9 @@ final class CandidatePanel: NSPanel {
         lastA11yNotify = now
         NSAccessibility.post(element: self, notification: .valueChanged)
         // Announce current highlighted candidate for VoiceOver
-        if highlightIndex < candidates.count {
-            let idx = highlightIndex - pageStart + 1
-            let text = "第\(idx)，\(candidates[highlightIndex])"
+        if let hi = highlightIndex, hi < candidates.count {
+            let idx = hi - pageStart + 1
+            let text = "第\(idx)，\(candidates[hi])"
             NSAccessibility.post(element: self,
                                  notification: .announcementRequested,
                                  userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue])
@@ -248,13 +249,14 @@ final class CandidatePanel: NSPanel {
     /// When true, cursor mode falls back to fixed-mode display (incompatible apps)
     var fallbackFixed = false
 
-    func show(candidates: [String], selKeys: [Character], at origin: NSPoint, composing: String = "") {
+    func show(candidates: [String], selKeys: [Character], at origin: NSPoint, composing: String = "",
+              preselectFirst: Bool = true) {
         onMain {
             guard !candidates.isEmpty else { self.hide(); return }
             self.showGeneration += 1
             self.candidates = candidates
             self.selKeys = selKeys
-            self.highlightIndex = 0
+            self.highlightIndex = preselectFirst ? 0 : nil
             self.composingText = composing
 
             if self.isFixed || self.fallbackFixed {
@@ -338,13 +340,32 @@ final class CandidatePanel: NSPanel {
 
     func moveUp() {
         onMain {
-            if self.highlightIndex > 0 { self.highlightIndex -= 1; self.rebuildCurrentMode() }
+            switch self.highlightIndex {
+            case .none:
+                // 未反白時按方向鍵：從第一個候選開始導航
+                self.highlightIndex = 0
+                self.rebuildCurrentMode()
+            case .some(let i) where i > 0:
+                self.highlightIndex = i - 1
+                self.rebuildCurrentMode()
+            default:
+                break
+            }
         }
     }
 
     func moveDown() {
         onMain {
-            if self.highlightIndex < self.candidates.count - 1 { self.highlightIndex += 1; self.rebuildCurrentMode() }
+            switch self.highlightIndex {
+            case .none:
+                self.highlightIndex = 0
+                self.rebuildCurrentMode()
+            case .some(let i) where i < self.candidates.count - 1:
+                self.highlightIndex = i + 1
+                self.rebuildCurrentMode()
+            default:
+                break
+            }
         }
     }
 
@@ -355,13 +376,13 @@ final class CandidatePanel: NSPanel {
     var isFixedMode: Bool { isFixed || fallbackFixed }
 
     func selectedCandidate() -> String? {
-        guard highlightIndex < candidates.count else { return nil }
-        return candidates[highlightIndex]
+        guard let hi = highlightIndex, hi < candidates.count else { return nil }
+        return candidates[hi]
     }
 
     var isVisible_: Bool { isVisible }
 
-    private var pageStart: Int { (highlightIndex / pageSize) * pageSize }
+    private var pageStart: Int { ((highlightIndex ?? 0) / pageSize) * pageSize }
 
     private func keyLabel(_ c: Character) -> String {
         Self.fullWidthDigitMap[c] ?? String(c)

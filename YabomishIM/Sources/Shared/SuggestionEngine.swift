@@ -5,6 +5,7 @@ import Foundation
 final class SuggestionEngine {
     static let shared = SuggestionEngine()
     func suggest(recentCommitted: String, lastText: String) -> [String] { [] }
+    func reloadCorpus() {}
 }
 #else
 /// Suggestion engine: generates suggestions after commit.
@@ -20,6 +21,13 @@ final class SuggestionEngine {
         self.wikiCorpus = wikiCorpus
         self.bigramSuggest = bigramSuggest
         self.prefs = prefs
+    }
+
+    /// 語料下載完成後重讀（網路版首啟）。呼叫端需在 InputEngine.sync 內，
+    /// 避免與 suggest() 查詢競態；重讀耗時與啟動相當。
+    func reloadCorpus() {
+        wikiCorpus.reload()
+        bigramSuggest.reload()
     }
 
     private let skipChars: Set<String> = ["的","了","在","是","和","與","或","而","但","也","都","就","被","把","讓","給","從","到","對","為","著","過","嗎","呢","吧","啊","喔","哦","啦"]

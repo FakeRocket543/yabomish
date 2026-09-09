@@ -39,6 +39,8 @@ struct YabomishPrefs {
         var charSuggest = true
         var emojiSuggest = true
         var emojiFirst = true
+        var suggestPreselect = false
+        var corpusVariant = "lite"
         var shiftDigitOutput = "symbol"
         #if os(iOS)
         var punctuationPairing = true
@@ -91,6 +93,8 @@ struct YabomishPrefs {
         s.charSuggest = defaults.object(forKey: "charSuggest") as? Bool ?? true
         s.emojiSuggest = defaults.object(forKey: "emojiSuggest") as? Bool ?? true
         s.emojiFirst = defaults.object(forKey: "emojiFirst") as? Bool ?? true
+        s.suggestPreselect = defaults.object(forKey: "suggestPreselect") as? Bool ?? false
+        s.corpusVariant = defaults.string(forKey: "corpusVariant") ?? "lite"
         s.shiftDigitOutput = defaults.string(forKey: "shiftDigitOutput") ?? "symbol"
         #if os(iOS)
         s.punctuationPairing = defaults.object(forKey: "punctuationPairing") as? Bool ?? true
@@ -348,7 +352,7 @@ struct YabomishPrefs {
                 "appearanceMode",
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
-                "emojiSuggest", "emojiFirst", "shiftDigitOutput",
+                "emojiSuggest", "emojiFirst", "suggestPreselect", "corpusVariant", "shiftDigitOutput",
                 "punctuationPairing", "debugMode", "highContrast", "syncFolder", "currentContext",
                 "domainOrder"
             ]
@@ -470,6 +474,33 @@ struct YabomishPrefs {
         }
         set {
             defaults.set(newValue, forKey: "emojiFirst")
+            refreshSnapshot()
+        }
+    }
+
+    /// 語料下載等級（網路版）："lite"（預設，基礎語料約 15MB）或 "full"（全量語料＋專業詞典）。
+    /// 由安裝程式在安裝時寫入；只有純聯想顯示資料不存在時的下載行為會參考它。
+    static var corpusVariant: String {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.corpusVariant
+        }
+        set {
+            defaults.set(newValue, forKey: "corpusVariant")
+            refreshSnapshot()
+        }
+    }
+
+    /// 聯想列預先反白第一個候選（預設關：純聯想顯示不反白，升級使用者如偏好舊觀感可開啟）。
+    /// 關閉時數字鍵仍可直接選詞、方向鍵從第一個候選開始導航。
+    /// 僅影響純聯想顯示（組字已空）；組字候選一律反白第一個，不受此偏好影響。
+    static var suggestPreselect: Bool {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.suggestPreselect
+        }
+        set {
+            defaults.set(newValue, forKey: "suggestPreselect")
             refreshSnapshot()
         }
     }

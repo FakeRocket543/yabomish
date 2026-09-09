@@ -111,6 +111,10 @@ final class InputEngine {
     func clearCandidates() { sync { _currentCandidates = [] } }
     func setCandidates(_ c: [String]) { sync { _currentCandidates = c } }
 
+    /// 語料下載完成後重載聯想資料（網路版首次啟用）。
+    /// 於引擎鎖內執行，避免與 suggest() 查詢競態；重讀耗時與啟動相當。
+    func reloadSuggestionCorpus() { sync { suggestionEngine.reloadCorpus() } }
+
     /// Internal computed (called from within queue)
     private var _currentModeName: String {
         if _isZhuyinMode { return "zh" }

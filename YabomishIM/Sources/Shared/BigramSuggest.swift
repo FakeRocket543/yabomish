@@ -20,6 +20,17 @@ final class BigramSuggest {
     private var valuesOffset = 0
 
     init() {
+        load()
+    }
+
+    /// 語料下載完成後重讀：先清狀態再載，讀檔失敗即維持空值（字級聯想停用）。
+    func reload() {
+        data = nil; keyCount = 0
+        keysOffset = 0; offsetsOffset = 0; countsOffset = 0; valuesOffset = 0
+        load()
+    }
+
+    private func load() {
         let shared = AppConstants.sharedDir + "/bigram.bin"
         let path = FileManager.default.fileExists(atPath: shared) ? shared
                  : Bundle.main.path(forResource: "bigram", ofType: "bin")

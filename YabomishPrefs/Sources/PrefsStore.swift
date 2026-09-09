@@ -41,6 +41,12 @@ import Foundation
         get { access(keyPath: \.emojiFirst); return ud.object(forKey: "emojiFirst") as? Bool ?? true }
         set { withMutation(keyPath: \.emojiFirst) { ud.set(newValue, forKey: "emojiFirst") }; postChange() }
     }
+    /// 聯想列預先反白第一個候選（預設關）。關閉時聯想顯示不反白，
+    /// 數字鍵仍可選詞、方向鍵從第一個候選開始導航
+    var suggestPreselect: Bool {
+        get { access(keyPath: \.suggestPreselect); return ud.object(forKey: "suggestPreselect") as? Bool ?? false }
+        set { withMutation(keyPath: \.suggestPreselect) { ud.set(newValue, forKey: "suggestPreselect") }; postChange() }
+    }
 
     // MARK: - Domain ordering
 
