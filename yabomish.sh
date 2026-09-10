@@ -143,10 +143,9 @@ install_im() {
     killall YabomishIM 2>/dev/null || true
     sleep 1
 
-    # Force-register the input method so no logout needed
-    if [ -x /System/Library/Frameworks/InputMethodKit.framework/Versions/A/Resources/imklaunchagent ]; then
-        /System/Library/Frameworks/InputMethodKit.framework/Versions/A/Resources/imklaunchagent 2>/dev/null || true
-    fi
+    # Force the system to re-scan input sources (imklaunchagent is blocked by
+    # Launch Constraint Violation on macOS 26+ — kills TextInputMenuAgent instead)
+    killall TextInputMenuAgent 2>/dev/null || true
 
     # Try launching directly
     open "$INSTALL_DIR/YabomishIM.app" 2>/dev/null || true
@@ -163,7 +162,9 @@ install_im() {
 install_prefs() {
     [ ! -d "$PREFS_APP" ] && err "請先選 1 或 2 編譯"
     printf "${C}> 安裝偏好設定...${N}\n"
-    cp -R "$PREFS_APP" /Applications/
+sudo rm -rf /Applications/YabomishPrefs.app
+sudo cp -R "$PREFS_APP" /Applications/
+sudo chmod -R a+rX /Applications/YabomishPrefs.app
     ok "YabomishPrefs.app -> /Applications/"
 }
 
@@ -172,7 +173,7 @@ do_uninstall() {
     [[ "$c" =~ ^[Yy]$ ]] || { echo "已取消。"; return; }
     killall YabomishIM 2>/dev/null || true; sleep 0.5
     sudo rm -rf "$INSTALL_DIR/YabomishIM.app"
-    rm -rf /Applications/YabomishPrefs.app
+sudo rm -rf /Applications/YabomishPrefs.app
     defaults delete $IM_BUNDLE_ID 2>/dev/null || true
     printf "一併刪除使用者資料（字表、字頻）？[y/N] "; read -r c
     [[ "$c" =~ ^[Yy]$ ]] && {

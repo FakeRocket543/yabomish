@@ -208,7 +208,7 @@ mkdir -p "$UD/tables"
 defaults write com.yabomishim.inputmethod.YabomishIM corpusVariant "$VARIANT"
 
 killall YabomishIM 2>/dev/null || true; sleep 1
-[ -x /System/Library/Frameworks/InputMethodKit.framework/Versions/A/Resources/imklaunchagent ] && /System/Library/Frameworks/InputMethodKit.framework/Versions/A/Resources/imklaunchagent 2>/dev/null || true
+killall TextInputMenuAgent 2>/dev/null || true
 open "/Library/Input Methods/YabomishIM.app" 2>/dev/null || true
 
 osascript -e "display dialog \"$L_DONE\n\n$L_STEP\n\n$L_NOTE\" buttons {\"$L_BTN\"} default button 1 with title \"Yabomish\"" || true
@@ -338,7 +338,7 @@ if [ ! -f "$UD/commands.json" ] && [ -f "$SCRIPT_DIR/commands-example.json" ]; t
     chown "$CONSOLE_USER" "$UD/commands.json"
 fi
 
-[ -x /System/Library/Frameworks/InputMethodKit.framework/Versions/A/Resources/imklaunchagent ] && /System/Library/Frameworks/InputMethodKit.framework/Versions/A/Resources/imklaunchagent 2>/dev/null || true
+killall TextInputMenuAgent 2>/dev/null || true
 launchctl asuser "$CONSOLE_UID" /usr/bin/open "/Library/Input Methods/YabomishIM.app" 2>/dev/null || true
 launchctl asuser "$CONSOLE_UID" /usr/bin/open "x-apple.systempreferences:com.apple.Keyboard-Settings.extension?InputSources" 2>/dev/null || true
 
