@@ -40,6 +40,8 @@
 	<array>
 		<string>zh-Hant</string>
 	</array>
+	<key>tsInputMethodIconFileKey</key>
+	<string>icon.tiff</string>
 	<key>tsInputMethodKeyboardLayoutOverrideKey</key>
 	<string>com.apple.keylayout.ABC</string>
 </dict>
