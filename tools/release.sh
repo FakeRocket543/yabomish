@@ -217,7 +217,16 @@ EOF
     sed -i '' "s/__BAKED_VARIANT__/$variant/" "$APP/Contents/MacOS/install"
     chmod +x "$APP/Contents/MacOS/install"
 
+    # 巢狀 App 由內而外逐一簽署：--deep 對巢狀 bundle 不會套用 runtime/timestamp，
+    # 曾導致公證 Invalid（nested binary 缺 secure timestamp 與 hardened runtime）
     codesign --force --deep --sign "$DEVELOPER_ID" \
+        --entitlements "$ROOT/tools/YabomishIM.entitlements" \
+        --options runtime --timestamp \
+        "$APP/Contents/Resources/YabomishIM.app"
+    codesign --force --deep --sign "$DEVELOPER_ID" \
+        --options runtime --timestamp \
+        "$APP/Contents/Resources/YabomishPrefs.app"
+    codesign --force --sign "$DEVELOPER_ID" \
         --options runtime --timestamp "$APP"
     codesign --verify --deep --strict "$APP"
     ok "安裝 Yabomish.app ($variant)"
@@ -463,13 +472,13 @@ notarize() {
     info "Submitting $(basename "$DMG_NAME") to Apple notary service..."
     xcrun notarytool submit "$DMG_NAME" "${args[@]}" --wait
     info "Stapling $(basename "$DMG_NAME")..."
-    xcrun notarytool staple "$DMG_NAME"
+    xcrun stapler staple "$DMG_NAME"
     ok "Notarization complete: $DMG_NAME"
 
     if [ -f "$PKG_OUT" ]; then
         info "Submitting $(basename "$PKG_OUT") to Apple notary service..."
         xcrun notarytool submit "$PKG_OUT" "${args[@]}" --wait
-        xcrun notarytool staple "$PKG_OUT"
+        xcrun stapler staple "$PKG_OUT"
         ok "Notarization complete: $PKG_OUT"
     fi
 }
