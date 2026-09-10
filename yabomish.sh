@@ -123,13 +123,13 @@ install_im() {
 
     # 套用切換顯示設定到 Info.plist（狀態列 / 輸入法名稱）
     local PLIST="$INSTALL_DIR/YabomishIM.app/Contents/Info.plist"
-    local LBL; LBL=$(defaults read $IM_BUNDLE_ID switchDisplay 2>/dev/null || defaults read $IM_BUNDLE_ID menuBarLabel 2>/dev/null || echo "繁中")
+    local LBL; LBL=$(defaults read $IM_BUNDLE_ID switchDisplay 2>/dev/null || defaults read $IM_BUNDLE_ID menuBarLabel 2>/dev/null || echo "Yabo")
     case "$LBL" in
-        yabo)          LBL="Yabo";;
-        yabomish|Yabo) LBL="Yabomish";;
+        Yabo|yabo)     LBL="Yabo";;
+        yabomish|Yabomish) LBL="Yabomish";;
         繁中)          LBL="繁中";;
         🦐)            LBL="🦐";;
-        *)             LBL="繁中";;
+        *)             LBL="Yabo";;
     esac
     sudo /usr/libexec/PlistBuddy -c "Set :CFBundleName $LBL" "$PLIST" || true
     sudo /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $LBL" "$PLIST" || true

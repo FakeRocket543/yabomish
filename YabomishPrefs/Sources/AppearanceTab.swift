@@ -20,8 +20,9 @@ private let iconOptions: [ToggleOption] = [
 ]
 
 private let switchOptions: [ToggleOption] = [
-    .init(id: "繁中",     label: "繁中",     icon: "character",     desc: "傳統模式名"),
+    .init(id: "Yabo",     label: "Yabo",     icon: "textformat.abc", desc: "短名（推薦）"),
     .init(id: "Yabomish", label: "Yabomish", icon: "keyboard",      desc: "英文品牌名"),
+    .init(id: "繁中",     label: "繁中",     icon: "character",     desc: "傳統模式名"),
     .init(id: "🦐",       label: "🦐",       icon: "face.smiling",  desc: "蝦子 emoji"),
 ]
 

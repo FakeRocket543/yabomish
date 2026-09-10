@@ -110,7 +110,7 @@ import Foundation
         set { withMutation(keyPath: \.iconDirection) { ud.set(newValue, forKey: "iconDirection") }; postChange() }
     }
     var switchDisplay: String {
-        get { access(keyPath: \.switchDisplay); return ud.string(forKey: "switchDisplay") ?? "繁中" }
+        get { access(keyPath: \.switchDisplay); return ud.string(forKey: "switchDisplay") ?? "Yabo" }
         set { withMutation(keyPath: \.switchDisplay) { ud.set(newValue, forKey: "switchDisplay") }; postChange() }
     }
     var debugMode: Bool {

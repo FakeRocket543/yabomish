@@ -26,7 +26,7 @@ struct YabomishPrefs {
         var showCodeHint = false
         var toastFontSize: CGFloat = 36.0
         var showActivateToast = true
-        var switchDisplay = "繁中"
+        var switchDisplay = "Yabo"
         var appearanceMode = "auto"
         var iconDirection = "left"
         var homophoneMultiReading = false
@@ -80,7 +80,7 @@ struct YabomishPrefs {
         s.showCodeHint = defaults.object(forKey: "showCodeHint") as? Bool ?? false
         s.toastFontSize = CGFloat(defaults.object(forKey: "toastFontSize") as? Double ?? 36.0)
         s.showActivateToast = defaults.object(forKey: "showActivateToast") as? Bool ?? true
-        s.switchDisplay = defaults.string(forKey: "switchDisplay") ?? "繁中"
+        s.switchDisplay = defaults.string(forKey: "switchDisplay") ?? "Yabo"
         s.appearanceMode = defaults.string(forKey: "appearanceMode") ?? "auto"
         s.iconDirection = defaults.string(forKey: "iconDirection") ?? "left"
         s.homophoneMultiReading = defaults.object(forKey: "homophoneMultiReading") as? Bool ?? false
