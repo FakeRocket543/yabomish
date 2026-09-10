@@ -105,10 +105,6 @@ import Foundation
         get { access(keyPath: \.showActivateToast); return ud.object(forKey: "showActivateToast") as? Bool ?? true }
         set { withMutation(keyPath: \.showActivateToast) { ud.set(newValue, forKey: "showActivateToast") }; postChange() }
     }
-    var iconDirection: String {
-        get { access(keyPath: \.iconDirection); return ud.string(forKey: "iconDirection") ?? "left" }
-        set { withMutation(keyPath: \.iconDirection) { ud.set(newValue, forKey: "iconDirection") }; postChange() }
-    }
     var switchDisplay: String {
         get {
             access(keyPath: \.switchDisplay)

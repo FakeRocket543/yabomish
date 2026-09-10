@@ -116,10 +116,6 @@ install_im() {
     sudo cp -R "$IM_APP" "$INSTALL_DIR/"
     sudo chmod -R a+rX "$INSTALL_DIR/YabomishIM.app"
 
-    # 套用已有的蝦頭方向設定（不詢問，可從管理程式調整）
-    local DIR="$INSTALL_DIR/YabomishIM.app/Contents/Resources"
-    local ICON; ICON=$(defaults read $IM_BUNDLE_ID iconDirection 2>/dev/null || echo "left")
-    [ "$ICON" = "right" ] && [ -f "$DIR/icon_right.tiff" ] && sudo cp "$DIR/icon_right.tiff" "$DIR/icon.tiff"
 
     # 套用切換顯示設定到 Info.plist（狀態列 / 輸入法名稱）
     local PLIST="$INSTALL_DIR/YabomishIM.app/Contents/Info.plist"

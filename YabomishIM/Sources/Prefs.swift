@@ -28,7 +28,6 @@ struct YabomishPrefs {
         var showActivateToast = true
         var switchDisplay = "Yabo"
         var appearanceMode = "auto"
-        var iconDirection = "left"
         var homophoneMultiReading = false
         var homophoneAutoExit = false
         var suggestEnabled = true
@@ -84,7 +83,6 @@ struct YabomishPrefs {
         // 舊值遷移：繁中／🦐 已移除，統一為 Yabo
         if s.switchDisplay != "Yabo" && s.switchDisplay != "Yabomish" { s.switchDisplay = "Yabo" }
         s.appearanceMode = defaults.string(forKey: "appearanceMode") ?? "auto"
-        s.iconDirection = defaults.string(forKey: "iconDirection") ?? "left"
         s.homophoneMultiReading = defaults.object(forKey: "homophoneMultiReading") as? Bool ?? false
         s.homophoneAutoExit = defaults.object(forKey: "homophoneAutoExit") as? Bool ?? false
         s.suggestEnabled = defaults.object(forKey: "suggestEnabled") as? Bool ?? true
@@ -306,17 +304,6 @@ struct YabomishPrefs {
         }
     }
 
-    static var iconDirection: String {
-        get {
-            snapshotLock.lock(); defer { snapshotLock.unlock() }
-            return _snapshot.iconDirection
-        }
-        set {
-            defaults.set(newValue, forKey: "iconDirection")
-            refreshSnapshot()
-        }
-    }
-
     /// 同音字查詢包含多音字的罕見讀音（如「色」的 ㄕㄜˋ）
     static var homophoneMultiReading: Bool {
         get {
@@ -350,7 +337,7 @@ struct YabomishPrefs {
             let knownKeys = [
                 "autoCommit", "panelPosition", "fixedAlignment", "fixedAlpha", "fixedYOffset",
                 "fontSize", "fixedFontSize", "showCodeHint", "zhuyinReverseLookup",
-                "toastFontSize", "showActivateToast", "menuBarLabel", "iconDirection",
+                "toastFontSize", "showActivateToast", "menuBarLabel",
                 "appearanceMode",
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",

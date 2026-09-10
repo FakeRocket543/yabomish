@@ -14,10 +14,6 @@ private let toastOptions: [ToggleOption] = [
     .init(id: "debugMode",         label: "除錯記錄",   icon: "ladybug",           desc: "記錄操作日誌"),
 ]
 
-private let iconOptions: [ToggleOption] = [
-    .init(id: "left",  label: "← 向左", icon: "arrow.left",  desc: "蝦頭朝左"),
-    .init(id: "right", label: "→ 向右", icon: "arrow.right", desc: "蝦頭朝右"),
-]
 
 private let switchOptions: [ToggleOption] = [
     .init(id: "Yabo",     label: "Yabo",     icon: "textformat.abc", desc: "短名（推薦）"),
@@ -32,13 +28,6 @@ private let appearanceOptions: [ToggleOption] = [
 
 struct AppearanceTab: View {
     @Bindable var store: PrefsStore
-
-    /// 蝦頭方向套用中（osascript 授權在背景執行，避免視窗凍結感）
-    @State private var iconApplying = false
-    /// 蝦頭方向的非封鎖小提示列（取消授權／套用結果）
-    @State private var iconNotice: IconNotice?
-    /// 蝦頭方向真的失敗時的 alert 內文
-    @State private var iconError: String?
 
     private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
@@ -162,38 +151,6 @@ struct AppearanceTab: View {
                     }
                 }
 
-                SectionDivider()
-                HStack(spacing: 8) {
-                    Label("蝦頭方向", systemImage: "shippingbox").font(Typo.h2)
-                    if iconApplying {
-                        ProgressView().controlSize(.small)
-                        Text("套用中⋯").font(Typo.caption).foregroundStyle(.secondary)
-                    }
-                }
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    ForEach(iconOptions) { opt in
-                        iconCard(opt)
-                    }
-                }
-                Text("套用時需管理者授權，圖示於輸入法重啟後更新；若未立即生效，切換一次輸入法即可。")
-                    .font(Typo.caption)
-                    .foregroundStyle(.secondary)
-                if let notice = iconNotice {
-                    HStack(alignment: .top, spacing: 6) {
-                        Image(systemName: notice.warning ? "exclamationmark.triangle" : "checkmark.circle")
-                            .font(Typo.caption)
-                        Text(notice.text).font(Typo.caption)
-                        Spacer()
-                        Button {
-                            iconNotice = nil
-                        } label: {
-                            Image(systemName: "xmark").font(Typo.caption)
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
-                    }
-                    .foregroundStyle(notice.warning ? Typo.warning : Typo.success)
-                }
 
                 if store.debugMode {
                     Button {
@@ -207,21 +164,6 @@ struct AppearanceTab: View {
             }
             .padding(20)
         }
-        .alert("套用失敗", isPresented: Binding(
-            get: { iconError != nil },
-            set: { if !$0 { iconError = nil } }
-        )) {
-            Button("好") { iconError = nil }
-        } message: {
-            Text(iconError ?? "")
-        }
-    }
-
-    /// 蝦頭方向的非封鎖提示列資料
-    private struct IconNotice: Identifiable {
-        let id = UUID()
-        let text: String
-        let warning: Bool
     }
 
     @ViewBuilder
@@ -261,46 +203,6 @@ struct AppearanceTab: View {
         .accessibilityValue(on ? "已啟用" : "已停用")
     }
 
-    /// 選蝦頭方向：存偏好 + 以管理者授權覆寫安裝目錄的 icon.tiff + 重啟輸入法。
-    /// 授權／複製在背景執行緒跑（IconApply 同步阻塞）；取消或失敗時還原偏好，
-    /// 卡片勾選維持原方向——UI 不得停留在未套用的狀態。
-    private func selectIcon(_ opt: ToggleOption) {
-        guard !iconApplying, store.iconDirection != opt.id else { return }
-        let previous = store.iconDirection
-        iconApplying = true
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = IconApply.apply(direction: opt.id)
-            DispatchQueue.main.async {
-                iconApplying = false
-                switch result {
-                case .success(let outcome):
-                    store.iconDirection = opt.id
-                    if outcome == .applied {
-                        IconApply.restartInputMethod()
-                        iconNotice = .init(text: "已套用「\(opt.label)」。選單圖示會在輸入法重啟後更新；若未立即生效，切換一次輸入法即可。",
-                                           warning: false)
-                    } else {
-                        iconNotice = .init(text: "安裝目錄圖示已是這個方向，設定已同步（免授權）。", warning: false)
-                    }
-                case .failure(.userCancelled):
-                    // 使用者取消授權：還原偏好並以非封鎖提示告知
-                    store.iconDirection = previous
-                    iconNotice = .init(text: "已取消授權，圖示維持原方向。", warning: true)
-                case .failure(let err):
-                    // 真的失敗（找不到輸入法／來源圖缺／cp 錯誤）：還原偏好並彈出錯誤
-                    store.iconDirection = previous
-                    iconError = err.localizedDescription
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func iconCard(_ opt: ToggleOption) -> some View {
-        SelectableCardView(label: opt.label, desc: opt.desc,
-                           selected: store.iconDirection == opt.id,
-                           icon: opt.icon) { selectIcon(opt) }
-    }
 
     @ViewBuilder
     private func appearanceModeCard(_ opt: ToggleOption) -> some View {
