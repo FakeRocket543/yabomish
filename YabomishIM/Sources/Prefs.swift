@@ -81,6 +81,8 @@ struct YabomishPrefs {
         s.toastFontSize = CGFloat(defaults.object(forKey: "toastFontSize") as? Double ?? 36.0)
         s.showActivateToast = defaults.object(forKey: "showActivateToast") as? Bool ?? true
         s.switchDisplay = defaults.string(forKey: "switchDisplay") ?? "Yabo"
+        // 舊值遷移：繁中／🦐 已移除，統一為 Yabo
+        if s.switchDisplay != "Yabo" && s.switchDisplay != "Yabomish" { s.switchDisplay = "Yabo" }
         s.appearanceMode = defaults.string(forKey: "appearanceMode") ?? "auto"
         s.iconDirection = defaults.string(forKey: "iconDirection") ?? "left"
         s.homophoneMultiReading = defaults.object(forKey: "homophoneMultiReading") as? Bool ?? false
