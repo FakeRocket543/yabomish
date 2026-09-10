@@ -192,7 +192,7 @@ case "$SYS_LANG" in
         [ "$VARIANT" = "full" ] && L_NOTE="首次打字時會自動從 GitHub 下載全量語料＋專業詞典（約100MB）。" || L_NOTE="首次打字時會自動從 GitHub 下載聯想語料（約15MB）。";;
     *)
         L_DONE="Installation complete."; L_STEP="Final step: System Settings → Keyboard → Input Sources, press + to add Yabomish."; L_BTN="Open Keyboard Settings"; L_CANCEL="Installation cancelled."
-        [ "$VARIANT" = "full" ] && L_NOTE="The full corpus and 36 domain dictionaries (~100MB) download automatically on first use." || L_NOTE="The suggestion corpus (~15MB) downloads automatically on first use.";;
+        [ "$VARIANT" = "full" ] && L_NOTE="The full corpus and 28 domain dictionaries (~100MB) download automatically on first use." || L_NOTE="The suggestion corpus (~15MB) downloads automatically on first use.";;
 esac
 
 if ! osascript -e "do shell script \"bash '$RES/root_install.sh' '$IM_SRC' '$PREFS_SRC' '$ICON' '$LBL'\" with administrator privileges with prompt \"Yabomish\""; then
@@ -368,7 +368,7 @@ EOF
 <li>Input method → <code>/Library/Input Methods</code></li>
 <li>Preferences → <code>/Applications</code></li></ul>
 <p>After installing, add Yabomish in System Settings → Keyboard → Input Sources (Traditional Chinese).</p>
-<p>$([ "$variant" = "full" ] && echo "Full build: full corpus plus 36 domain dictionaries (~100MB) download from GitHub on first use." || echo "Online build: suggestion corpus (~15MB) is downloaded from GitHub on first use.")</p>
+<p>$([ "$variant" = "full" ] && echo "Full build: full corpus plus 28 domain dictionaries (~100MB) download from GitHub on first use." || echo "Online build: suggestion corpus (~15MB) is downloaded from GitHub on first use.")</p>
 </body></html>
 EOF
     cat > "$STAGE/res/zh_TW.lproj/conclusion.html" <<'EOF'
