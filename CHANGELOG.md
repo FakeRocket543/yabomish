@@ -18,6 +18,9 @@
 - **極簡版偏好設定無法編譯** — 未發行的 Shift＋數字鍵區塊引用 `#if !MINIMAL` 下的 `shiftDigitOutput`，`-DMINIMAL` 建置直接編譯失敗；區塊與卡片 helper 補上編譯旗標
 - **組字中 Shift+8 萬用碼被攔截** — shift 區塊內數字分支排在萬用碼分支之前，組字中（候選非空）按 Shift+8 會變成「送出第一候選＋插入字面 8」，萬用碼幾乎不可達；現萬用碼分支移至最前，一律生效
 - **行為自相矛盾消除** — 原「有候選時 Shift+數字→數字、idle 時→符號」改為「有候選→依偏好、idle→恆符號」
+- **macOS 26 安裝崩潰（imklaunchagent Launch Constraint Violation）** — `yabomish.sh`／`release.sh` 直接執行 `imklaunchagent` 註冊輸入法，macOS 26+ 以 Launch Constraint 擋掉 shell 啟動（`EXC_CRASH SIGKILL "Code Signature Invalid"`，每次安裝產生一份 crash report）。改用 `killall TextInputMenuAgent` 迫使系統重新掃描輸入方式；`open` 與手動加入指示不變
+- **DMG／PKG 安裝後簽章失效** — `root_install.sh`／`postinstall` 在複製已簽署 bundle 後用 PlistBuddy 改寫 `Info.plist`（CFBundleName／DisplayName），`codesign --verify --strict` 回 `invalid Info.plist`。`switchDisplay` 已由 `InputEngine` 在執行期讀取 UserDefaults（非 Info.plist），改寫為多餘；`iconDirection` 無任何 Swift 寫入（死偏好），icon 置換為死碼。移除全部四處 mutation 站點
+- `install_prefs`／`do_uninstall` 缺 `sudo` — `/Applications/YabomishPrefs.app` 因前次 sudo 安裝為 root 所有權，無權限 `cp`／`rm`；補 `sudo rm -rf`＋`sudo cp -R`＋`sudo chmod`
 
 ### 改進
 
