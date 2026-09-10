@@ -14,7 +14,7 @@ macOS 嘸蝦米輸入法 — 純 Swift、零依賴。聯想語料於首次打字
 
 ### 方式一：DMG 安裝包（推薦）
 
-從 [Releases](https://github.com/FakeRocket543/yabomish/releases) 下載（各約 2.8MB）：
+從 [Releases](https://github.com/FakeRocket543/yabomish/releases) 下載（各約 4.3MB）：
 
 | 安裝包 | 內容 | 首次下載語料 |
 |--------|------|------------|
