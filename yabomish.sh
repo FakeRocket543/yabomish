@@ -116,17 +116,6 @@ install_im() {
     sudo cp -R "$IM_APP" "$INSTALL_DIR/"
     sudo chmod -R a+rX "$INSTALL_DIR/YabomishIM.app"
 
-
-    # 套用切換顯示設定到 Info.plist（狀態列 / 輸入法名稱）
-    local PLIST="$INSTALL_DIR/YabomishIM.app/Contents/Info.plist"
-    local LBL; LBL=$(defaults read $IM_BUNDLE_ID switchDisplay 2>/dev/null || defaults read $IM_BUNDLE_ID menuBarLabel 2>/dev/null || echo "Yabo")
-    case "$LBL" in
-        yabomish|Yabomish) LBL="Yabomish";;
-        *)             LBL="Yabo";;
-    esac
-    sudo /usr/libexec/PlistBuddy -c "Set :CFBundleName $LBL" "$PLIST" || true
-    sudo /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $LBL" "$PLIST" || true
-
     # 字表
     mkdir -p "$USER_DIR/tables"
     # emoji.txt no longer deployed — emoji handled by emoji_char_map.json suggestion system

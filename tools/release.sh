@@ -147,17 +147,13 @@ EOF
     cat > "$APP/Contents/Resources/root_install.sh" <<'EOF'
 #!/bin/bash
 set -e
-IM_SRC="$1"; PREFS_SRC="$2"; ICON="$3"; LBL="$4"
+IM_SRC="$1"; PREFS_SRC="$2"
 APP="/Library/Input Methods/YabomishIM.app"
 killall YabomishIM 2>/dev/null || true; sleep 1
 rm -rf "$APP"
 cp -R "$IM_SRC" "/Library/Input Methods/"
 chmod -R a+rX "$APP"
-DIR="$APP/Contents/Resources"
-[ "$ICON" = "right" ] && [ -f "$DIR/icon_right.tiff" ] && cp "$DIR/icon_right.tiff" "$DIR/icon.tiff"
-PLIST="$APP/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleName $LBL" "$PLIST"
-/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $LBL" "$PLIST"
+
 rm -rf "/Applications/YabomishPrefs.app"
 cp -R "$PREFS_SRC" "/Applications/"
 chmod -R a+rX "/Applications/YabomishPrefs.app"
@@ -172,16 +168,6 @@ IM_SRC="$RES/YabomishIM.app"
 PREFS_SRC="$RES/YabomishPrefs.app"
 VARIANT="__BAKED_VARIANT__"
 
-ICON=$(defaults read com.yabomishim.inputmethod.YabomishIM iconDirection 2>/dev/null || echo left)
-RAW=$(defaults read com.yabomishim.inputmethod.YabomishIM switchDisplay 2>/dev/null || echo "繁中")
-case "$RAW" in
-    yabo)          LBL="Yabo";;
-    yabomish|Yabo) LBL="Yabomish";;
-    繁中)          LBL="繁中";;
-    🦐)            LBL="🦐";;
-    *)             LBL="繁中";;
-esac
-
 SYS_LANG=$(defaults read -g AppleLanguages 2>/dev/null | sed -n '2s/[[:space:]"]*\([^,)]*\).*/\1/p')
 case "$SYS_LANG" in
     zh-Hans*|zh-CN*|zh_SG*)
@@ -195,7 +181,7 @@ case "$SYS_LANG" in
         [ "$VARIANT" = "full" ] && L_NOTE="The full corpus and 28 domain dictionaries (~100MB) download automatically on first use." || L_NOTE="The suggestion corpus (~15MB) downloads automatically on first use.";;
 esac
 
-if ! osascript -e "do shell script \"bash '$RES/root_install.sh' '$IM_SRC' '$PREFS_SRC' '$ICON' '$LBL'\" with administrator privileges with prompt \"Yabomish\""; then
+if ! osascript -e "do shell script \"bash '$RES/root_install.sh' '$IM_SRC' '$PREFS_SRC'\" with administrator privileges with prompt \"Yabomish\""; then
     osascript -e "display dialog \"$L_CANCEL\" buttons {\"OK\"} default button 1 with title \"Yabomish\"" || true
     exit 0
 fi
@@ -309,21 +295,6 @@ CONSOLE_UID=$(stat -f%u /dev/console)
 CONSOLE_HOME=$(dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory | awk '{print $2}')
 
 killall YabomishIM 2>/dev/null || true; sleep 1
-
-ICON=$(/usr/bin/sudo -u "$CONSOLE_USER" defaults read com.yabomishim.inputmethod.YabomishIM iconDirection 2>/dev/null || echo left)
-RAW=$(/usr/bin/sudo -u "$CONSOLE_USER" defaults read com.yabomishim.inputmethod.YabomishIM switchDisplay 2>/dev/null || echo "繁中")
-case "$RAW" in
-    yabo)          LBL="Yabo";;
-    yabomish|Yabo) LBL="Yabomish";;
-    繁中)          LBL="繁中";;
-    🦐)            LBL="🦐";;
-    *)             LBL="繁中";;
-esac
-DIR="/Library/Input Methods/YabomishIM.app/Contents/Resources"
-[ "$ICON" = "right" ] && [ -f "$DIR/icon_right.tiff" ] && cp "$DIR/icon_right.tiff" "$DIR/icon.tiff"
-PLIST="/Library/Input Methods/YabomishIM.app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleName $LBL" "$PLIST"
-/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $LBL" "$PLIST"
 
 /usr/bin/sudo -u "$CONSOLE_USER" defaults write com.yabomishim.inputmethod.YabomishIM corpusVariant "__BAKED_VARIANT__"
 
