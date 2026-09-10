@@ -193,9 +193,49 @@ ask_mode() {
     printf "  1) 完整（含 28 專業詞典，~98MB）\n"
     printf "  2) 精簡（省空間，無專業詞典，仍有成語、用語、兩岸用詞聯想，~18MB）\n"
     printf "  3) 極簡（無聯想、無詞庫，僅打字＋查碼＋繁簡轉換，~2MB）\n"
-    printf "  （語料 .bin 不隨 repo：全新 clone 的 1/2 相同，語料於首次打字自動下載）\n"
+    printf "  （語料 .bin 不隨 repo：全新 clone 會在安裝時自 GitHub Release 下載）\n"
     printf "  選擇 [1/2/3, Enter=完整]: "; read -r m
     case "$m" in 2) BUILD_MODE="lite";; 3) BUILD_MODE="min";; *) BUILD_MODE="full";; esac
+}
+
+# 全新 clone 沒有語料 bin（*.bin 為 gitignore）：從 GitHub Release 下載對應等級的
+# 語料包到 Resources，讓完整/精簡對原始碼安裝者產生實質差異。
+# 本地已有 bin（開發機）→ 跳過；下載失敗（離線／Release 未發佈）→ 不中斷，
+# App 會在首次打字時自動重試（DataDownloader 同一 manifest）。
+fetch_corpus() {
+    local MODE="${1:-full}"
+    [ "$MODE" = "min" ] && return 0
+    local MANIFEST="$IM_RES/corpus_manifest.json"
+    [ -f "$MANIFEST" ] || { warn "找不到 corpus_manifest.json，略過語料下載"; return 0; }
+    ls "$IM_RES"/*.bin >/dev/null 2>&1 && return 0   # 本地已備
+
+    local URL SHA
+    read -r URL SHA < <(python3 - "$MANIFEST" "$MODE" <<'PY'
+import json, sys
+m = json.load(open(sys.argv[1]))
+if sys.argv[2] == "full" and "full" in m:
+    print(m["full"]["url"], m["full"]["sha256"])
+else:
+    print(m["url"], m["sha256"])
+PY
+)
+    [ -n "$URL" ] || { warn "manifest 未含 $MODE 語料段，略過"; return 0; }
+
+    local TMPZIP="$ROOT/build/corpus_dl.zip"
+    mkdir -p "$ROOT/build"
+    printf "${C}> 下載語料包（%s）...${N}\n" "$(basename "$URL")"
+    if ! curl -fSL --progress-bar -o "$TMPZIP" "$URL"; then
+        rm -f "$TMPZIP"
+        warn "語料下載失敗（離線或 Release 尚未發佈）——首次打字時會自動重試"
+        return 0
+    fi
+    local GOT; GOT=$(shasum -a 256 "$TMPZIP" | awk '{print $1}')
+    if [ "$GOT" != "$SHA" ]; then
+        rm -f "$TMPZIP"; warn "語料雜湊不符，略過（下載損毀？）"; return 0
+    fi
+    unzip -oq "$TMPZIP" -d "$IM_RES"
+    rm -f "$TMPZIP"
+    ok "語料就緒（$(ls "$IM_RES" | grep -c '\.bin$') 個 bin）"
 }
 
 show_menu() {
@@ -215,8 +255,8 @@ check_xcode
 while true; do
     show_menu; read -r choice; echo ""
     case "$choice" in
-        1) ask_mode; build_im "$BUILD_MODE"; build_prefs "$BUILD_MODE"; install_im; install_prefs;;
-        2) ask_mode; build_im "$BUILD_MODE"; build_prefs "$BUILD_MODE";;
+        1) ask_mode; fetch_corpus "$BUILD_MODE"; build_im "$BUILD_MODE"; build_prefs "$BUILD_MODE"; install_im; install_prefs;;
+        2) ask_mode; fetch_corpus "$BUILD_MODE"; build_im "$BUILD_MODE"; build_prefs "$BUILD_MODE";;
         3) install_im; install_prefs;;
         4) build_prefs; install_prefs;;
         5) do_uninstall;;

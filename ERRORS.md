@@ -91,7 +91,9 @@ hdiutil detach -quiet "/Volumes/Yabomish"
 
 **根因**：語料 `*.bin` 在 `.gitignore`——repo 本身不含語料。fresh clone 的 `1) 完整` 與 `2) 精簡` 實際等價（只是選單心理安慰），語料一律走 `DataDownloader` 依 `corpus_manifest.json` 的 URL 下載（預設 `corpusVariant=lite`，約 15MB）；URL 指向 `releases/download/vX/...`，**Release 還沒發佈就 404**。失敗為靜默記錄、下次啟用重試，不影響打字。
 
-**正確時序**：先發佈 Release（含語料 zip），原始碼使用者才有聯想。也因此**換版時若更新 manifest 指到新版 URL，必須同時把新版語料 zip 上傳上去**，否則原始碼安裝者的聯想會壞到舊 Release 被刪為止。
+**修法**（2026-09-10 已實作）：`yabomish.sh` 新增 `fetch_corpus`——本地無 bin 時安裝前自動下載對應等級語料包（SHA-256 驗證、解壓至 Resources），失敗優雅退回首次打字下載。實測：模擬 Release 未發佈（404）→ 優雅降級；模擬已上架（file:// 指向本地 zip）→ 下載＋驗證＋精簡 build 17MB。
+
+**正確時序**：Release（含語料 zip）發佈前，原始碼安裝的聯想需等首次打字下載成功。也因此**換版時若更新 manifest 指到新版 URL，必須同時把新版語料 zip 上傳上去**，否則原始碼安裝者的聯想會壞到舊 Release 被刪為止。
 
 **尺寸宣稱**：`~98MB/~18MB` 只在本地已備語料的開發機成立；README／手冊／選單已加註（2026-09-10）。
 
