@@ -1,13 +1,6 @@
 import AppKit
 import SwiftUI
 
-// Single instance check
-let dominated = NSRunningApplication.runningApplications(withBundleIdentifier: "com.yabomish.prefs")
-if dominated.count > 1 {
-    dominated.first { $0 != .current }?.activate()
-    exit(0)
-}
-
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
@@ -39,6 +32,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(editItem)
         NSApp.mainMenu = mainMenu
 
+        createWindow()
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func createWindow() {
         window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 660, height: 540),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -52,5 +50,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            createWindow()
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        return true
+    }
 }

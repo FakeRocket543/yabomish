@@ -21,6 +21,7 @@
 - **macOS 26 安裝崩潰（imklaunchagent Launch Constraint Violation）** — `yabomish.sh`／`release.sh` 直接執行 `imklaunchagent` 註冊輸入法，macOS 26+ 以 Launch Constraint 擋掉 shell 啟動（`EXC_CRASH SIGKILL "Code Signature Invalid"`，每次安裝產生一份 crash report）。改用 `killall TextInputMenuAgent` 迫使系統重新掃描輸入方式；`open` 與手動加入指示不變
 - **DMG／PKG 安裝後簽章失效** — `root_install.sh`／`postinstall` 在複製已簽署 bundle 後用 PlistBuddy 改寫 `Info.plist`（CFBundleName／DisplayName），`codesign --verify --strict` 回 `invalid Info.plist`。`switchDisplay` 已由 `InputEngine` 在執行期讀取 UserDefaults（非 Info.plist），改寫為多餘；`iconDirection` 無任何 Swift 寫入（死偏好），icon 置換為死碼。移除全部四處 mutation 站點
 - `install_prefs`／`do_uninstall` 缺 `sudo` — `/Applications/YabomishPrefs.app` 因前次 sudo 安裝為 root 所有權，無權限 `cp`／`rm`；補 `sudo rm -rf`＋`sudo cp -R`＋`sudo chmod`
+- **設定程式在 Ghostty 等 GPU 終端叫不出來** — 輸入法為背景行程（`LSUIElement`），從 `NSWorkspace.openApplication` 或 `NSRunningApplication.activate()` 前景化 Prefs app 在某些 client app（如 Ghostty）下被擋住。修正：(1) 新增 `,,P` 命令直接從輸入法行程跑 `open` 啟動設定程式，不依賴 client app 的 IMK menu 支援；(2) `openPrefs()` 改用 `Process` + `/usr/bin/open` 走 LaunchServices；(3) Prefs app 加 `NSApp.activate(ignoringOtherApps: true)`、`applicationShouldHandleReopen` 重建窗口；關窗不退出（`applicationShouldTerminateAfterLastWindowClosed` → `false`）
 
 ### 改進
 

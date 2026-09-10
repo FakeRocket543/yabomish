@@ -70,6 +70,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | 拼音查碼 | `,,PYS` / `,,PYT` |
 | 同音字 | `,,TO` |
 | 查字歷史 | `,,LH`（檢視）／`,,RH`（清除） |
+| 打開設定程式 | `,,P` |
 | 送出原始碼 | Enter（純聯想顯示時＝收提示並換行，不代選） |
 
 完整使用說明見 [docs/usage.md](docs/usage.md)。
@@ -114,6 +115,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | `,,PIN` | 固定同碼字排序 |
 | `,,UNPINx` | 解除碼 x 的固定排序 |
 | `,,C` | 顯示當前模式 |
+| `,,P` | 打開設定程式 |
 | `,,SG` | 聯想開關 |
 | `,,Xxx` | 語境切換（預設：df/tw/ch/tc） |
 | `,,XS` | 儲存當前語境 |

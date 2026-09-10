@@ -249,15 +249,22 @@ class YabomishInputController: IMKInputController {
     }
 
     @objc private func openPrefs() {
-        let appURL = URL(fileURLWithPath: "/Applications/YabomishPrefs.app")
-        if FileManager.default.fileExists(atPath: appURL.path) {
-            NSWorkspace.shared.openApplication(at: appURL, configuration: .init())
-        } else {
+        let appPath = "/Applications/YabomishPrefs.app"
+        guard FileManager.default.fileExists(atPath: appPath) else {
             let a = NSAlert()
             a.messageText = "找不到設定程式"
             a.informativeText = "請執行 yabomish.sh 安裝 YabomishPrefs.app 到 /Applications。"
             a.runModal()
+            return
         }
+        // 從輸入法（背景 LSUIElement 行程）啟動 App，NSWorkspace.openApplication
+        // 在某些 App（如 Ghostty）下無法前景化。改用 `open` 指令走
+        // LaunchServices，可靠地觸發 applicationShouldHandleReopen →
+        // NSApp.activate(ignoringOtherApps: true)。
+        let proc = Process()
+        proc.launchPath = "/usr/bin/open"
+        proc.arguments = [appPath]
+        try? proc.run()
     }
 
     private static var lastAppliedKeyboardLayout: String?

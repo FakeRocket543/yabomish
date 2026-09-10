@@ -622,6 +622,21 @@ final class InputEngine {
             delegate?.engineDidPasteText(result); return
         }
         if cmd == "c" { delegate?.engineDidShowToast(_currentModeLabel); return }
+        if cmd == "p" {
+            #if os(macOS)
+            let appPath = "/Applications/YabomishPrefs.app"
+            if FileManager.default.fileExists(atPath: appPath) {
+                let proc = Process()
+                proc.launchPath = "/usr/bin/open"
+                proc.arguments = [appPath]
+                try? proc.run()
+                delegate?.engineDidShowToast("打開設定")
+            } else {
+                delegate?.engineDidShowToast("找不到設定程式")
+            }
+            #endif
+            return
+        }
         if cmd == "zh" {
             _isZhuyinMode.toggle()
             if _isZhuyinMode {
