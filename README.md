@@ -33,9 +33,11 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 
 | 模式 | 說明 | 大小 |
 |------|------|------|
-| 完整安裝 | 含聯想語料（28 專業詞典 + bigram/trigram + 詞庫，語料內含） | ~98MB |
-| 精簡安裝 | 無專業詞典，仍有成語、用語、兩岸用詞聯想（語料內含） | ~18MB |
+| 完整安裝 | 含聯想語料（28 專業詞典 + bigram/trigram + 詞庫） | ~98MB |
+| 精簡安裝 | 無專業詞典，仍有成語、用語、兩岸用詞聯想 | ~18MB |
 | 極簡安裝 | 無聯想、無詞庫，僅打字＋查碼＋繁簡轉換＋字頻排序 | ~2MB |
+
+> 語料二進位檔（`*.bin`）不隨 git repo 散佈。全新 clone 的「完整／精簡」差異只在語料下載等級（預設 lite，約 15MB，首次打字時自動下載）；上表 ~98MB／~18MB 僅在本地已備語料檔的開發機成立。極簡版為 `-DMINIMAL` 編譯、無聯想功能。
 
 安裝過程會：
 1. 編譯輸入法（YabomishIM.app）和設定程式（YabomishPrefs.app）

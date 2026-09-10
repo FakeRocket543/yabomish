@@ -85,6 +85,18 @@ hdiutil detach -quiet "/Volumes/Yabomish"
 
 ---
 
+## 5. 原始碼安裝（fresh clone）的語料依賴 Release 存在
+
+**現象**：全新 `git clone` + `./yabomish.sh` 裝完，打字／查碼／繁簡都正常，但**聯想語料下載 404**（在那個版本的 GitHub Release 發佈之前）。
+
+**根因**：語料 `*.bin` 在 `.gitignore`——repo 本身不含語料。fresh clone 的 `1) 完整` 與 `2) 精簡` 實際等價（只是選單心理安慰），語料一律走 `DataDownloader` 依 `corpus_manifest.json` 的 URL 下載（預設 `corpusVariant=lite`，約 15MB）；URL 指向 `releases/download/vX/...`，**Release 還沒發佈就 404**。失敗為靜默記錄、下次啟用重試，不影響打字。
+
+**正確時序**：先發佈 Release（含語料 zip），原始碼使用者才有聯想。也因此**換版時若更新 manifest 指到新版 URL，必須同時把新版語料 zip 上傳上去**，否則原始碼安裝者的聯想會壞到舊 Release 被刪為止。
+
+**尺寸宣稱**：`~98MB/~18MB` 只在本地已備語料的開發機成立；README／手冊／選單已加註（2026-09-10）。
+
+---
+
 ## 環境速記
 
 - 公證憑證 profile：`yabomish-notary`（Apple ID （Apple ID 存於本機 Keychain）／Team 2SYA986D7H，存於 Keychain）

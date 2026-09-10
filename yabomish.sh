@@ -193,6 +193,7 @@ ask_mode() {
     printf "  1) 完整（含 28 專業詞典，~98MB）\n"
     printf "  2) 精簡（省空間，無專業詞典，仍有成語、用語、兩岸用詞聯想，~18MB）\n"
     printf "  3) 極簡（無聯想、無詞庫，僅打字＋查碼＋繁簡轉換，~2MB）\n"
+    printf "  （語料 .bin 不隨 repo：全新 clone 的 1/2 相同，語料於首次打字自動下載）\n"
     printf "  選擇 [1/2/3, Enter=完整]: "; read -r m
     case "$m" in 2) BUILD_MODE="lite";; 3) BUILD_MODE="min";; *) BUILD_MODE="full";; esac
 }
