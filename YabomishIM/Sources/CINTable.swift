@@ -27,6 +27,7 @@ final class CINTable {
     private var valsOff = 0
     private var stringsOff = 0
     private var charsOff = 0
+    private var binVersion = 0
 
     // MARK: - Text fallback + overlay (extras, emoji — small Dict)
     private var overlay: [String: [String]] = [:]
@@ -114,7 +115,7 @@ final class CINTable {
 
     /// reload 本體（須持鎖）
     private func reloadLocked() {
-        binData = nil; entryCount = 0; overlay = [:]
+        binData = nil; entryCount = 0; binVersion = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
         _t2s = [:]; _s2t = [:]
 
@@ -160,7 +161,7 @@ final class CINTable {
     private func loadLocked(cinPath: String) {
         let tmp = NSTemporaryDirectory() + "cin_\(UUID().uuidString).bin"
         CINCompiler.compile(src: cinPath, dst: tmp)
-        binData = nil; entryCount = 0; overlay = [:]
+        binData = nil; entryCount = 0; binVersion = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
         _maxCodeLength = 4
         do {
@@ -190,7 +191,7 @@ final class CINTable {
 
     /// load(path:) 本體（須持鎖）
     private func loadLocked(path: String) {
-        binData = nil; entryCount = 0; overlay = [:]
+        binData = nil; entryCount = 0; binVersion = 0; overlay = [:]
         _reverseTable = nil; _shortestCodes = nil; _longestCodes = nil
         // Try compile to bin first
         let tmp = NSTemporaryDirectory() + "cin_\(UUID().uuidString).bin"
@@ -236,6 +237,7 @@ final class CINTable {
 
     private func parseBinHeader(_ d: Data) {
         entryCount = Int(d.u32(4))
+        binVersion = Int(d[7]) // 格式版本：0 = v0（valIdx 4B/entry）、1 = v1（8B/entry）
         let skLen = Int(d[8])
         if skLen > 0, skLen <= 20, 9 + skLen <= d.count { _selKeys = (0..<skLen).map { Character(UnicodeScalar(d[9 + $0])) } }
         let cnLen = Int(d.u16(20))
@@ -245,7 +247,18 @@ final class CINTable {
         stringsOff = Int(d.u32(104))
         charsOff = Int(d.u32(108))
         guard codesOff >= 128, codesOff < valsOff, valsOff < stringsOff, stringsOff < charsOff, charsOff <= d.count else {
-            entryCount = 0; return
+            entryCount = 0; binVersion = 0; return
+        }
+        guard binVersion == 0 || binVersion == 1 else {
+            DebugLog.log("CINTable: unsupported CINM version \(binVersion), rejected")
+            entryCount = 0; binVersion = 0; return
+        }
+        // entryCount 須被 section 大小界住：code index 6B/entry、val index v0 4B／v1 8B/entry
+        // （手工 liu.bin 可塞超大 entryCount，讓反向表空轉 40 億次）
+        let bounded = min((valsOff - codesOff) / 6, (stringsOff - valsOff) / (binVersion == 0 ? 4 : 8))
+        if entryCount > bounded {
+            DebugLog.log("CINTable: entryCount \(entryCount) exceeds section bounds, clamped to \(bounded)")
+            entryCount = bounded
         }
     }
 
@@ -260,10 +273,20 @@ final class CINTable {
     }
 
     @inline(__always) private func readChars(_ d: Data, at i: Int) -> [String] {
-        let entryOff = valsOff + i * 4
-        guard entryOff >= 0, entryOff + 3 <= d.count else { return [] }
-        let vOff = Int(d.u16(entryOff))
-        let vCnt = Int(d[entryOff + 2])
+        let entryOff: Int
+        let vOff: Int
+        let vCnt: Int
+        if binVersion == 0 {
+            entryOff = valsOff + i * 4
+            guard entryOff >= 0, entryOff + 3 <= d.count else { return [] }
+            vOff = Int(d.u16(entryOff))
+            vCnt = Int(d[entryOff + 2])
+        } else {
+            entryOff = valsOff + i * 8
+            guard entryOff >= 0, entryOff + 7 <= d.count else { return [] }
+            vOff = Int(d.u32(entryOff))
+            vCnt = Int(d.u16(entryOff + 4))
+        }
         guard vCnt > 0 else { return [] }
         // Validate that all values fit within charsOff region
         let firstOff = charsOff + vOff * 4
@@ -365,7 +388,7 @@ final class CINTable {
             return
         }
         guard let data = FileManager.default.contents(atPath: path),
-              let content = String(data: data, encoding: .utf8) else { return }
+              let content = CINCompiler.decodeCINText(data) else { return }
         var inChardef = false
         var lineCount = 0
         let maxLines = 500_000

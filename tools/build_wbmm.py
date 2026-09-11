@@ -10,6 +10,13 @@ Usage:
 """
 import struct, sys, os, re
 
+def _atomic_write(path, data):
+    """寫到 .tmp 再原子置換，避免中斷留下半個出貨檔。"""
+    tmp = str(path) + '.tmp'
+    with open(tmp, 'wb') as f:
+        f.write(data)
+    os.replace(tmp, path)
+
 def _is_clean_key(s: str) -> bool:
     if len(s) < 2: return False
     if '\t' in s: return False
@@ -71,8 +78,7 @@ def build_wbmm(entries: dict[str, list[str]], out_path: str):
         out.extend(struct.pack('<I', blob_off + vo))
         out.extend(struct.pack('<H', vl))
     
-    with open(out_path, 'wb') as f:
-        f.write(out)
+    _atomic_write(out_path, out)
     print(f"WBMM: {len(key_entries)} keys, {len(val_entries)} vals, {len(out)} bytes → {out_path}")
 
 def build_news(tsv_path: str, out_path: str):

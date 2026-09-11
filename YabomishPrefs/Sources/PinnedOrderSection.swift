@@ -124,9 +124,10 @@ struct PinnedOrderSection: View {
     }
 
     private func cinLookup(_ code: String) -> [String] {
+        // 與 IM/ShortcutTab 同序：使用者匯入的 liu.bin 優先於 bundle 內建
         let paths = [
-            "/Library/Input Methods/YabomishIM.app/Contents/Resources/liu.bin",
             NSHomeDirectory() + "/Library/Application Support/Yabomish/liu.bin",
+            "/Library/Input Methods/YabomishIM.app/Contents/Resources/liu.bin",
             NSHomeDirectory() + "/Library/YabomishIM/liu.bin",
         ]
         guard let path = paths.first(where: { FileManager.default.fileExists(atPath: $0) }),
@@ -139,6 +140,10 @@ struct PinnedOrderSection: View {
         let valsOff = Int(data.u32(100))
         let stringsOff = Int(data.u32(104))
         let charsOff = Int(data.u32(108))
+        // CINM 版本（header byte 7）：0 = v0（valIdx 4B/entry）、1 = v1（8B/entry：
+        // u32 offset + u16 count）；未知版本比照 IM 端拒讀
+        let isV1 = data[7] == 1
+        guard isV1 || data[7] == 0 else { return [] }
         let codeBytes = Array(code.utf8)
         // Binary search
         var lo = 0, hi = entryCount - 1
@@ -152,10 +157,10 @@ struct PinnedOrderSection: View {
             let key = Array(data[so..<so+sl])
             if key == codeBytes {
                 // Read chars from vals
-                let ve = valsOff + mid * 4
-                guard ve + 3 <= data.count else { return [] }
-                let vOff = Int(data.u16(ve))
-                let vCnt = Int(data[ve + 2])
+                let ve = valsOff + mid * (isV1 ? 8 : 4)
+                guard ve + (isV1 ? 8 : 3) <= data.count else { return [] }
+                let vOff = isV1 ? Int(data.u32(ve)) : Int(data.u16(ve))
+                let vCnt = isV1 ? Int(data.u16(ve + 4)) : Int(data[ve + 2])
                 var result: [String] = []
                 for j in 0..<vCnt {
                     let off = charsOff + (vOff + j) * 4
@@ -175,6 +180,7 @@ struct PinnedOrderSection: View {
     private func loadPinned(_ code: String) -> [String]? {
         var db: OpaquePointer?
         guard sqlite3_open_v2(Self.dbPath, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else { return nil }
+        sqlite3_busy_timeout(db, 5000)
         defer { sqlite3_close(db) }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, "SELECT chars FROM pinned WHERE code=?1", -1, &stmt, nil) == SQLITE_OK else { return nil }
@@ -190,6 +196,7 @@ struct PinnedOrderSection: View {
         guard !c.isEmpty, !pinned.isEmpty else { return }
         var db: OpaquePointer?
         guard sqlite3_open(Self.dbPath, &db) == SQLITE_OK else { return }
+        sqlite3_busy_timeout(db, 5000)
         defer { sqlite3_close(db) }
         sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS pinned(code TEXT PRIMARY KEY, chars TEXT NOT NULL)", nil, nil, nil)
         var stmt: OpaquePointer?
@@ -197,7 +204,12 @@ struct PinnedOrderSection: View {
         let joined = pinned.joined()
         sqlite3_bind_text(stmt, 1, c, -1, SQLITE_TRANSIENT_)
         sqlite3_bind_text(stmt, 2, joined, -1, SQLITE_TRANSIENT_)
-        sqlite3_step(stmt)
+        guard sqlite3_step(stmt) == SQLITE_DONE else {
+            // #36：忽略 step 回傳會把 SQLITE_BUSY 當成功，靜默丟釘選且照樣通知 IM
+            print("PinnedOrderSection: 儲存釘選失敗（\(String(cString: sqlite3_errmsg(db)))）")
+            sqlite3_finalize(stmt)
+            return
+        }
         sqlite3_finalize(stmt)
         notifyIM()
     }
@@ -210,11 +222,16 @@ struct PinnedOrderSection: View {
     private func deleteCode(_ c: String) {
         var db: OpaquePointer?
         guard sqlite3_open(Self.dbPath, &db) == SQLITE_OK else { return }
+        sqlite3_busy_timeout(db, 5000)
         defer { sqlite3_close(db) }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, "DELETE FROM pinned WHERE code=?1", -1, &stmt, nil) == SQLITE_OK else { return }
         sqlite3_bind_text(stmt, 1, c, -1, SQLITE_TRANSIENT_)
-        sqlite3_step(stmt)
+        guard sqlite3_step(stmt) == SQLITE_DONE else {
+            print("PinnedOrderSection: 刪除釘選失敗（\(String(cString: sqlite3_errmsg(db)))）")
+            sqlite3_finalize(stmt)
+            return
+        }
         sqlite3_finalize(stmt)
         notifyIM()
     }
@@ -222,6 +239,7 @@ struct PinnedOrderSection: View {
     private func loadAll() {
         var db: OpaquePointer?
         guard sqlite3_open_v2(Self.dbPath, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else { allPinned = []; return }
+        sqlite3_busy_timeout(db, 5000)
         defer { sqlite3_close(db) }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, "SELECT code, chars FROM pinned ORDER BY code", -1, &stmt, nil) == SQLITE_OK else { allPinned = []; return }
@@ -244,9 +262,13 @@ private let SQLITE_TRANSIENT_ = unsafeBitCast(-1, to: sqlite3_destructor_type.se
 
 private extension Data {
     func u32(_ offset: Int) -> UInt32 {
-        withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self) }
+        guard offset >= 0, offset + 4 <= count else { return 0 }
+        // loadUnaligned：.bin 的 offset 不保證 4-byte 對齊，對齊讀取會 trap
+        // （與 IM 端 WikiCorpus.swift 同款）
+        return withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: UInt32.self).littleEndian }
     }
     func u16(_ offset: Int) -> UInt16 {
-        withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt16.self) }
+        guard offset >= 0, offset + 2 <= count else { return 0 }
+        return withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: UInt16.self).littleEndian }
     }
 }

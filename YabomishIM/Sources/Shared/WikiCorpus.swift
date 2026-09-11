@@ -29,14 +29,17 @@ final class WikiCorpus {
     // NER
     private var nerData: Data?
     private var nerKeyCount = 0
+    /// NER 在拖曳順序中的 dense 優先序（只數實際載入成功的來源），
+    /// 與 domainBins 的 priority 同一把尺；-1 = 未載入。
+    private var nerPri = -1
     private var nerKeysOff = 0
     private var nerOffsetsOff = 0
     private var nerCountsOff = 0
     private var nerPhrasesOff = 0
 
-    // Phrase dictionary
     private var phData: Data?
     private var phKeyCount = 0
+    private var phPri = -1
     private var phKeysOff = 0
     private var phOffsetsOff = 0
     private var phCountsOff = 0
@@ -191,17 +194,19 @@ final class WikiCorpus {
 
     func reloadDomains() {
         domainBins.removeAll()
-        nerData = nil; nerKeyCount = 0
-        phData = nil; phKeyCount = 0
+        nerData = nil; nerKeyCount = 0; nerPri = -1
+        phData = nil; phKeyCount = 0; phPri = -1
         loadJingjing()
         // Use DomainOrderManager order (drag-reorder position = priority)
         let orderedKeys = DomainOrderManager.shared.allOrderedKeys()
         let keyToFile = Dictionary(uniqueKeysWithValues: Self.domainKeys.map { ($0.key, $0.file) })
+        // dense 計數：只有實際載入成功的來源才佔優先序位置，NER/詞組/bin 同一把尺
+        var nextPri = 0
         for key in orderedKeys {
             guard prefs.domainEnabled(key),
                   let file = keyToFile[key] else { continue }
-            if key == "domain_ner" { loadNER(); continue }
-            if key == "domain_phrases" { loadPhrases(); continue }
+            if key == "domain_ner" { if loadNER() { nerPri = nextPri; nextPri += 1 }; continue }
+            if key == "domain_phrases" { if loadPhrases() { phPri = nextPri; nextPri += 1 }; continue }
             if key == "domain_jingjing" { continue } // loaded independently
             guard let p = resolvePath(name: file, ext: "bin") else { continue }
             let d: Data
@@ -210,9 +215,10 @@ final class WikiCorpus {
             guard d.count >= 16, d[0] == 0x57, d[1] == 0x42, d[2] == 0x4D, d[3] == 0x4D else { continue }
             let ki = Int(d.u32(8)), vi = Int(d.u32(12))
             guard ki >= 16, ki < vi, vi <= d.count else { continue }
-            // priority = position in ordered list (no longer uses domainPriority pref)
+            // priority = dense position among loaded sources (no domainPriority pref)
             domainBins.append(DomainBin(data: d, keyCount: Int(d.u32(4)),
-                                        keyIndexOff: ki, valIndexOff: vi, priority: domainBins.count))
+                                        keyIndexOff: ki, valIndexOff: vi, priority: nextPri))
+            nextPri += 1
         }
     }
 
@@ -224,9 +230,10 @@ final class WikiCorpus {
         // Collect (priority, results) pairs
         var ranked: [(pri: Int, vals: [String])] = []
 
+        // NER／萌典詞組：dense 優先序在 reloadDomains 記錄（與 domainBins 同尺）
         // NER phrases
         if nerData != nil && nerKeyCount > 0 {
-            let pri = prefs.domainPriority("domain_ner")
+            let pri = nerPri
             let hits = suggestPhrases(after: String(prefix.suffix(1)), limit: 5)
                 .filter { $0.hasPrefix(prefix) }
                 .map { String($0.dropFirst(prefix.count)) }
@@ -236,7 +243,7 @@ final class WikiCorpus {
 
         // Phrase dictionary
         if phData != nil && phKeyCount > 0 {
-            let pri = prefs.domainPriority("domain_phrases")
+            let pri = phPri
             let hits = phraseCompletions(for: prefix)
             if !hits.isEmpty { ranked.append((pri, hits)) }
         }
@@ -288,34 +295,38 @@ final class WikiCorpus {
         tgData = d
     }
 
-    private func loadNER() {
-        guard let p = resolvePath(name: "ner_phrases", ext: "bin") else { return }
+    @discardableResult
+    private func loadNER() -> Bool {
+        guard let p = resolvePath(name: "ner_phrases", ext: "bin") else { return false }
         let d: Data
         do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
-        catch { DebugLog.log("WikiCorpus loadNER: \(error.localizedDescription)"); return }
-        guard d.count >= 12, d[0] == 0x4E, d[1] == 0x52, d[2] == 0x4D, d[3] == 0x4D else { return }
+        catch { DebugLog.log("WikiCorpus loadNER: \(error.localizedDescription)"); return false }
+        guard d.count >= 12, d[0] == 0x4E, d[1] == 0x52, d[2] == 0x4D, d[3] == 0x4D else { return false }
         nerKeyCount = Int(d.u32(4))
         nerKeysOff = 8
         nerOffsetsOff = nerKeysOff + nerKeyCount * 4
         nerCountsOff = nerOffsetsOff + nerKeyCount * 4
         nerPhrasesOff = nerCountsOff + nerKeyCount * 2
-        guard nerPhrasesOff <= d.count else { return }
+        guard nerPhrasesOff <= d.count else { return false }
         nerData = d
+        return true
     }
 
-    private func loadPhrases() {
-        guard let p = resolvePath(name: "phrases", ext: "bin") else { return }
+    @discardableResult
+    private func loadPhrases() -> Bool {
+        guard let p = resolvePath(name: "phrases", ext: "bin") else { return false }
         let d: Data
         do { d = try Data(contentsOf: URL(fileURLWithPath: p), options: .mappedIfSafe) }
-        catch { DebugLog.log("WikiCorpus loadPhrases: \(error.localizedDescription)"); return }
-        guard d.count >= 12, d[0] == 0x50, d[1] == 0x48, d[2] == 0x4D, d[3] == 0x4D else { return }
+        catch { DebugLog.log("WikiCorpus loadPhrases: \(error.localizedDescription)"); return false }
+        guard d.count >= 12, d[0] == 0x50, d[1] == 0x48, d[2] == 0x4D, d[3] == 0x4D else { return false }
         phKeyCount = Int(d.u32(4))
         phKeysOff = 8
         phOffsetsOff = phKeysOff + phKeyCount * 4
         phCountsOff = phOffsetsOff + phKeyCount * 4
         phPhrasesOff = phCountsOff + phKeyCount * 2
-        guard phPhrasesOff <= d.count else { return }
+        guard phPhrasesOff <= d.count else { return false }
         phData = d
+        return true
     }
 
     private func loadWordBigram() {

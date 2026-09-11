@@ -22,7 +22,7 @@ CLEAN_FILE = WORK / "wiki_clean.txt"
 NER_DIR = WORK / "ner_batches"
 
 BATCH_SIZE = 8
-MAX_LEN = 512
+MAX_LEN = 510  # BERT 上限 512，每段最多 510 字（+ [CLS]/[SEP] 剛好 512）
 NER_BATCH_LINES = 300000
 
 # NER 標籤 (BIES scheme)
@@ -49,7 +49,11 @@ ID2LABEL = {
 
 def _load_ner_model():
     import sys as _sys
-    CKIP_MLX = Path("/Users/fl/Python/ckip_mlx")
+    # 模型庫位置：預設 /Users/fl/Python/ckip_mlx，可用環境變數 CKIP_MLX_PATH 覆寫
+    ckip_mlx = os.environ.get("CKIP_MLX_PATH", "/Users/fl/Python/ckip_mlx")
+    if not os.path.isdir(ckip_mlx):
+        _sys.exit(f"❌ 找不到 ckip_mlx 目錄: {ckip_mlx}（請以環境變數 CKIP_MLX_PATH 指定）")
+    CKIP_MLX = Path(ckip_mlx)
     _sys.path.insert(0, str(CKIP_MLX))
     import mlx.core as mx
     from bert_mlx import BertForTokenClassification

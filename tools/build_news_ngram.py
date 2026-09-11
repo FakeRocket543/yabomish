@@ -24,7 +24,8 @@ CHINESE_RE = re.compile(r"[\u4e00-\u9fff]")
 
 
 def iter_lines(path, encoding="utf-8"):
-    with open(path, encoding=encoding, errors="ignore") as f:
+    # errors="replace"（非 "ignore"）：壞位元組換成可見的 U+FFFD 而非靜默吞掉
+    with open(path, encoding=encoding, errors="replace") as f:
         for line in f:
             yield line.rstrip("\r\n")
 

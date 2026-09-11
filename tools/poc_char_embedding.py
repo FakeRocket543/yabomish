@@ -2,6 +2,9 @@
 """
 POC: 用 wiki 語料訓練 char embedding，驗證能否取代 n-gram 做候選排序。
 
+[STALE/EXPERIMENTAL] 對照用的 Resources/bigram_suggest.json 已不存在（候選排序已改走
+bigram.bin / n-gram 管線）；Step 5 對照會直接報錯退出。本檔僅留作實驗記錄，不建議重跑。
+
 1. 從 wiki_clean.txt 建 char-level skip-gram 訓練資料
 2. 用 PyTorch 訓練 128 維 char embedding
 3. 比較 embedding cosine similarity vs bigram freq 的排序品質
@@ -139,7 +142,7 @@ embeddings = model.center.weight.detach().cpu().numpy()
 emb_path = DATA / "char_embedding.npy"
 vocab_path = DATA / "char_embedding_vocab.json"
 np.save(str(emb_path), embeddings.astype(np.float16))
-with open(vocab_path, 'w') as f:
+with open(vocab_path, 'w', encoding='utf-8') as f:
     json.dump(vocab, f, ensure_ascii=False)
 
 print(f"  {emb_path}: {os.path.getsize(emb_path)/1e6:.1f} MB")
@@ -148,8 +151,11 @@ print(f"  {VOCAB_SIZE} chars × {EMBED_DIM} dim = {embeddings.shape}")
 # ── Step 5: 驗證 — 比較 embedding vs bigram 的排序品質 ──
 print("\n[5/5] 驗證排序品質...")
 
-# Load bigram for comparison
-with open(RES / 'bigram_suggest.json') as f:
+# Load bigram for comparison（stale 參照：檔案已自 Resources 移除）
+bg_path = RES / 'bigram_suggest.json'
+if not bg_path.exists():
+    raise SystemExit(f"❌ 找不到 {bg_path}——此 POC 依賴的舊版候選檔已移除；embedding 已存檔，對照步驟略過")
+with open(bg_path, encoding='utf-8') as f:
     bigram_suggest = json.load(f)
 
 def cosine_sim(a, b):

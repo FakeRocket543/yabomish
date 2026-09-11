@@ -12,7 +12,7 @@ import sys, json, os
 DATA = os.path.join(os.path.dirname(__file__), '..', 'data', 'emoji_keywords.json')
 
 def load_emoji_keywords():
-    with open(DATA) as f:
+    with open(DATA, encoding='utf-8') as f:
         return json.load(f)  # emoji → [keywords]
 
 def build_char_to_emoji(emoji_kw):

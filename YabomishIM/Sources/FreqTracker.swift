@@ -90,6 +90,8 @@ final class FreqTracker {
             DebugLog.log("FreqTracker sqlite3_open failed: \(path)")
             return
         }
+        // Prefs 端也會寫 freq.db：鎖住時等 3 秒再回 SQLITE_BUSY，避免靜默丟學習資料
+        sqlite3_busy_timeout(db, 3000)
         exec("PRAGMA journal_mode=WAL")
         exec("PRAGMA synchronous=NORMAL")
         exec("CREATE TABLE IF NOT EXISTS freq(code TEXT, char TEXT, n INTEGER, PRIMARY KEY(code,char))")

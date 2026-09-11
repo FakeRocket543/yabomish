@@ -1,6 +1,29 @@
 # Changelog
 
 
+## [Unreleased]
+
+### 修正（全專案審計，43 項）
+
+- **InputEngine**：Pin 模式 Enter 送字面 `PIN:...` 文字並污染 freq.db；autoCommit 在組字為空時誤觸發；fuzzy 展開後 `.sp`/`.sl` 鄰鍵候選被 membership 過濾丟棄；逗號指令與模式切換的邊界條件
+- **CommaCommandRunner／ContextProfile**：`expandText` 回 nil 的 text 指令落到 `tryExecute` 被誤判 malformed；`isValidCode` 收緊為 `^[a-z]{2}$`（Prefs 新建 sheet 的 "a1" 類碼不再靜默失敗）；`DebugLog` 補 `0o600` 檔案權限
+- **CandidatePanel／InputController／Prefs**：hover cursor push/pop 在 `isFixed` 翻轉時失衡；`NotificationCenter` observer 改用正確的 center；`prefsChangedToken` 記憶體管理
+- **CINM v1 格式**：header byte 7 版本欄位＋valIdx 從 u32 擴為 8B（u32 offset＋u16 count），大表不再 u16 溢位靜默截斷；v0 bin 完全相容，Prefs 端 reader 同步
+- **DataDownloader**：下載 zip 改 staging＋marker-last move（壞 zip 不覆寫 Info.plist/manifest）；`sha256` 不再整檔載入記憶體；`CC_LONG` 截斷修正
+- **FreqTracker**：跨行程 freq.db 寫入補 busy_timeout；`unstable ranked.sort` 改穩定排序
+- **WikiCorpus**：NER/phrase domain 排名從死偏好改為 `DomainOrderManager.allOrderedKeys()` 位置；Big5 `.cin` 靜默產空表修正；`entryCount` 無界 spin 加上限
+- **YabomishPrefs**：`validateNew` 與 `isValidCode` 規則同步；`PinnedOrderSection` 讀 CINM v1；`SuggestionTab` 重置時 domainOrder 歸零；`ContextBar` generation 追蹤
+- **tools/*.py**：`wiki_word_bigram` checkpoint 崩潰窗口重複計數修正（記 rows/shards 對帳）；NER/phrases sparse vs bins dense 優先序分歧改 dense `nextPri` 計數器
+
+### 改進（管理程式強化，15 項）
+
+- **`yabomish.sh` 非互動 CLI** — `build [full|lite|min]`／`install`／`uninstall [--yes]`／`test` 子命令，取代 `printf '2\n1\n' |` 餵選單的 hack；`all_platforms.sh` 已切換
+- **Intel 相容** — `yabomish.sh`／`run_tests.sh` 的 `-target arm64-…` 改 `$(uname -m)`；`release.sh` 上 universal binary（`swiftc_universal` helper：雙 arch 編譯＋`lipo -create`），`YABOMISH_ARCH=arm64|x86_64` 可只編單架構
+- **原子安裝** — `cp → .new` → `mv 舊版 → .old` → `mv .new 進位` → 清 `.old`，失敗不再留「沒有輸入法」空窗
+- **fetch_corpus 強化** — 逐檔檢查（不再「有任一 .bin 就跳下載」）；unzip 到 staging 再只搬預期檔案（壞 zip 不覆寫 Info.plist/manifest）；`curl -C -` 續傳
+- **選單韌性** — `read … || break` 處理 EOF；`menu_run` 子殼層包住動作，步驟失敗回選單不關腳本；`&&` 串接保證建置失敗不裝半套
+- **其他** — VER 守衛在 `rm -rf` 前；`T` 測試選項；uninstall 補使用者層級副本＋`killall YabomishPrefs`；本地 `codesign -s -`；`check_xcode` 只在需要時；`sudo -v` 預取；shellcheck 清零
+
 ## [0.3.64] — 2026-09-10
 
 ### 新功能

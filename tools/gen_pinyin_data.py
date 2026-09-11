@@ -2,6 +2,14 @@
 """從 zhuyin_data.json 生成 pinyin_data.json（拼音→字 對照表）"""
 import json, os
 
+
+def _atomic_write(path, text):
+    """寫到 .tmp 再原子置換，避免中斷留下半個出貨檔。"""
+    tmp = path + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        f.write(text)
+    os.replace(tmp, path)
+
 # 注音聲母→拼音
 INITIALS = {
     'ㄅ': 'b', 'ㄆ': 'p', 'ㄇ': 'm', 'ㄈ': 'f',
@@ -98,7 +106,7 @@ def zhuyin_to_pinyin(zy: str) -> str | None:
 
 def main():
     src = os.path.join(os.path.dirname(__file__), '..', 'YabomishIM', 'Resources', 'zhuyin_data.json')
-    with open(src) as f:
+    with open(src, encoding='utf-8') as f:
         data = json.load(f)
 
     z2c = data['zhuyin_to_chars']
@@ -124,8 +132,7 @@ def main():
         print(f"⚠️  {len(failed)} 個注音無法轉換: {failed[:10]}...")
 
     dst = os.path.join(os.path.dirname(__file__), '..', 'YabomishIM', 'Resources', 'pinyin_data.json')
-    with open(dst, 'w', encoding='utf-8') as f:
-        json.dump({'pinyin_to_chars': pinyin_to_chars}, f, ensure_ascii=False)
+    _atomic_write(dst, json.dumps({'pinyin_to_chars': pinyin_to_chars}, ensure_ascii=False))
 
     print(f"✅ 生成 {len(pinyin_to_chars)} 個拼音音節 → {dst}")
 

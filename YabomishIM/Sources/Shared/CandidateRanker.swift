@@ -48,17 +48,23 @@ final class CandidateRanker {
     // MARK: - Mode filtering + ranking
 
     /// Sort and filter candidates based on current input mode.
+    /// `fuzzy`: candidates came from adjacent-key variants, so the typed code
+    /// is by definition NOT in their shortest/longest code sets — skip the
+    /// .sp/.sl membership filter or every fuzzy hit is dropped.
     func rank(raw: [String], code: String, prev: String,
-              mode: InputEngine.InputMode, cinTable: CINTable, freqTracker: FreqTracker) -> [String] {
+              mode: InputEngine.InputMode, cinTable: CINTable, freqTracker: FreqTracker,
+              fuzzy: Bool = false) -> [String] {
         var candidates = freqTracker.sortedWithContext(raw, forCode: code, prev: prev)
 
         switch mode {
-        case .sp:
+        case .sp where !fuzzy:
             let tbl = cinTable.shortestCodesTable
             candidates = candidates.filter { tbl[$0]?.contains(code) == true }
-        case .sl:
+        case .sl where !fuzzy:
             let tbl = cinTable.longestCodesTable
             candidates = candidates.filter { tbl[$0]?.contains(code) == true }
+        case .sp, .sl:
+            break // fuzzy：鄰鍵變體本就不含所打碼，跳過 membership 過濾
         case .ts:
             var seen = Set<String>()
             candidates = candidates.compactMap { ch in

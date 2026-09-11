@@ -118,9 +118,9 @@ def build_ngrams(z2c, c2z, freq):
     seen = set()
 
     for zy1 in top_zy:
-        top1 = sorted(z2c[zy1][:20], key=lambda c: eff(c, zy1), reverse=True)[:5]
+        top1 = sorted(z2c[zy1], key=lambda c: eff(c, zy1), reverse=True)[:5]  # 全候選按頻率排，勿先截斷
         for zy2 in top_zy:
-            top2 = sorted(z2c[zy2][:20], key=lambda c: eff(c, zy2), reverse=True)[:5]
+            top2 = sorted(z2c[zy2], key=lambda c: eff(c, zy2), reverse=True)[:5]
             for c1 in top1:
                 e1 = eff(c1, zy1)
                 if e1 == 0:

@@ -91,19 +91,29 @@ enum DomainData {
         }
     }
 
+    /// #44-nit：bins 依安裝 immutable — 以檔名 memoize entry count，
+    /// chip／card 每次重繪不必重複開檔
+    private static var entryCountCache: [String: Int] = [:]
+
     static func binEntryCount(file: String) -> Int {
+        if let n = entryCountCache[file] { return n }
         let paths = [
             "/Library/Input Methods/YabomishIM.app/Contents/Resources/\(file).bin",
             NSHomeDirectory() + "/Library/YabomishIM/\(file).bin",
             Bundle.main.path(forResource: file, ofType: "bin")
         ].compactMap { $0 }
-        guard let path = paths.first(where: { FileManager.default.fileExists(atPath: $0) }),
-              let fh = FileHandle(forReadingAtPath: path) else { return 0 }
-        defer { try? fh.close() }
-        let header = fh.readData(ofLength: 8)
-        guard header.count >= 8,
-              header[0] == 0x57, header[1] == 0x42, header[2] == 0x4D, header[3] == 0x4D else { return 0 }
-        return Int(header[4]) | Int(header[5]) << 8 | Int(header[6]) << 16 | Int(header[7]) << 24
+        var count = 0
+        if let path = paths.first(where: { FileManager.default.fileExists(atPath: $0) }),
+           let fh = FileHandle(forReadingAtPath: path) {
+            defer { try? fh.close() }
+            let header = fh.readData(ofLength: 8)
+            if header.count >= 8,
+               header[0] == 0x57, header[1] == 0x42, header[2] == 0x4D, header[3] == 0x4D {
+                count = Int(header[4]) | Int(header[5]) << 8 | Int(header[6]) << 16 | Int(header[7]) << 24
+            }
+        }
+        entryCountCache[file] = count
+        return count
     }
 }
 #endif

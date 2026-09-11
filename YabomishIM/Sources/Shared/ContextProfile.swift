@@ -32,6 +32,13 @@ struct ContextProfile: Codable, Identifiable {
         return dir
     }
 
+    /// 語境碼消毒：僅允許兩個小寫英文字母。code 直接拼進檔案路徑，可經
+    /// Prefs 匯入 JSON、sync 的內部 code 欄位、currentContext UserDefaults
+    /// 三路注入（../ 等）→ 目錄穿越。所有 CRUD 入口都必須先過此關。
+    static func isValidCode(_ code: String) -> Bool {
+        code.range(of: "^[a-z]{2}$", options: .regularExpression) != nil
+    }
+
     private static func path(for code: String) -> String {
         contextsDir() + "/\(code).json"
     }
@@ -49,18 +56,22 @@ struct ContextProfile: Codable, Identifiable {
     }
 
     static func load(code: String) -> ContextProfile? {
+        guard isValidCode(code) else { return nil }
         let p = path(for: code)
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: p)) else { return nil }
         return try? JSONDecoder().decode(ContextProfile.self, from: data)
     }
 
     func save() {
+        guard Self.isValidCode(code) else { return }
         guard let data = try? JSONEncoder().encode(self) else { return }
         let p = Self.path(for: code)
-        try? data.write(to: URL(fileURLWithPath: p))
+        // .atomic：IM/Prefs/sync 三方共寫 contexts/*.json，避免讀到半寫撕裂檔
+        try? data.write(to: URL(fileURLWithPath: p), options: .atomic)
     }
 
     func delete() {
+        guard Self.isValidCode(code) else { return }
         try? FileManager.default.removeItem(atPath: Self.path(for: code))
     }
 

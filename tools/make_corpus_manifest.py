@@ -22,6 +22,14 @@ from urllib.parse import urlparse
 DEFAULT_REPO = "FakeRocket543/yabomish"
 
 
+
+def _atomic_write(path, text):
+    """寫到 .tmp 再 os.replace()，避免中斷留下半個 manifest。"""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.replace(tmp, path)
+
 def derive_version(tag: str) -> str:
     """tag 去掉前導 'v' 作為版本號，例如 v0.3.59 -> 0.3.59。"""
     return tag[1:] if tag.startswith("v") else tag
@@ -68,10 +76,10 @@ def main() -> int:
         url = ("https://github.com/%s/releases/download/%s/yabomish-corpus-lite-%s.zip"
                % (args.repo, args.tag, version))
 
-    # 網址基本健檢：scheme 必須是 http(s)，避免寫入壞清單
+    # 網址基本健檢：scheme 必須是 https，避免寫入壞清單或明文傳輸
     parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        ap.error("--url 格式不正確：%r" % url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        ap.error("--url 必須是 https：%r" % url)
 
     file_name = args.file_name if args.file_name else os.path.basename(parsed.path)
 
@@ -90,8 +98,8 @@ def main() -> int:
             "https://github.com/%s/releases/download/%s/yabomish-corpus-full-%s.zip"
             % (args.repo, args.tag, version))
         fparsed = urlparse(full_url)
-        if fparsed.scheme not in ("http", "https") or not fparsed.netloc:
-            ap.error("--full-url 格式不正確：%r" % full_url)
+        if fparsed.scheme != "https" or not fparsed.netloc:
+            ap.error("--full-url 必須是 https：%r" % full_url)
         manifest["full"] = {
             "url": full_url,
             "sha256": fsha,
@@ -100,9 +108,7 @@ def main() -> int:
 
     out_dir = os.path.dirname(os.path.abspath(args.output))
     os.makedirs(out_dir, exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as fh:
-        json.dump(manifest, fh, ensure_ascii=False, indent=2)
-        fh.write("\n")
+    _atomic_write(args.output, json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
 
     print("已寫入 %s" % args.output)
     print("  version : %s" % manifest["version"])

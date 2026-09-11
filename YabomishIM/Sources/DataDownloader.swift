@@ -83,10 +83,26 @@ enum DataDownloader {
         return false
     }
 
+    /// 串流計算 SHA-256：FileHandle 分段讀取，避免整檔載入記憶體，
+    /// 也不受 CC_LONG（32-bit 長度）對超大檔的截斷影響
     private static func sha256(of url: URL) -> String? {
-        guard let data = try? Data(contentsOf: url) else { return nil }
+        guard let fh = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? fh.close() }
+        var ctx = CC_SHA256_CTX()
+        CC_SHA256_Init(&ctx)
+        let chunkSize = 1 << 20
+        while true {
+            let chunk = fh.readData(ofLength: chunkSize)
+            if chunk.isEmpty { break }
+            let ok = chunk.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> Int32 in
+                guard let base = raw.bindMemory(to: UInt8.self).baseAddress else { return 0 }
+                return CC_SHA256_Update(&ctx, base, CC_LONG(chunk.count))
+            }
+            guard ok == 1 else { return nil }
+            if chunk.count < chunkSize { break }
+        }
         var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-        _ = data.withUnsafeBytes { CC_SHA256($0.baseAddress, CC_LONG(data.count), &hash) }
+        CC_SHA256_Final(&hash, &ctx)
         return hash.map { String(format: "%02x", $0) }.joined()
     }
 
@@ -159,8 +175,8 @@ enum DataDownloader {
                 finish(false)
                 return
             }
+            let fm = FileManager.default
             do {
-                let fm = FileManager.default
                 try fm.createDirectory(atPath: supportDir, withIntermediateDirectories: true)
                 let zipPath = supportDir + "/data.zip"
                 if fm.fileExists(atPath: zipPath) { try fm.removeItem(atPath: zipPath) }
@@ -183,19 +199,48 @@ enum DataDownloader {
                     }
                 }
 
-                // Safe extraction with path traversal check
-                guard safeUnzip(zipPath: zipPath, destDir: supportDir) else {
+                // 解壓至同目錄 staging（.staging-<uuid>）：驗證檔案齊全後才逐檔
+                // rename 進 supportDir、marker 最後移入。解壓中途死掉只留 staging
+                // 殘骸（重試會清掉），不會出現「永久殘缺且無修復路徑」的語料。
+                let staging = supportDir + "/.staging-\(UUID().uuidString)"
+                try fm.createDirectory(atPath: staging, withIntermediateDirectories: true)
+                guard safeUnzip(zipPath: zipPath, destDir: staging) else {
                     DebugLog.log("YabomishIM: 解壓失敗或偵測到不安全路徑")
                     try? fm.removeItem(atPath: zipPath)
+                    try? fm.removeItem(atPath: staging)
                     finish(false); return
                 }
+                guard fm.fileExists(atPath: staging + "/" + marker) else {
+                    DebugLog.log("YabomishIM: 語料 zip 缺少 \(marker)")
+                    try? fm.removeItem(atPath: zipPath)
+                    try? fm.removeItem(atPath: staging)
+                    finish(false); return
+                }
+                // marker 排最後移入：全部就位前 isDataAvailable 維持 false
+                let files = ((try? fm.contentsOfDirectory(atPath: staging)) ?? [])
+                    .sorted { a, b in
+                        if a == marker { return false }
+                        if b == marker { return true }
+                        return a < b
+                    }
+                for f in files {
+                    let dst = supportDir + "/" + f
+                    if fm.fileExists(atPath: dst) { try fm.removeItem(atPath: dst) }
+                    try fm.moveItem(atPath: staging + "/" + f, toPath: dst)
+                }
+                try? fm.removeItem(atPath: staging)
 
                 try? fm.removeItem(atPath: zipPath)
-                let ok = fm.fileExists(atPath: supportDir + "/" + marker)
-                DebugLog.log("YabomishIM: 語料下載\(ok ? "完成" : "失敗（解壓後找不到檔案）")")
-                finish(ok)
+                DebugLog.log("YabomishIM: 語料下載完成")
+                finish(true)
             } catch {
-                DebugLog.log("YabomishIM: 解壓失敗 — \(error.localizedDescription)")
+                DebugLog.log("YabomishIM: 語料安裝失敗 — \(error.localizedDescription)")
+                // 清掉可能殘留的 staging 目錄
+                if let leftovers = try? fm.contentsOfDirectory(atPath: supportDir) {
+                    for f in leftovers where f.hasPrefix(".staging-") {
+                        try? fm.removeItem(atPath: supportDir + "/" + f)
+                    }
+                }
                 finish(false)
             }
         }

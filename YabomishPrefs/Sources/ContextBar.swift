@@ -65,6 +65,8 @@ struct ContextBar: View {
             }
         }
         .onAppear { reload() }
+        // #39：IM 端（,,SG／,,X）改設定時重讀 profiles；讀 generation 讓通知能驅動重繪
+        .onChange(of: store.generation) { _, _ in reload() }
         .alert("確定刪除「\(deleteTarget?.name ?? "")」？", isPresented: Binding(
             get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }
         )) {
@@ -138,12 +140,16 @@ struct ContextBar: View {
         let c = newCode.lowercased()
         if newName.isEmpty { return "請輸入名稱" }
         if c.count != 2 { return "命令碼需 2 字母" }
+        if !ContextProfile.isValidCode(c) { return "命令碼限小寫英文 a-z" }
         if ContextProfile.reservedCodes.contains(c) { return "此碼為系統保留" }
         if profiles.contains(where: { $0.code == c }) { return "此碼已被使用" }
         return nil
     }
 
     private func applyProfile(_ p: ContextProfile) {
+        // #40：點語境 chip 也要套用 inputMode（,,X 有）— 先寫 transient key，
+        // 由 IM 端 refreshSnapshot 排空套用
+        store.setPendingInputMode(p.inputMode)
         store.suggestEnabled = p.suggestEnabled
         store.suggestStrategy = p.suggestStrategy
         store.charSuggest = p.charSuggest
@@ -199,6 +205,13 @@ struct ContextBar: View {
         guard panel.runModal() == .OK, let url = panel.url,
               let data = try? Data(contentsOf: url),
               let p = try? JSONDecoder().decode(ContextProfile.self, from: data) else { return }
+        // #12：code 直接拼路徑；匯入路徑也要過消毒＋保留碼檢查
+        guard ContextProfile.isValidCode(p.code) else {
+            importAlert = "命令碼「\(p.code)」無效（需 2 個小寫字母）"; return
+        }
+        if ContextProfile.reservedCodes.contains(p.code) {
+            importAlert = "命令碼「\(p.code)」為系統保留，不可使用"; return
+        }
         if profiles.contains(where: { $0.code == p.code }) {
             importAlert = "命令碼「\(p.code)」已存在，請先刪除再匯入"; return
         }

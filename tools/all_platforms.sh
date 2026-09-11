@@ -7,6 +7,7 @@
 #   bash tools/all_platforms.sh all     — 全部
 
 set -e
+set -o pipefail
 MACOS=/Users/fl/Python/yabomish
 IOS=/Users/fl/Python/yabomish_ios
 ANDROID=/Users/fl/Python/yabomish_android
@@ -18,11 +19,13 @@ ok()   { printf "\033[32m[OK]\033[0m %s\n" "$1"; }
 fail() { printf "\033[31m[FAIL]\033[0m %s\n" "$1"; exit 1; }
 
 macos_test() {
-  cd "$MACOS" && bash YabomishIM/Tests/run_tests.sh 2>&1 | tail -1 | grep -q '0 failed' \
+  cd "$MACOS" && bash YabomishIM/Tests/run_tests.sh 2>&1 | tail -1 | grep -qE ', 0 failed$' \
     && ok "macOS: 88+ tests passed" || fail "macOS tests"
 }
 macos_build() {
-  cd "$MACOS" && printf '2\n1\n' | bash yabomish.sh 2>&1 | grep -qE '\[OK\] YabomishIM' \
+  # 改用 yabomish.sh 新 CLI 契約（build full），取代舊的 printf '2\n1\n' stdin 餵選單 hack
+  local out; out=$(cd "$MACOS" && bash yabomish.sh build full 2>&1)
+  grep -qE '\[OK\] YabomishIM' <<<"$out" \
     && ok "macOS: build full" || fail "macOS build"
 }
 macos_install() {
@@ -40,18 +43,21 @@ ios_test() {
 }
 ios_build() {
   for s in YabomishApp YabomishKeyboard YabomishTests; do
-    xcodebuild build -project "$IOS/Yabomish.xcodeproj" -scheme $s \
-      -destination "platform=iOS Simulator,name=$SIM" 2>&1 | grep -q 'BUILD SUCCEEDED' \
+    local out; out=$(xcodebuild build -project "$IOS/Yabomish.xcodeproj" -scheme $s \
+      -destination "platform=iOS Simulator,name=$SIM" 2>&1)
+    grep -q 'BUILD SUCCEEDED' <<<"$out" \
       && ok "iOS: $s build" || fail "iOS $s build"
   done
 }
 ios_install() {
-  xcodebuild build -project "$IOS/Yabomish.xcodeproj" -scheme YabomishApp \
-    -destination "id=$IOS_DEVICE" -allowProvisioningUpdates 2>&1 | grep -q 'BUILD SUCCEEDED' \
+  local out; out=$(xcodebuild build -project "$IOS/Yabomish.xcodeproj" -scheme YabomishApp \
+    -destination "id=$IOS_DEVICE" -allowProvisioningUpdates 2>&1)
+  grep -q 'BUILD SUCCEEDED' <<<"$out" \
     || fail "iOS device build"
   local app
   app=$(find ~/Library/Developer/Xcode/DerivedData -name 'YabomishApp.app' -path '*iphoneos*' | head -1)
-  xcrun devicectl device install app --device "$IOS_DEVICE" "$app" 2>&1 | grep -q 'App installed' \
+  out=$(xcrun devicectl device install app --device "$IOS_DEVICE" "$app" 2>&1)
+  grep -q 'App installed' <<<"$out" \
     && ok "iOS: installed to iPhone" || fail "iOS install（裝置有接上嗎？）"
 }
 
@@ -62,7 +68,8 @@ android_test() {
 }
 android_build() {
   cd "$ANDROID" && export JAVA_HOME
-  ./gradlew assembleDebug 2>&1 | grep -q 'BUILD SUCCESSFUL' \
+  local out; out=$(./gradlew assembleDebug 2>&1)
+  grep -q 'BUILD SUCCESSFUL' <<<"$out" \
     && ok "Android: APK $(ls -lh app/build/outputs/apk/debug/app-debug.apk 2>/dev/null | awk '{print $5}')" \
     || fail "Android build"
 }

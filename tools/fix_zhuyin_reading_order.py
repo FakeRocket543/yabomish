@@ -8,7 +8,7 @@
 3. 用 wiki 語料庫的注音候選字頻率來修正破音字的讀音順序
 4. 同步更新 zhuyin_to_chars（確保一致性）
 """
-import json, subprocess, sys
+import json, os, subprocess, sys
 from pathlib import Path
 from collections import defaultdict
 
@@ -16,8 +16,18 @@ BASE = Path(__file__).resolve().parent.parent
 RES = BASE / "YabomishIM" / "Resources"
 
 
+def _atomic_write(path, text):
+    """寫到 .tmp 再原子置換，避免中斷留下半個出貨檔。"""
+    tmp = str(path) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(tmp, path)
+
+
 def load_moe_from_git():
     """從 git 歷史取萌典版 zhuyin_data.json"""
+    # 注意：git show <commit>:<path> 需要完整 git 歷史（shallow clone 無 41d1a26 會失敗）；
+    # 必要時可改用檔案路徑來源。
     r = subprocess.run(
         ["git", "show", "41d1a26:YabomishIM/Resources/zhuyin_data.json"],
         capture_output=True, text=True, cwd=BASE,
@@ -135,13 +145,14 @@ def main():
 
     # 寫入
     out = {"zhuyin_to_chars": z2c_new, "char_to_zhuyins": c2z_new}
-    with open(RES / "zhuyin_data.json", "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False)
+    _atomic_write(RES / "zhuyin_data.json", json.dumps(out, ensure_ascii=False))
     print(f"\n✅ 已寫入 {RES / 'zhuyin_data.json'}")
 
     # 重新生成 pinyin_data.json
     print("\n重新生成 pinyin_data.json...")
-    subprocess.run([sys.executable, str(BASE / "tools" / "gen_pinyin_data.py")], cwd=BASE)
+    # check=True：pinyin_data.json 只在 gen_pinyin 成功時才會被（原子）置換，
+    # 失敗就讓例外上拋，避免兩個出貨檔不一致。
+    subprocess.run([sys.executable, str(BASE / "tools" / "gen_pinyin_data.py")], cwd=BASE, check=True)
 
 
 if __name__ == "__main__":

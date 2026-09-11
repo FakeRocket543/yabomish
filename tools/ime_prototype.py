@@ -2,6 +2,10 @@
 """
 Yabomish IME 三層排序原型 — 互動測試
 
+[STALE/EXPERIMENTAL] 本原型引用的 schema 已過時：build_ime_db.py 的 ner_phrase 現在用
+zhuyin_key 存注音鍵（無 zy_hash 欄位），也沒有 zy_hash_map 表，lookup_phrases() /
+lookup_prefix_phrases() 的 SQL 會查不到。僅留作演算法實驗參考。
+
 用法: python3 tools/ime_prototype.py
   輸入注音（空白分隔聲母韻母聲調），例如:
     ㄇㄠˊ ㄗㄜˊ ㄉㄨㄥ    → 毛澤東
@@ -134,6 +138,8 @@ class IMEEngine:
 
 
 def main():
+    if not DB.exists():
+        sys.exit(f"❌ 找不到 {DB}——請先執行 python3 tools/build_ime_db.py 產生")
     engine = IMEEngine(DB)
     print("Yabomish IME 原型 (三層排序)")
     print("輸入注音（空白分隔），例如: ㄇㄠˊ ㄗㄜˊ ㄉㄨㄥ")

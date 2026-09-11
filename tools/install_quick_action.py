@@ -17,12 +17,23 @@ WORKFLOW_PATH = SERVICES_DIR / f"{WORKFLOW_NAME}.workflow"
 PHRASES_PATH = "~/Library/Application Support/Yabomish/user_phrases.txt"
 
 SHELL_SCRIPT = f"""#!/usr/bin/env python3
-import sys, os
+import sys, os, subprocess
 
 path = os.path.expanduser("{PHRASES_PATH}")
+
+def notify(msg):
+    # 通知文字經 argv（on run argv）傳入，不經 shell、也不插入 AppleScript 字串
+    subprocess.run(
+        ["osascript",
+         "-e", "on run argv",
+         "-e", 'display notification (item 1 of argv) with title "自訂字庫"',
+         "-e", "end run",
+         "--", msg],
+        check=False)
+
 text = sys.stdin.read().strip()
 if not text or len(text) < 2:
-    os.system('osascript -e \\'display notification "需要至少 2 個字" with title "自訂字庫"\\'')
+    notify("需要至少 2 個字")
     sys.exit(0)
 
 os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -32,11 +43,11 @@ if os.path.exists(path):
         existing = {{l.strip() for l in f}}
 
 if text in existing:
-    os.system(f'osascript -e \\'display notification "已存在: {{text}}" with title "自訂字庫"\\'')
+    notify("已存在: " + text)
 else:
     with open(path, "a", encoding="utf-8") as f:
         f.write(text + "\\n")
-    os.system(f'osascript -e \\'display notification "已加入: {{text}}" with title "自訂字庫"\\'')
+    notify("已加入: " + text)
 """
 
 INFO_PLIST = {

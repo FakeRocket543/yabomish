@@ -117,6 +117,13 @@ struct YabomishPrefs {
         snapshotLock.lock()
         _snapshot = loadSnapshot()
         snapshotLock.unlock()
+        // 語境列握手：ContextBar 套用語境前先寫暫態鍵 "pendingInputMode" 再
+        // 廣播 prefsChanged；重讀快照後於此把鍵讀走（讀後即移除，單一消費者），
+        // 由 YabomishInputController.activateServer 取用套用到引擎。
+        if let mode = defaults.string(forKey: "pendingInputMode") {
+            defaults.removeObject(forKey: "pendingInputMode")
+            pendingInputMode = mode
+        }
     }
 
     #if os(macOS)
@@ -128,6 +135,18 @@ struct YabomishPrefs {
         ) { _ in YabomishPrefs.refreshSnapshot() }
     }()
     #endif
+
+    /// 廣播偏好變更給共用 suite 的另一行程（IM ↔ Prefs app）。
+    static func postPrefsChanged() {
+        #if os(macOS)
+        DistributedNotificationCenter.default().post(name: .init("com.yabomish.prefsChanged"), object: nil)
+        #endif
+    }
+
+    /// 語境列套用的暫態輸入模式（InputMode rawValue）。refreshSnapshot() 收到
+    /// prefsChanged 後讀走 defaults 的 "pendingInputMode" 存放於此（鍵即移除）。
+    /// 單一消費者：YabomishInputController.activateServer 讀取後須清為 nil。
+    static var pendingInputMode: String?
 
     /// Auto-commit when single candidate and code cannot extend further
     static var autoCommit: Bool {
@@ -587,22 +606,26 @@ struct YabomishPrefs {
     }
 
     static func applyProfile(_ profile: ContextProfile) {
-        suggestEnabled = profile.suggestEnabled
-        suggestStrategy = profile.suggestStrategy
-        charSuggest = profile.charSuggest
-        wordCorpus = profile.wordCorpus
-        regionVariant = profile.regionVariant
-        fuzzyMatch = profile.fuzzyMatch
-        autoCommit = profile.autoCommit
+        // 一次寫齊所有鍵再統一重讀快照：逐 setter 寫入會各觸發一次
+        // refreshSnapshot，跨行程觀察端也可能讀到只套了一半的 profile。
+        defaults.set(profile.suggestEnabled, forKey: "suggestEnabled")
+        defaults.set(profile.suggestStrategy, forKey: "suggestStrategy")
+        defaults.set(profile.charSuggest, forKey: "charSuggest")
+        defaults.set(profile.wordCorpus, forKey: "wordCorpus")
+        defaults.set(profile.regionVariant, forKey: "regionVariant")
+        defaults.set(profile.fuzzyMatch, forKey: "fuzzyMatch")
+        defaults.set(profile.autoCommit, forKey: "autoCommit")
         defaults.set(profile.domainOrder, forKey: "domainOrder")
         // Clear all domain toggles first, then apply profile's
         for (key, _) in defaults.dictionaryRepresentation() where key.hasPrefix("domain_") && !key.hasSuffix("_pri") {
             defaults.set(false, forKey: key)
         }
         for (key, val) in profile.domainEnabled {
-            setDomainEnabled(key, val)
+            defaults.set(val, forKey: key)
         }
-        currentContext = profile.code
+        defaults.set(profile.code, forKey: "currentContext")
+        refreshSnapshot()
+        postPrefsChanged()
     }
     #endif
 }

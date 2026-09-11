@@ -61,7 +61,6 @@ final class InputEngine {
     var _lastCommittedText: String { _lastCommitted }
     private var _prevCommitted = ""
     private var _recentCommitted = ""
-    private var _eatNextSpace = false
 
     // Same-sound
     private var _isSameSoundMode = false
@@ -215,7 +214,7 @@ final class InputEngine {
 
         if prefs.autoCommit &&
            _currentCandidates.count == 1 && _composing.count >= 2 && !_canExtendCode(_composing) {
-            _commitFirstCandidate(); _eatNextSpace = true; return
+            _commitFirstCandidate(); return
         }
 
         _notifyComposing(); _notifyCandidates()
@@ -225,7 +224,6 @@ final class InputEngine {
 
     func handleSpace() { sync {
         if _composing.isEmpty { return }
-        if _eatNextSpace { _eatNextSpace = false; return }
         // Pin mode: space confirms the pinned order
         if _isPinMode {
             if !_pinCode.isEmpty && !_pinPicked.isEmpty {
@@ -324,6 +322,12 @@ final class InputEngine {
             delegate?.engineDidClearComposing(); _notifyCandidates()
             return
         }
+        // Pin mode: Enter dismisses without committing the PIN: label
+        if _isPinMode {
+            _isPinMode = false; _pinCode = ""; _pinPicked = []
+            _resetComposing()
+            return
+        }
         if _composing.isEmpty { return }
         _commitText(_composing)
     } }
@@ -401,6 +405,7 @@ final class InputEngine {
         }
     } }
     func handleVRSF(_ char: String) -> Bool { sync {
+        guard !_isPinMode else { return false }
         let map: [(String, Int)] = [("v", 1), ("r", 2), ("s", 3), ("f", 4)]
         for (letter, idx) in map {
             if char == letter && _currentCandidates.count > idx && !cinTable.hasPrefix(_composing + letter) {
@@ -604,8 +609,8 @@ final class InputEngine {
             if let result = ContextProfileCommands.dispatch(sub: sub) {
                 if let mode = result.inputMode { _inputMode = mode }
                 delegate?.engineDidShowToast(result.toast)
+                return
             }
-            return
         }
         #endif
         // ── 剪貼簿處理 ,,v 系列 ──
@@ -699,6 +704,11 @@ final class InputEngine {
         }, deliver: { [weak self] text in
             DispatchQueue.main.async { self?.delegate?.engineDidPasteText(text) }
         }) { return }
+        // 指令存在但殘缺（open 無 app / shell 無 run / 未知型別）→ 報錯，
+        // 不可落到 modeMap：名為 "t"/"s"/"sp"… 的殘缺指令會誤切模式。
+        if CommaCommandRunner.commands[cmd] != nil {
+            delegate?.engineDidShowToast("指令 ,,\(cmd.uppercased()) 格式錯誤"); return
+        }
         guard let mode = modeMap[cmd] else {
             delegate?.engineDidShowToast("未知命令 ,,\(cmd.uppercased())\n輸入 ,,H 查看說明"); return
         }
@@ -791,7 +801,10 @@ final class InputEngine {
 
         // Fuzzy match: if no candidates, try adjacent-key substitution
         if _currentCandidates.isEmpty && !_isWildcard && code.count >= 2 && prefs.fuzzyMatch {
-            _currentCandidates = ranker.fuzzyLookup(code, cinTable: cinTable)
+            let fuzzyRaw = ranker.fuzzyLookup(code, cinTable: cinTable)
+            _currentCandidates = ranker.rank(raw: fuzzyRaw, code: code, prev: _lastCommitted,
+                                             mode: _inputMode, cinTable: cinTable, freqTracker: freqTracker,
+                                             fuzzy: true)
         }
 
         #if !MINIMAL
@@ -928,7 +941,7 @@ final class InputEngine {
 
     private func _resetComposing() {
         _composing = ""; _currentCandidates = []; _isWildcard = false
-        _sameSoundBase = ""; _eatNextSpace = false
+        _sameSoundBase = ""
         _isInCommaCommand = false; _commaCommandBuffer = ""
         _clearZhuyinSlots()
         delegate?.engineDidClearComposing()

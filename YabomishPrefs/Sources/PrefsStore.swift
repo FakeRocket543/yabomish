@@ -176,6 +176,37 @@ import Foundation
         }
         postChange()
     }
+    // MARK: - IM 端變更同步（#39）
+
+    /// IM 端（,,SG／,,X）改設定時，開著的 prefs 視窗得重讀 defaults：
+    /// 收到 prefsChanged 就清掉 domainStates 快取並 bump generation；
+    /// onChange 讀取 generation 的 view（SuggestionTab／ContextBar）隨之重繪、重讀。
+    var generation: Int = 0
+
+    @ObservationIgnored private var prefsObserver: (any NSObjectProtocol)?
+
+    init() {
+        prefsObserver = DistributedNotificationCenter.default().addObserver(
+            forName: .init("com.yabomish.prefsChanged"), object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            domainStates.removeAll()
+            generation += 1
+        }
+    }
+
+    deinit {
+        if let prefsObserver {
+            DistributedNotificationCenter.default().removeObserver(prefsObserver)
+        }
+    }
+
+    /// 語境套用前寫入 transient key：IM 端 refreshSnapshot 排空後套用到 engine
+    /// （只寫不 post，由後續屬性 setter 的 postChange 一併通知）
+    func setPendingInputMode(_ mode: String) {
+        ud.set(mode, forKey: "pendingInputMode")
+    }
+
     #endif
 
     // MARK: - Onboarding

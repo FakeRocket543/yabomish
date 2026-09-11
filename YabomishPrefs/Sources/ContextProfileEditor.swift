@@ -19,6 +19,7 @@ struct ContextProfileEditor: View {
     @State private var fuzzyMatch: Bool = true
     @State private var autoCommit: Bool = false
     @State private var enabledDomains: Set<String> = []
+    @State private var workingOrder: [String] = []
 
     private static let modeOptions: [(String, String)] = [
         ("t", "繁中"), ("s", "簡中"), ("sp", "速打"), ("sl", "慢打"),
@@ -132,6 +133,7 @@ struct ContextProfileEditor: View {
         fuzzyMatch = profile.fuzzyMatch
         autoCommit = profile.autoCommit
         enabledDomains = Set(profile.domainEnabled.filter(\.value).map(\.key))
+        workingOrder = profile.domainOrder
     }
 
     private func save() {
@@ -146,7 +148,11 @@ struct ContextProfileEditor: View {
         p.wordCorpus = wordCorpus
         p.fuzzyMatch = fuzzyMatch
         p.autoCommit = autoCommit
-        p.domainOrder = DomainData.allDomains.map(\.id).filter { enabledDomains.contains($0) }
+        // #27：沿用已存的 domainOrder（僅留仍啟用的），新啟用的領域依 catalog 順序附加 —
+        // 不以目錄序重建，避免改個名字就把使用者拖好的優先序洗掉
+        let stillEnabled = workingOrder.filter { enabledDomains.contains($0) }
+        let newlyEnabled = DomainData.allDomains.map(\.id).filter { enabledDomains.contains($0) && !stillEnabled.contains($0) }
+        p.domainOrder = stillEnabled + newlyEnabled
         p.domainEnabled = Dictionary(uniqueKeysWithValues: DomainData.allDomains.map { ($0.id, enabledDomains.contains($0.id)) })
         p.save()
         onSave(p)

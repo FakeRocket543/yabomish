@@ -12,7 +12,7 @@ TEST_SOURCES=$(find Tests -name '*.swift' ! -name 'test_horizontal_panel.swift' 
 echo "Compiling test runner..."
 swiftc \
     -module-name YabomishTests \
-    -target arm64-apple-macos14.0 \
+    -target "$(uname -m)-apple-macos14.0" \
     -sdk "$(xcrun --show-sdk-path)" \
     -framework Foundation \
     -framework AppKit \

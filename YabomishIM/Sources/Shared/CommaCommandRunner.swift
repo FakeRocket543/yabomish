@@ -48,8 +48,9 @@ enum CommaCommandRunner {
     }
 
     /// Try to execute a platform command (shell/open/hermes, macOS-only).
-    /// Returns true if matched. `deliver` receives text to insert at the cursor
-    /// (hermes replies) on the main queue.
+    /// Returns true only when something was actually dispatched — 殘缺項目
+    /// （open 無 app、shell 無 run、hermes 無 send、未知型別）回傳 false，
+    /// 讓呼叫端的「未知命令」fallback 接手。
     static func tryExecute(_ cmd: String,
                            toast: @escaping (String) -> Void,
                            deliver: @escaping (String) -> Void = { _ in }) -> Bool {
@@ -57,19 +58,18 @@ enum CommaCommandRunner {
         guard let command = commands[cmd] else { return false }
         switch command.type {
         case "open":
-            if let app = command.app {
-                _runShellAsync("open -a '\(app)'", toast: toast)
-            }
+            guard let app = command.app else { return false }
+            // Process+argv，不經 shell：commands.json 為同步來源，app 名含引號
+            // 曾可逃出單引號執行任意指令（cf. InputEngine `,,P` 的寫法）。
+            _runProcessAsync(executable: "/usr/bin/open", args: ["-a", app], toast: toast)
         case "shell":
-            if let script = command.run {
-                _runShellAsync(script, toast: toast)
-            }
+            guard let script = command.run else { return false }
+            _runShellAsync(script, toast: toast)
         case "hermes":
-            if let payload = command.send {
-                _askHermes(payload: payload, url: command.url, toast: toast, deliver: deliver)
-            }
+            guard let payload = command.send else { return false }
+            _askHermes(payload: payload, url: command.url, toast: toast, deliver: deliver)
         default:
-            break // "text" handled by expandText; anything else is ignored here
+            return false // "text" 由 expandText 處理；未知型別交回未知命令 fallback
         }
         return true
         #else
@@ -136,22 +136,37 @@ enum CommaCommandRunner {
         return body
     }
 
-    private static func _runShellAsync(_ script: String, toast: @escaping (String) -> Void) {
+    /// 共用執行核心（Process+argv，無 shell）。watchdog：5 秒後 SIGTERM，
+    /// 再 1 秒仍未退出則 SIGKILL 升級；stdout/stderr 導向 /dev/null——
+    /// 未讀取的 pipe 會讓寫超過 64KB 的子程序卡死，waitUntilExit 永不返回。
+    private static func _runProcessAsync(executable: String,
+                                         args: [String],
+                                         toast: @escaping (String) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
-            let p = Process(); let pipe = Pipe()
-            p.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            p.arguments = ["-c", script]
-            p.standardOutput = pipe; p.standardError = pipe
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: executable)
+            p.arguments = args
+            p.standardOutput = FileHandle.nullDevice
+            p.standardError = FileHandle.nullDevice
             do {
                 try p.run()
-                DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-                    if p.isRunning { p.terminate() }
-                }
-                p.waitUntilExit()
             } catch {
                 DispatchQueue.main.async { toast("執行失敗: \(error.localizedDescription)") }
+                return
             }
+            DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+                guard p.isRunning else { return }
+                p.terminate()
+                DispatchQueue.global().asyncAfter(deadline: .now() + 1) {
+                    if p.isRunning { kill(p.processIdentifier, SIGKILL) }
+                }
+            }
+            p.waitUntilExit() // 有 SIGKILL 升級把關，最長約 6 秒必返回
         }
+    }
+
+    private static func _runShellAsync(_ script: String, toast: @escaping (String) -> Void) {
+        _runProcessAsync(executable: "/bin/zsh", args: ["-c", script], toast: toast)
     }
     #endif
 }

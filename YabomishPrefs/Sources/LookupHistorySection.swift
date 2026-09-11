@@ -112,9 +112,14 @@ struct LookupHistorySection: View {
         var db: OpaquePointer?
         guard sqlite3_open(Self.dbPath, &db) == SQLITE_OK else { return }
         defer { sqlite3_close(db) }
-        sqlite3_exec(db, "DELETE FROM lookup_history", nil, nil, nil)
-        entries = []
-        exportedPath = nil
+        sqlite3_busy_timeout(db, 5000)
+        if sqlite3_exec(db, "DELETE FROM lookup_history", nil, nil, nil) == SQLITE_OK {
+            entries = []
+            exportedPath = nil
+        } else {
+            // #36：與 IM 共寫 freq.db，BUSY 時不可假裝清除成功
+            print("LookupHistorySection: 清除查字歷史失敗（\(String(cString: sqlite3_errmsg(db)))）")
+        }
     }
 
     private func exportCSV() {
@@ -151,6 +156,7 @@ struct LookupHistorySection: View {
         var db: OpaquePointer?
         guard sqlite3_open_v2(dbPath, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else { return out }
         defer { sqlite3_close(db) }
+        sqlite3_busy_timeout(db, 5000)
         var stmt: OpaquePointer?
         // WAL 下讀取輸入法正在寫的同一個 DB：唯讀連線安全
         guard sqlite3_prepare_v2(db, "SELECT id, ts, mode, query, char, code FROM lookup_history ORDER BY id DESC LIMIT 1000", -1, &stmt, nil) == SQLITE_OK else { return out }

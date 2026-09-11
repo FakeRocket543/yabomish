@@ -3,10 +3,14 @@ import UniformTypeIdentifiers
 
 private extension Data {
     func u32(_ offset: Int) -> UInt32 {
-        withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt32.self) }
+        guard offset >= 0, offset + 4 <= count else { return 0 }
+        // loadUnaligned：.bin 的 offset 不保證 4-byte 對齊，對齊讀取會 trap
+        // （與 IM 端 WikiCorpus.swift 同款）
+        return withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: UInt32.self).littleEndian }
     }
     func u16(_ offset: Int) -> UInt16 {
-        withUnsafeBytes { $0.load(fromByteOffset: offset, as: UInt16.self) }
+        guard offset >= 0, offset + 2 <= count else { return 0 }
+        return withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: UInt16.self).littleEndian }
     }
 }
 
@@ -84,7 +88,7 @@ struct ShortcutTab: View {
             loadShortcuts()
             countFreeCodes()
         }
-        .alert("匯入結果", isPresented: Binding(get: { importAlert != nil }, set: { if !$0 { importAlert = nil } })) {
+        .alert("訊息", isPresented: Binding(get: { importAlert != nil }, set: { if !$0 { importAlert = nil } })) {
             Button("好") { importAlert = nil }
         } message: {
             Text(importAlert ?? "")
@@ -237,6 +241,12 @@ struct ShortcutTab: View {
         let c = code.lowercased().trimmingCharacters(in: .whitespaces)
         let v = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard c.count >= 2, !v.isEmpty else { return }
+        // user_shortcuts.txt 一行一條 code→content；內嵌換行會把一條拆成兩條
+        // 實體行（IM 端逐行解析，續行含 tab 時甚至被當成假快捷碼）
+        guard !v.contains("\n"), !v.contains("\r") else {
+            importAlert = "內容不可包含換行。請移除換行符，或改用單行文字。"
+            return
+        }
         if let idx = shortcuts.firstIndex(where: { $0.code == c }) {
             shortcuts[idx] = (code: c, content: v)
         } else {
@@ -324,14 +334,21 @@ struct ShortcutTab: View {
         panel.allowedContentTypes = [.plainText, .data]
         panel.allowsOtherFileTypes = true
         panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url,
-              let text = try? String(contentsOf: url, encoding: .utf8) else { return }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+            importAlert = "無法以 UTF-8 讀取檔案：\(url.lastPathComponent)"
+            return
+        }
+        var skippedNL = 0
         let incoming = text.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line -> (String, String)? in
-            let s = line.trimmingCharacters(in: .whitespaces)
+            let s = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if s.isEmpty || s.hasPrefix("#") { return nil }
             let parts = s.split(separator: "\t", maxSplits: 1)
             guard parts.count == 2 else { return nil }
-            return (String(parts[0]).lowercased(), String(parts[1]))
+            let v = String(parts[1])
+            // CRLF 殘留或純 CR 斷行的檔案：內容含換行會寫壞 user_shortcuts.txt，整列略過
+            if v.contains("\n") || v.contains("\r") { skippedNL += 1; return nil }
+            return (String(parts[0]).lowercased(), v)
         }
         let cin = Self.getCINCodes()
         var added = 0, updated = 0, skippedLen: [String] = [], skippedCIN: [String] = []
@@ -355,6 +372,9 @@ struct ShortcutTab: View {
         if !skippedCIN.isEmpty {
             msg += "\n略過（字表衝突）：\(skippedCIN.prefix(5).joined(separator: "、"))"
             if skippedCIN.count > 5 { msg += " 等 \(skippedCIN.count) 筆" }
+        }
+        if skippedNL > 0 {
+            msg += "\n略過（含換行的列）：\(skippedNL) 筆"
         }
         importAlert = msg
     }

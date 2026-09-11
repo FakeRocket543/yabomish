@@ -48,6 +48,7 @@ final class CandidatePanel: NSPanel {
     private var lastA11yNotify: TimeInterval = 0
     private var prefsChangedToken: (any NSObjectProtocol)?
     private var dragCursorPushed = false
+    private var hoverCursorPushed = false
 
     // MARK: - Shared state
 
@@ -184,7 +185,7 @@ final class CandidatePanel: NSPanel {
         contentVisual.addTrackingArea(tracking)
 
         // Screen change observer
-        NSWorkspace.shared.notificationCenter.addObserver(
+        NotificationCenter.default.addObserver(
             self, selector: #selector(screenParametersChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil
         )
@@ -672,11 +673,18 @@ final class CandidatePanel: NSPanel {
     // MARK: - Fixed mode: hover cursor
 
     override func mouseEntered(with event: NSEvent) {
-        if isFixed { NSCursor.openHand.push() }
+        // 以 hoverCursorPushed 對稱 push/pop：進出之間 isFixed 可能翻轉
+        //（如切換顯示模式），用即時 isFixed 決定 pop 會殘留 openHand 全系統。
+        if isFixed && !hoverCursorPushed {
+            NSCursor.openHand.push()
+            hoverCursorPushed = true
+        }
     }
 
     override func mouseExited(with event: NSEvent) {
-        if isFixed { NSCursor.pop() }
+        guard hoverCursorPushed else { return }
+        hoverCursorPushed = false
+        NSCursor.pop()
     }
 
     // MARK: - Fixed mode: dragging (vertical only)

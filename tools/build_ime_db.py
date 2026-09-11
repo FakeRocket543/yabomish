@@ -128,6 +128,8 @@ def build():
         n = conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
         print(f"  {tbl:15s}: {n:,}")
 
+    # 出貨 db 不可留 WAL：唯讀 bundle 位置開不了 -wal/-shm，關閉前退回 DELETE journal
+    conn.execute("PRAGMA journal_mode=DELETE")
     conn.close()
     import os
     print(f"\n  Size: {os.path.getsize(DB_PATH)/1e6:.1f} MB")

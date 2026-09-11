@@ -28,6 +28,34 @@ check_xcode() {
     xcode-select -p &>/dev/null || err "Xcode Command Line Tools required"
 }
 
+# Universal binary：兩個 -target 各編譯一次後以 lipo 合併（codesign 會對所有 slice 簽署）
+# YABOMISH_ARCH=arm64|x86_64 可只編譯單一架構以縮短編譯時間（預設 universal）
+swiftc_universal() {
+    local out="$1"; shift
+    local archs="arm64 x86_64"
+    case "${YABOMISH_ARCH:-universal}" in
+        universal) ;;
+        arm64|x86_64) archs="$YABOMISH_ARCH";;
+        *) err "YABOMISH_ARCH 僅接受 universal|arm64|x86_64";;
+    esac
+    local tmps=() a tmp li
+    for a in $archs; do
+        tmp=$(mktemp -t "yabomish_${a}_")
+        tmps+=("$tmp")
+        info "swiftc -target ${a}-apple-macos14.0"
+        swiftc -target "${a}-apple-macos14.0" "$@" -o "$tmp"
+    done
+    if [ "${#tmps[@]}" -gt 1 ]; then
+        lipo -create -output "$out" "${tmps[@]}"
+        li=$(lipo -info "$out" 2>&1)
+        ok "$li"
+    else
+        mv "$tmp" "$out"
+    fi
+    rm -f "${tmps[@]}"
+    chmod +x "$out"
+}
+
 # Modes: dl（網路版，預設：完整程式碼、不含語料，首次啟動自 GitHub Releases 下載）
 #        lite（內含基礎語料）／full（全打包）／min（極簡，無聯想）
 build_im() {
@@ -70,11 +98,12 @@ build_im() {
     local flags=""
     if [ "$mode" = "min" ]; then flags="-DMINIMAL"; fi
 
-    swiftc -module-name YabomishIM \
-        -target arm64-apple-macos14.0 \
+    local srcs=()
+    while IFS= read -r f; do srcs+=("$f"); done < <(find "$ROOT/YabomishIM/Sources" -name "*.swift" | sort)
+    swiftc_universal "$IM_APP/Contents/MacOS/YabomishIM" \
+        -module-name YabomishIM \
         -sdk "$(xcrun --show-sdk-path)" -O $flags \
-        -o "$IM_APP/Contents/MacOS/YabomishIM" \
-        $(find "$ROOT/YabomishIM/Sources" -name "*.swift" | sort)
+        "${srcs[@]}"
     ok "YabomishIM.app [$mode] build ${STAMP}.${HASH}"
 }
 
@@ -88,14 +117,11 @@ build_prefs() {
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$PREFS_APP/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$PREFS_APP/Contents/Info.plist"
 
-    swiftc -module-name YabomishPrefs \
-        -target arm64-apple-macos14.0 \
+    swiftc_universal "$PREFS_APP/Contents/MacOS/YabomishPrefs" \
+        -module-name YabomishPrefs \
         -sdk "$(xcrun --show-sdk-path)" -O \
         -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers \
-        -o "$PREFS_APP/Contents/MacOS/YabomishPrefs" \
         "$PREFS_DIR"/Sources/*.swift
-
-    chmod +x "$PREFS_APP/Contents/MacOS/YabomishPrefs"
     ok "YabomishPrefs.app"
 }
 
@@ -181,6 +207,11 @@ case "$SYS_LANG" in
         [ "$VARIANT" = "full" ] && L_NOTE="The full corpus and 28 domain dictionaries (~100MB) download automatically on first use." || L_NOTE="The suggestion corpus (~15MB) downloads automatically on first use.";;
 esac
 
+case "$RES$IM_SRC$PREFS_SRC" in
+    *\'*) osascript -e 'display dialog "安裝路徑含單引號，無法繼續安裝。Path contains a single quote. 請將本 App 移至不含特殊字元的資料夾後再試。" buttons {"OK"} default button 1 with title "Yabomish"' || true
+        exit 1;;
+esac
+
 if ! osascript -e "do shell script \"bash '$RES/root_install.sh' '$IM_SRC' '$PREFS_SRC'\" with administrator privileges with prompt \"Yabomish\""; then
     osascript -e "display dialog \"$L_CANCEL\" buttons {\"OK\"} default button 1 with title \"Yabomish\"" || true
     exit 0
@@ -237,7 +268,7 @@ Yabomish 安裝說明（全量版）
    SHA-256 驗證後存於 ~/Library/Application Support/Yabomish/）
 離線時打字、查碼、繁簡轉換不受影響，僅聯想功能等語料就緒後生效。
 
-macOS 14.0+ (Apple Silicon) 適用。
+macOS 14.0+（Apple Silicon 與 Intel）適用。
 EOF
     else
         cat > "$ROOT/build/dmg_staging/README.txt" <<'EOF'
@@ -251,7 +282,7 @@ Yabomish 安裝說明（精簡版）
 離線時打字、查碼、繁簡轉換不受影響，僅聯想功能等語料就緒後生效。
 需要 28 部專業詞典請改用「全量版」。
 
-macOS 14.0+ (Apple Silicon) 適用。
+macOS 14.0+（Apple Silicon 與 Intel）適用。
 EOF
     fi
 
@@ -300,6 +331,9 @@ killall YabomishIM 2>/dev/null || true; sleep 1
 
 UD="$CONSOLE_HOME/Library/Application Support/Yabomish"
 mkdir -p "$UD/tables"
+# postinstall 以 root 執行，目錄擁有者須還給 console user，否則 IM 寫不進自己的資料
+chown -R "$CONSOLE_USER":staff "$UD"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f "$SCRIPT_DIR/yabomish_capture.sh" ]; then
     cp "$SCRIPT_DIR/yabomish_capture.sh" "$UD/"
     chown "$CONSOLE_USER" "$UD/yabomish_capture.sh"; chmod +x "$UD/yabomish_capture.sh"
@@ -426,9 +460,12 @@ notarize() {
         if [ -f "$ASC_PRIVATE_KEY" ]; then
             args+=(--key "$ASC_PRIVATE_KEY" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID")
         else
-            local tmp_key="$ROOT/build/asc_key.p8"
-            mkdir -p "$ROOT/build"
+            local tmp_key
+            tmp_key=$(mktemp -t asc_key)
+            chmod 600 "$tmp_key"
             printf '%s\n' "$ASC_PRIVATE_KEY" > "$tmp_key"
+            # 私鑰暫存檔在函式結束（含 return）時立即清除
+            trap 'rm -f "$tmp_key"' RETURN
             args+=(--key "$tmp_key" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID")
         fi
     else

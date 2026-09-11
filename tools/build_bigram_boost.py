@@ -9,10 +9,18 @@ Output binary:
   Pairs:   char_off:4, char_len:2, freq:2 = 8B each
   CharPool: UTF-8 encoded chars
 """
-import json, struct, sys
+import json, struct, sys, os
+
+
+def _atomic_write(path, data):
+    """寫到 .tmp 再原子置換，避免中斷留下半個出貨檔。"""
+    tmp = str(path) + '.tmp'
+    with open(tmp, 'wb') as f:
+        f.write(data)
+    os.replace(tmp, path)
 
 def build(src, dst):
-    with open(src) as f:
+    with open(src, encoding='utf-8') as f:
         data = json.load(f)
 
     entries = []  # (prevZy, curZy, [(char, freq)])
@@ -80,8 +88,7 @@ def build(src, dst):
     # String pool
     out.extend(str_pool)
 
-    with open(dst, 'wb') as f:
-        f.write(out)
+    _atomic_write(dst, out)
     print(f"BGBT: {len(entries)} entries, {len(pair_records)} pairs, {len(out)} bytes → {dst}")
 
 if __name__ == '__main__':

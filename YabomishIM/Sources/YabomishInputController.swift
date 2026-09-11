@@ -202,38 +202,6 @@ class YabomishInputController: IMKInputController {
 
     // MARK: - Candidate Panel
 
-    private static var cachedActiveScreen: (screen: NSScreen, time: Date)?
-
-    private func activeScreen(for client: IMKTextInput) -> NSScreen {
-        if let cached = Self.cachedActiveScreen, Date().timeIntervalSince(cached.time) < 0.5 {
-            return cached.screen
-        }
-        let result: NSScreen
-        let mouse = NSEvent.mouseLocation
-        if let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) {
-            result = screen
-        } else if let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
-           let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] {
-            var best: (screen: NSScreen, area: CGFloat) = (NSScreen.main ?? NSScreen.screens[0], 0)
-            for info in list {
-                guard let ownerPID = info[kCGWindowOwnerPID as String] as? Int32, ownerPID == pid,
-                      let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
-                      let x = bounds["X"], let y = bounds["Y"],
-                      let w = bounds["Width"], let h = bounds["Height"] else { continue }
-                let area = w * h
-                guard area > best.area else { continue }
-                if let s = NSScreen.screens.first(where: {
-                    $0.frame.contains(NSPoint(x: x + w / 2, y: $0.frame.maxY - y - h / 2))
-                }) { best = (s, area) }
-            }
-            result = best.screen
-        } else {
-            result = NSScreen.main ?? NSScreen.screens[0]
-        }
-        Self.cachedActiveScreen = (result, Date())
-        return result
-    }
-
     override func candidates(_ sender: Any!) -> [Any]! {
         engine.currentCandidates as [Any]
     }
@@ -300,6 +268,15 @@ class YabomishInputController: IMKInputController {
         // Reset engine state for new session
         engine.handleEscape()
         engine.clearCandidates()
+        // 語境列握手（Prefs app → IM）：ContextBar 套用語境時先寫暫態鍵
+        // "pendingInputMode" 再廣播 prefsChanged，refreshSnapshot() 已把該鍵
+        // 讀走（讀後即移除）；於此消費（讀後即清），比照 ,,X<code> 套用輸入模式。
+        // 點語境 chip 必先使 Prefs app 取得焦點（本 session 已 deactivate），
+        // 故暫態值的消費點即下次 activateServer。
+        if let mode = YabomishPrefs.pendingInputMode {
+            YabomishPrefs.pendingInputMode = nil
+            engine.switchToMode(mode)
+        }
         if fromOtherIM && YabomishPrefs.showActivateToast {
             showModeToast(engine.currentModeLabel)
         }
@@ -329,8 +306,23 @@ class YabomishInputController: IMKInputController {
         #endif
     }
 
+    /// 收編期間旗標：exitZhuyin/exitPinyinMode、handleEscape 會經 delegate 觸發
+    /// engineDidShowToast，而此時 IM 已停用、焦點常已移到新 app，toast 會彈在
+    /// 錯的畫面上；收編期間於 engineDidShowToast 靜音。
+    private var isDeactivating = false
+
     override func deactivateServer(_ sender: Any!) {
+        isDeactivating = true
+        defer { isDeactivating = false }
         guard Self.activeSession === self else {
+            // 過期 session：共享面板與 activeSession 一概不碰（引擎狀態由
+            // 下次 activateServer 重置），但仍要清掉自己 client 殘留的組字
+            // 底線，否則原 app 畫面留著未確認的底線組字。
+            if let client = sender as? (NSObjectProtocol & IMKTextInput),
+               !engine.composing.isEmpty {
+                client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                     replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
+            }
             super.deactivateServer(sender)
             return
         }
@@ -802,6 +794,9 @@ extension YabomishInputController: InputEngineDelegate {
     }
 
     func engineDidShowToast(_ text: String) {
+        // 收編期間（deactivateServer）退出模式流程會觸發 toast，此時焦點已
+        // 不在原 client，靜音避免彈到別的 app 畫面上。
+        guard !isDeactivating else { return }
         showModeToast(text)
     }
 

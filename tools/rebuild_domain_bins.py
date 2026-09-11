@@ -242,7 +242,7 @@ def _clean_naer_terms(raw_terms):
             if not _HAN_RE.search(p):
                 continue
             out.add(p)
-    return list(out)
+    return sorted(out)
 
 
 def build_naer_from_parquet():

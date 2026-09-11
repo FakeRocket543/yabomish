@@ -35,7 +35,7 @@ SEG_FILE = WORK / "wiki_segmented.txt"
 SEG_DIR = WORK / "seg_batches"
 
 BATCH_SIZE = 8
-MAX_LEN = 512
+MAX_LEN = 510  # BERT 上限 512，每段最多 510 字（+ [CLS]/[SEP] 剛好 512）
 SEG_BATCH_LINES = 300000  # 每 30 萬段輸出一個批次檔
 
 
@@ -79,6 +79,7 @@ def step_extract():
          open(CLEAN_FILE, "w", encoding="utf-8") as out:
         for event, elem in iterparse(bz, events=("end",)):
             if elem.tag != f"{ns}text":
+                elem.clear()  # page/revision 外殼也要清，否則整棵樹累積到數 GB RSS（同 wiki_kg_pipeline）
                 continue
             text = elem.text
             elem.clear()
@@ -111,7 +112,11 @@ def step_extract():
 def _load_ckip_model():
     """載入 ckip_mlx 模型，回傳 (model, vocab, unk_id, mx)"""
     import sys as _sys
-    CKIP_MLX = Path("/Users/fl/Python/ckip_mlx")
+    # 模型庫位置：預設 /Users/fl/Python/ckip_mlx，可用環境變數 CKIP_MLX_PATH 覆寫
+    ckip_mlx = os.environ.get("CKIP_MLX_PATH", "/Users/fl/Python/ckip_mlx")
+    if not os.path.isdir(ckip_mlx):
+        _sys.exit(f"❌ 找不到 ckip_mlx 目錄: {ckip_mlx}（請以環境變數 CKIP_MLX_PATH 指定）")
+    CKIP_MLX = Path(ckip_mlx)
     _sys.path.insert(0, str(CKIP_MLX))
     import mlx.core as mx
     from bert_mlx import BertForTokenClassification

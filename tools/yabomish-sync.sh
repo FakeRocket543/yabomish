@@ -7,7 +7,7 @@
 #               實際 endpoint 由 vos3 remote 決定，目前為 OVH S3 s3.sgp.io.cloud.ovh.net bucket vos3）
 #   git       — 經 git 同步到 GitHub / Forgejo / 任何 git repo
 #               公開用 https://github.com/user/repo.git
-#               私密用 https://github.com/user/repo.git + YABOMISH_SYNC_TOKEN
+#               私密用 https://github.com/user/repo.git + YABOMISH_SYNC_TOKEN（以 http.extraHeader 帶入）
 #               私密也可用 ssh：git@git.lcn.tw:user/repo.git
 #
 # 環境變數：
@@ -72,7 +72,14 @@ r2_pull() {
     local LOCAL_M=$(mtime "$SHARE_DIR/$f")
     if [ "$LOCAL_M" -eq 0 ] || { [ "$LOCAL_M" -lt "$RM" ] && [ "$RM" != 0 ]; }; then
       mkdir -p "$(dirname "$SHARE_DIR/$f")"
-      if vos3_get "$PREFIX/$f" "$SHARE_DIR/$f" >/dev/null 2>&1; then echo "↓ $f"; else echo "✗ $f (download failed)"; fi
+      # 先下載到暫存再 mv，IM 端才不會讀到半截檔
+      if vos3_get "$PREFIX/$f" "$SHARE_DIR/$f.tmp.$$" >/dev/null 2>&1; then
+        mv -f "$SHARE_DIR/$f.tmp.$$" "$SHARE_DIR/$f"
+        echo "↓ $f"
+      else
+        rm -f "$SHARE_DIR/$f.tmp.$$"
+        echo "✗ $f (download failed)"
+      fi
     else
       echo "= $f (local newer or equal)"
     fi
@@ -134,21 +141,21 @@ git_status() {
   done
 }
 
-git_url() {
-  local url="$YABOMISH_SYNC_REPO"
-  if [ -n "${YABOMISH_SYNC_TOKEN:-}" ] && [[ "$url" == https://* ]]; then
-    # https://github.com/user/repo.git → https://x-access-token:TOKEN@github.com/...
-    url="${url/https:\/\//https:\/\/x-access-token:$YABOMISH_SYNC_TOKEN@}"
+# 網路子指令認證：token 走 http.extraHeader，不嵌入 URL、不寫進 .git/config
+auth_git() {
+  if [ -n "${YABOMISH_SYNC_TOKEN:-}" ] && [[ "${YABOMISH_SYNC_REPO:-}" == https://* ]]; then
+    git -c "http.extraHeader=Authorization: Bearer $YABOMISH_SYNC_TOKEN" "$@"
+  else
+    git "$@"
   fi
-  echo "$url"
 }
 
 git_sync_dir() {
   local TMP=$(mktemp -d)
-  local url=$(git_url)
+  local url="$YABOMISH_SYNC_REPO"
   local branch="${YABOMISH_SYNC_BRANCH:-main}"
   # 淺 clone；失敗時初始化空 repo
-  if ! git clone --depth=1 --branch="$branch" "$url" "$TMP/repo" >/dev/null 2>&1; then
+  if ! auth_git clone --depth=1 --branch="$branch" "$url" "$TMP/repo" >/dev/null 2>&1; then
     mkdir -p "$TMP/repo"
     git init "$TMP/repo" >/dev/null
     git -C "$TMP/repo" remote add origin "$url" >/dev/null 2>&1 || true
@@ -163,13 +170,19 @@ git_pull() {
   local repo="$TMP/repo"
   for f in "${FILES[@]}"; do
     if [ -f "$repo/$f" ]; then
+      if [ -L "$repo/$f" ]; then
+        echo "✗ $f (remote 是 symlink，拒絕複製)"
+        continue
+      fi
       # git 不保留 mtime，無法 LWW：本地與遠端內容不同時先備份再覆蓋，避免靜默丟失本地編輯
       if [ -f "$SHARE_DIR/$f" ] && ! diff -q "$SHARE_DIR/$f" "$repo/$f" >/dev/null 2>&1; then
         cp "$SHARE_DIR/$f" "$SHARE_DIR/$f.bak.$(date +%Y%m%d%H%M%S)"
         echo "! $f (local diverged — backed up to $f.bak.*)"
       fi
+      # 先寫暫存再 mv，IM 端才不會讀到半截檔
       mkdir -p "$(dirname "$SHARE_DIR/$f")"
-      cp "$repo/$f" "$SHARE_DIR/$f"
+      cp "$repo/$f" "$SHARE_DIR/$f.tmp.$$" || { rm -f "$SHARE_DIR/$f.tmp.$$"; echo "✗ $f (copy failed)"; continue; }
+      mv -f "$SHARE_DIR/$f.tmp.$$" "$SHARE_DIR/$f"
       echo "↓ $f"
     else
       echo "- $f (remote missing)"
@@ -190,7 +203,7 @@ git_push() {
   trap 'rm -rf "$TMP"' EXIT
   local repo="$TMP/repo"
   local branch="${YABOMISH_SYNC_BRANCH:-main}"
-  local url=$(git_url)
+  local url="$YABOMISH_SYNC_REPO"
 
   # 確保本地分支名稱正確
   git -C "$repo" checkout -b "$branch" 2>/dev/null || true
@@ -214,20 +227,20 @@ git_push() {
     return
   fi
 
-  git -C "$repo" add -- "${FILES[@]}"
+  git -C "$repo" add -A .
   if ! git -C "$repo" commit -m "Yabomish sync: $NOW" >/dev/null 2>&1; then
     echo "(nothing changed)"
     return
   fi
 
-  if git -C "$repo" push "$url" "HEAD:$branch" >/dev/null 2>&1; then
+  if auth_git -C "$repo" push "$url" "HEAD:$branch" >/dev/null 2>&1; then
     echo "↑ synced to $YABOMISH_SYNC_REPO"
     return
   fi
 
   echo "✗ push failed; trying pull + rebase..."
-  if git -C "$repo" pull --rebase "$url" "$branch" >/dev/null 2>&1; then
-    if git -C "$repo" push "$url" "HEAD:$branch" >/dev/null 2>&1; then
+  if auth_git -C "$repo" pull --rebase "$url" "$branch" >/dev/null 2>&1; then
+    if auth_git -C "$repo" push "$url" "HEAD:$branch" >/dev/null 2>&1; then
       echo "↑ synced to $YABOMISH_SYNC_REPO"
     else
       echo "✗ push failed after rebase"

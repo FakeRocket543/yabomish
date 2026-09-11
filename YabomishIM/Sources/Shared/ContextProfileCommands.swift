@@ -21,7 +21,6 @@ enum ContextProfileCommands {
                 return Result(toast: "尚未選擇語境，無法儲存", inputMode: nil)
             }
             let snap = ContextProfile.snapshotCurrent()
-            profile.inputMode = snap.inputMode
             profile.suggestEnabled = snap.suggestEnabled
             profile.suggestStrategy = snap.suggestStrategy
             profile.charSuggest = snap.charSuggest

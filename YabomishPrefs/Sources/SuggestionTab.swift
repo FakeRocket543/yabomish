@@ -160,6 +160,8 @@ struct SuggestionTab: View {
             .padding(20)
         }
         .onAppear { loadOrder(); loadDomains() }
+        // #39：IM 端（,,SG／,,X）改設定時重讀排序；讀 generation 讓通知能驅動重繪
+        .onChange(of: store.generation) { _, _ in loadOrder(); loadDomains() }
         .alert("確定重置聯想設定？", isPresented: $showResetConfirm) {
             Button("取消", role: .cancel) {}
             Button("重置", role: .destructive) { resetDefaults() }
@@ -381,6 +383,9 @@ struct SuggestionTab: View {
         store.emojiSuggest = true
         store.emojiFirst = true
         store.regionVariant = "tw"
+        // #28：重置也要寫回 defaults — [] 即 catalog 預設序（見 loadDomains），
+        // 否則切 tab 回來視覺重置被還原
+        store.domainOrder = []
         loadOrder()
         generalOrder = DomainData.generalDomains
         proOrder = DomainData.proDomains

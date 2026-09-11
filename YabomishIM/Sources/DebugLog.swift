@@ -7,6 +7,8 @@ enum DebugLog {
     private static let maxSize = 512 * 1024  // 512 KB
     /// 保護檔案寫入（建立／輪替／附加）的鎖：多執行緒同時寫 log 時避免內容交錯。
     private static let writeLock = NSLock()
+    /// debug.log 記實打內容，檔案權限收緊為 0600（僅擁有者可讀寫）。
+    private static let secureAttrs: [FileAttributeKey: Any] = [.posixPermissions: 0o600]
 
     /// 以 @autoclosure 延遲組字：debugMode 關閉時（常態）訊息字串完全不求值，
     /// 呼叫端即使傳入昂貴的插值運算也不付出成本。
@@ -21,14 +23,19 @@ enum DebugLog {
         try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
         let path = logPath
         if !fm.fileExists(atPath: path) {
-            fm.createFile(atPath: path, contents: nil)
+            fm.createFile(atPath: path, contents: nil, attributes: secureAttrs)
+        } else if let attr = try? fm.attributesOfItem(atPath: path),
+                  let perms = attr[.posixPermissions] as? NSNumber,
+                  perms.uint16Value & 0o077 != 0 {
+            // 舊版建立的檔案可能是 0644：首次開啟時收緊
+            try? fm.setAttributes(secureAttrs, ofItemAtPath: path)
         }
         // Rotate if too large
         if let attr = try? fm.attributesOfItem(atPath: path),
            let size = attr[.size] as? Int, size > maxSize {
             try? fm.removeItem(atPath: path + ".old")
             try? fm.moveItem(atPath: path, toPath: path + ".old")
-            fm.createFile(atPath: path, contents: nil)
+            fm.createFile(atPath: path, contents: nil, attributes: secureAttrs)
         }
         if let fh = FileHandle(forWritingAtPath: path) {
             fh.seekToEndOfFile()
