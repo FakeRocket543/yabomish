@@ -37,24 +37,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func createWindow() {
-        window = NSWindow(
+        // isReleasedWhenClosed=false：預設 true 會在關窗時釋放 NSWindow，
+        // 之後 window setter 再 release 一次 → double-free SIGSEGV
+        // （dock 點擊觸發 applicationShouldHandleReopen → createWindow）
+        let w = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 660, height: 540),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "Yabomish 設定"
+        w.isReleasedWhenClosed = false
+        w.title = "Yabomish 設定"
         let store = PrefsStore()
-        window.contentView = NSHostingView(rootView: ContentView(store: store))
-        window.center()
-        window.makeKeyAndOrderFront(nil)
+        w.contentView = NSHostingView(rootView: ContentView(store: store))
+        w.center()
+        w.makeKeyAndOrderFront(nil)
+        window = w
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
-            createWindow()
+            if let w = window {
+                // 視窗還活著（isReleasedWhenClosed=false）— 直接重用
+                w.makeKeyAndOrderFront(nil)
+            } else {
+                createWindow()
+            }
         }
         NSApp.activate(ignoringOtherApps: true)
         return true
