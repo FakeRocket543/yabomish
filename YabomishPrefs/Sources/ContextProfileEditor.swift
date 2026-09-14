@@ -20,6 +20,8 @@ struct ContextProfileEditor: View {
     @State private var autoCommit: Bool = false
     @State private var enabledDomains: Set<String> = []
     @State private var workingOrder: [String] = []
+    @State private var domainQuery = ""
+    @State private var errorText: String?
 
     private static let modeOptions: [(String, String)] = [
         ("t", "繁中"), ("s", "簡中"), ("sp", "速打"), ("sl", "慢打"),
@@ -38,52 +40,57 @@ struct ContextProfileEditor: View {
             }
 
             GroupBox("基本") {
-                HStack {
-                    Text("圖示"); TextField("圖示名稱", text: $icon).frame(width: 50)
-                    Spacer(minLength: 20)
-                    Text("名稱"); TextField("名稱", text: $name).frame(width: 120)
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+                    GridRow {
+                        Text("圖示"); TextField("SF Symbol", text: $icon)
+                        Text("名稱"); TextField("名稱", text: $name)
+                    }
+                    GridRow {
+                        Text("命令碼"); Text(profile.code).font(Typo.bodyMono).foregroundStyle(.secondary)
+                    }
                 }
-                HStack { Text("命令碼"); Text(profile.code).font(Typo.bodyMono).foregroundStyle(.secondary) }
             }
 
             GroupBox("輸入") {
-                HStack {
-                    Text("模式"); Picker("", selection: $inputMode) {
-                        ForEach(Self.modeOptions, id: \.0) { Text($0.1).tag($0.0) }
-                    }.frame(width: 100)
-                    Spacer(minLength: 20)
-                    Text("地區"); Picker("", selection: $regionVariant) {
-                        ForEach(Self.regionOptions, id: \.0) { Text($0.1).tag($0.0) }
-                    }.frame(width: 80)
-                }
-                HStack {
-                    Toggle("鄰鍵容錯", isOn: $fuzzyMatch)
-                    Spacer(minLength: 20)
-                    Toggle("自動送字", isOn: $autoCommit)
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+                    GridRow {
+                        Text("模式"); Picker("", selection: $inputMode) {
+                            ForEach(Self.modeOptions, id: \.0) { Text($0.1).tag($0.0) }
+                        }.labelsHidden().pickerStyle(.menu)
+                        Text("地區"); Picker("", selection: $regionVariant) {
+                            ForEach(Self.regionOptions, id: \.0) { Text($0.1).tag($0.0) }
+                        }.labelsHidden().pickerStyle(.segmented)
+                    }
+                    GridRow {
+                        Toggle("鄰鍵容錯", isOn: $fuzzyMatch)
+                        Toggle("自動送字", isOn: $autoCommit)
+                    }
                 }
             }
 
             GroupBox("聯想") {
-                HStack {
-                    Toggle("聯想系統", isOn: $suggestEnabled)
-                    Spacer(minLength: 20)
-                    Toggle("字級聯想", isOn: $charSuggest)
-                }
-                HStack {
-                    Text("策略"); Picker("", selection: $suggestStrategy) {
-                        ForEach(Self.strategyOptions, id: \.0) { Text($0.1).tag($0.0) }
-                    }.frame(width: 80)
-                    Spacer(minLength: 20)
-                    Text("詞級語料"); Picker("", selection: $wordCorpus) {
-                        ForEach(Self.corpusOptions, id: \.0) { Text($0.1).tag($0.0) }
-                    }.frame(width: 100)
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+                    GridRow {
+                        Toggle("聯想系統", isOn: $suggestEnabled)
+                        Toggle("字級聯想", isOn: $charSuggest)
+                    }
+                    GridRow {
+                        Text("策略"); Picker("", selection: $suggestStrategy) {
+                            ForEach(Self.strategyOptions, id: \.0) { Text($0.1).tag($0.0) }
+                        }.labelsHidden().pickerStyle(.segmented)
+                        Text("詞級語料"); Picker("", selection: $wordCorpus) {
+                            ForEach(Self.corpusOptions, id: \.0) { Text($0.1).tag($0.0) }
+                        }.labelsHidden().pickerStyle(.menu)
+                    }
                 }
             }
 
             GroupBox("詞庫") {
+                TextField("搜尋詞庫", text: $domainQuery)
+                    .textFieldStyle(.roundedBorder)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
-                        ForEach(DomainData.allDomains) { d in
+                        ForEach(filteredDomains) { d in
                             Toggle(isOn: Binding(
                                 get: { enabledDomains.contains(d.id) },
                                 set: { if $0 { enabledDomains.insert(d.id) } else { enabledDomains.remove(d.id) } }
@@ -99,6 +106,10 @@ struct ContextProfileEditor: View {
                     }
                 }
                 .frame(height: 180)
+            }
+
+            if let errorText {
+                Text(errorText).font(Typo.caption).foregroundStyle(Typo.error)
             }
 
             HStack {
@@ -121,6 +132,14 @@ struct ContextProfileEditor: View {
         }
     }
 
+    private var filteredDomains: [DomainEntry] {
+        let q = domainQuery.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return DomainData.allDomains }
+        return DomainData.allDomains.filter {
+            $0.label.localizedCaseInsensitiveContains(q) || $0.desc.localizedCaseInsensitiveContains(q)
+        }
+    }
+
     private func load() {
         name = profile.name
         icon = profile.icon
@@ -134,9 +153,17 @@ struct ContextProfileEditor: View {
         autoCommit = profile.autoCommit
         enabledDomains = Set(profile.domainEnabled.filter(\.value).map(\.key))
         workingOrder = profile.domainOrder
+        errorText = nil
+    }
+
+    /// 空名／非法圖示即時 inline 提示（命令碼不可改，顯示既有值）
+    private func validate() -> String? {
+        if name.trimmingCharacters(in: .whitespaces).isEmpty { return "請輸入名稱" }
+        return nil
     }
 
     private func save() {
+        if let err = validate() { errorText = err; return }
         var p = profile
         p.name = name
         p.icon = icon

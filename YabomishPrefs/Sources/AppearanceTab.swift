@@ -29,11 +29,11 @@ private let appearanceOptions: [ToggleOption] = [
 struct AppearanceTab: View {
     @Bindable var store: PrefsStore
 
-    private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
+    private let columns = [GridItem(.adaptive(minimum: 128), spacing: 8)]
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Typo.sectionSpacing) {
 
                 Label("介面外觀", systemImage: "circle.lefthalf.filled").font(Typo.h2)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -46,27 +46,36 @@ struct AppearanceTab: View {
                     .foregroundStyle(.secondary)
 
                 SectionDivider()
-                Label("字型大小", systemImage: "textformat.size").font(Typo.h2)
-                VStack(spacing: 10) {
-                    HStack {
-                        Text("游標模式").font(Typo.body).frame(width: 80, alignment: .leading)
-                        Slider(value: $store.fontSize, in: 10...30, step: 1)
-                        Text("\(Int(store.fontSize)) pt").font(Typo.bodyMono).frame(width: 40, alignment: .trailing)
+                Label("字型", systemImage: "textformat.size").font(Typo.h2)
+                GroupBox {
+                    VStack(spacing: 10) {
+                        fontRow(label: "游標模式", value: $store.fontSize, in: 10...30, step: 1, format: { "\(Int($0)) pt" })
+                        fontRow(label: "固定模式", value: $store.fixedFontSize, in: 10...30, step: 1, format: { "\(Int($0)) pt" })
+                        fontRow(label: "模式提示", value: $store.toastFontSize, in: 20...72, step: 2, format: { "\(Int($0)) pt" })
                     }
-                    HStack {
-                        Text("固定模式").font(Typo.body).frame(width: 80, alignment: .leading)
-                        Slider(value: $store.fixedFontSize, in: 10...30, step: 1)
-                        Text("\(Int(store.fixedFontSize)) pt").font(Typo.bodyMono).frame(width: 40, alignment: .trailing)
-                    }
-                    HStack {
-                        Text("模式提示").font(Typo.body).frame(width: 80, alignment: .leading)
-                        Slider(value: $store.toastFontSize, in: 20...72, step: 4)
-                        Text("\(Int(store.toastFontSize)) pt").font(Typo.bodyMono).frame(width: 40, alignment: .trailing)
-                    }
-                    HStack {
-                        Text("透明度").font(Typo.body).frame(width: 80, alignment: .leading)
-                        Slider(value: $store.fixedAlpha, in: 0.3...1.0)
-                        Text("\(Int(store.fixedAlpha * 100))%").font(Typo.bodyMono).frame(width: 40, alignment: .trailing)
+                }
+
+                SectionDivider()
+                Label("固定窗背景", systemImage: "rectangle.transparent").font(Typo.h2)
+                GroupBox {
+                    VStack(spacing: 10) {
+                        fontRow(label: "透明度", value: $store.fixedAlpha, in: 0.3...1.0, step: 0.05, format: { "\(Int($0 * 100))%" })
+                        HStack {
+                            Text("對齊").font(Typo.body)
+                            Spacer()
+                            Picker("", selection: $store.fixedAlignment) {
+                                Text("左").tag("left")
+                                Text("中").tag("center")
+                                Text("右").tag("right")
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 180)
+                        }
+                        HStack {
+                            Text("垂直偏移").font(Typo.body)
+                            Spacer()
+                            Stepper("\(Int(store.fixedYOffset)) pt", value: $store.fixedYOffset, in: 0...64, step: 2)
+                        }
                     }
                 }
 
@@ -106,18 +115,7 @@ struct AppearanceTab: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("固定模式").font(Typo.caption).foregroundStyle(.secondary)
                         ZStack {
-                            Canvas { ctx, size in
-                                let s: CGFloat = 8
-                                for row in 0..<Int(size.height / s) + 1 {
-                                    for col in 0..<Int(size.width / s) + 1 {
-                                        if (row + col) % 2 == 0 {
-                                            ctx.fill(Path(CGRect(x: CGFloat(col) * s, y: CGFloat(row) * s, width: s, height: s)),
-                                                     with: .color(.primary.opacity(0.08)))
-                                        }
-                                    }
-                                }
-                            }
-                            .cornerRadius(8)
+                            CheckerPreview()
 
                             HStack(spacing: 12) {
                                 Text("1蝦").font(.system(size: store.fixedFontSize))
@@ -151,16 +149,15 @@ struct AppearanceTab: View {
                     }
                 }
 
-
-                if store.debugMode {
-                    Button {
-                        let url = URL(fileURLWithPath: NSHomeDirectory())
-                            .appendingPathComponent("Library/Application Support/Yabomish/debug.log")
-                        NSWorkspace.shared.open(url)
-                    } label: {
-                        Label("打開 debug.log⋯", systemImage: "doc.text.magnifyingglass")
-                    }
+                Button {
+                    let url = URL(fileURLWithPath: NSHomeDirectory())
+                        .appendingPathComponent("Library/Application Support/Yabomish/debug.log")
+                    NSWorkspace.shared.open(url)
+                } label: {
+                    Label("打開 debug.log⋯", systemImage: "doc.text.magnifyingglass")
                 }
+                .disabled(!store.debugMode)
+                .help(store.debugMode ? "" : "先開啟上方的除錯記錄卡片")
             }
             .padding(20)
         }
@@ -182,9 +179,9 @@ struct AppearanceTab: View {
                     Text(opt.desc)
                         .font(Typo.cardDesc)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
-                .frame(maxWidth: .infinity, minHeight: 100)
+                .frame(maxWidth: .infinity, minHeight: Typo.cardMinHeight)
                 if on {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
@@ -225,5 +222,39 @@ struct AppearanceTab: View {
         case "debugMode":         return $store.debugMode
         default:                  return .constant(false)
         }
+    }
+
+    /// 字級／透明度列：Slider＋Stepper 共用同一 binding（鍵盤可操作），右側值 mono 顯示
+    @ViewBuilder
+    private func fontRow(label: String, value: Binding<Double>, in range: ClosedRange<Double>, step: Double, format: @escaping (Double) -> String) -> some View {
+        HStack {
+            Text(label).font(Typo.body).frame(width: 64, alignment: .leading)
+            Slider(value: value, in: range, step: step)
+            Stepper("", value: value, in: range, step: step)
+                .labelsHidden()
+            Text(format(value.wrappedValue)).font(Typo.bodyMono)
+                .frame(minWidth: 48, alignment: .trailing)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(label)
+        .accessibilityValue(format(value.wrappedValue))
+    }
+}
+
+/// 固定窗透明度預覽的棋盤底（獨立 struct：避免寫在 body 裡每幀重算）
+private struct CheckerPreview: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let s: CGFloat = 8
+            for row in 0..<Int(size.height / s) + 1 {
+                for col in 0..<Int(size.width / s) + 1 {
+                    if (row + col) % 2 == 0 {
+                        ctx.fill(Path(CGRect(x: CGFloat(col) * s, y: CGFloat(row) * s, width: s, height: s)),
+                                 with: .color(.primary.opacity(0.08)))
+                    }
+                }
+            }
+        }
+        .cornerRadius(8)
     }
 }

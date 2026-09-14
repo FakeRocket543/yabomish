@@ -22,7 +22,7 @@ struct DomainCardView: View {
                 Text(entry.desc)
                     .font(Typo.cardDesc)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
 
                 if count > 0 {
                     Text(formatCount(count))
@@ -30,7 +30,7 @@ struct DomainCardView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .frame(width: 100, height: 100)
+            .frame(minWidth: 112, minHeight: 88)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(isEnabled ? color.opacity(0.18) : Typo.cardOff)
@@ -38,7 +38,7 @@ struct DomainCardView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(isEnabled ? color.opacity(0.7) : Typo.strokeOff,
-                            lineWidth: isEnabled ? 1.5 : 1)
+                            lineWidth: isEnabled ? 2 : 1)
             )
         }
         .buttonStyle(.plain)

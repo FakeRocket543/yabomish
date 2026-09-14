@@ -27,9 +27,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "結束 Yabomish 設定", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         let appItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        appItem.submenu = appMenu
         mainMenu.addItem(appItem)
         mainMenu.addItem(editItem)
+        // View menu — Cmd+1..5 切換頂層 tab（經 NotificationCenter 轉給 ContentView.selection）
+        let viewMenu = NSMenu(title: "View")
+        #if MINIMAL
+        let tabTitles = ["輸入", "快捷碼", "外觀", "關於"]
+        #else
+        let tabTitles = ["輸入", "聯想與詞庫", "快捷碼", "外觀", "關於"]
+        #endif
+        for (i, title) in tabTitles.enumerated() {
+            let item = NSMenuItem(title: title, action: #selector(AppDelegate.selectTab(_:)), keyEquivalent: "\(i + 1)")
+            item.tag = i
+            viewMenu.addItem(item)
+        }
+        let viewItem = NSMenuItem(title: "View", action: nil, keyEquivalent: "")
+        viewItem.submenu = viewMenu
+        mainMenu.addItem(viewItem)
         NSApp.mainMenu = mainMenu
 
         createWindow()
@@ -41,7 +55,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 之後 window setter 再 release 一次 → double-free SIGSEGV
         // （dock 點擊觸發 applicationShouldHandleReopen → createWindow）
         let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 660, height: 540),
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -53,6 +67,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         w.center()
         w.makeKeyAndOrderFront(nil)
         window = w
+    }
+    @objc func selectTab(_ sender: NSMenuItem) {
+        NotificationCenter.default.post(name: .selectPrefsTab, object: sender.tag)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

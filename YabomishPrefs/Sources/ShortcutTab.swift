@@ -99,12 +99,21 @@ struct ShortcutTab: View {
 
     @ViewBuilder
     private func demoRow(_ code: String, _ content: String) -> some View {
-        HStack(spacing: 8) {
-            Text(code).font(Typo.bodyMono)
-                .frame(width: 50, alignment: .leading)
-            Text("→").foregroundStyle(.tertiary).font(Typo.cardDesc)
-            Text(content).font(Typo.body).foregroundStyle(.secondary).lineLimit(1)
+        Button {
+            self.code = code; self.content = content; validateCode()
+        } label: {
+            HStack(spacing: 8) {
+                Text(code).font(Typo.bodyMono)
+                    .frame(width: 50, alignment: .leading)
+                Text("→").foregroundStyle(.tertiary).font(Typo.cardDesc)
+                Text(content).font(Typo.body).foregroundStyle(.secondary).lineLimit(1)
+                Spacer()
+                Image(systemName: "plus.circle").font(Typo.caption).foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .help("點一下填入新增表單")
     }
 
     private var addSection: some View {
@@ -126,6 +135,14 @@ struct ShortcutTab: View {
                 .background(RoundedRectangle(cornerRadius: 6)
                     .stroke(Color.primary.opacity(0.2), lineWidth: 1)
                     .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor))))
+                .overlay(alignment: .topLeading) {
+                    if content.isEmpty {
+                        Text("支援 \\n 換行⋯")
+                            .font(.body).foregroundStyle(.tertiary)
+                            .padding(.horizontal, 8).padding(.vertical, 8)
+                            .allowsHitTesting(false)
+                    }
+                }
             HStack {
                 Spacer()
                 Button("＋ 新增") { addShortcut() }

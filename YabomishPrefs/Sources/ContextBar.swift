@@ -20,25 +20,41 @@ struct ContextBar: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(profiles) { p in
-                        Button {
-                            applyProfile(p)
-                        } label: {
-                            HStack(spacing: 4) {
-                                profileIcon(p.icon).font(Typo.caption)
-                                Text(p.name).font(Typo.caption)
+                        HStack(spacing: 0) {
+                            Button {
+                                applyProfile(p)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    profileIcon(p.icon).font(Typo.caption)
+                                    Text(p.name).font(Typo.caption)
+                                }
+                                .padding(.horizontal, 10).padding(.vertical, 8)
+                                .background(store.currentContext == p.code ? Typo.accent.opacity(0.25) : Color.primary.opacity(0.06))
+                                .cornerRadius(6)
+                                .overlay(RoundedRectangle(cornerRadius: 6)
+                                    .stroke(store.currentContext == p.code ? Typo.accent : Color.clear, lineWidth: 1.5))
                             }
-                            .padding(.horizontal, 10).padding(.vertical, 5)
-                            .background(store.currentContext == p.code ? Typo.accent.opacity(0.25) : Color.primary.opacity(0.06))
-                            .cornerRadius(6)
-                            .overlay(RoundedRectangle(cornerRadius: 6)
-                                .stroke(store.currentContext == p.code ? Typo.accent : Color.clear, lineWidth: 1.5))
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button("編輯⋯") { editTarget = p }
-                            Button("複製⋯") { copyProfile(p) }
-                            Divider()
-                            Button("刪除「\(p.name)」", role: .destructive) { deleteTarget = p }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("編輯⋯") { editTarget = p }
+                                Button("複製⋯") { copyProfile(p) }
+                                Divider()
+                                Button("刪除「\(p.name)」", role: .destructive) { deleteTarget = p }
+                            }
+                            Menu {
+                                Button("編輯⋯") { editTarget = p }
+                                Button("複製⋯") { copyProfile(p) }
+                                Divider()
+                                Button("刪除「\(p.name)」", role: .destructive) { deleteTarget = p }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 6).padding(.vertical, 8)
+                                    .contentShape(Rectangle())
+                            }
+                            .menuStyle(.borderlessButton)
+                            .accessibilityLabel("\(p.name)的操作")
                         }
                     }
                     if profiles.count < ContextProfile.maxProfiles {

@@ -33,8 +33,11 @@ private let panelOptions: [InputOption] = [
 struct InputTab: View {
     @Bindable var store: PrefsStore
     @State private var importResult: ImportResult?
+    @State private var cinImported = false
+    @State private var cinSize: Int64 = 0
+    @State private var showImportForm = false
 
-    private let columns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
+    private let columns = [GridItem(.adaptive(minimum: 128), spacing: 8)]
 
     /// 匯入結果回饋（成功／失敗共用同一個 alert）
     struct ImportResult: Identifiable {
@@ -45,8 +48,18 @@ struct InputTab: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // CIN import — first thing users need
+            VStack(alignment: .leading, spacing: Typo.sectionSpacing) {
+                // CIN import — 已匯入時塌成一行狀態列
+                if cinImported && !showImportForm {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(Typo.success)
+                        Text("已匯入 liu.cin（\(formatBytes(cinSize))）").font(Typo.body)
+                        Spacer()
+                        Button("重新匯入⋯") { showImportForm = true }
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Typo.cardOff))
+                } else {
                 GroupBox {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("嘸蝦米字表（liu.cin）", systemImage: "doc.badge.arrow.up").font(Typo.h2)
@@ -72,6 +85,7 @@ struct InputTab: View {
                         }
                     }
                     .padding(4)
+                }
                 }
 
                 Text("點擊卡片啟用／停用功能。")
@@ -130,21 +144,32 @@ struct InputTab: View {
 
                 // ── 固定排序 ──
                 SectionDivider()
-                Label("固定同碼字排序", systemImage: "pin.fill").font(Typo.h2)
-                Text("指定某碼的候選字固定順序，不受學習排序影響。")
-                    .font(Typo.hint).foregroundStyle(.secondary)
-                PinnedOrderSection()
+                DisclosureGroup {
+                    PinnedOrderSection()
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("固定同碼字排序", systemImage: "pin.fill").font(Typo.h2)
+                        Text("指定某碼的候選字固定順序，不受學習排序影響。")
+                            .font(Typo.hint).foregroundStyle(.secondary)
+                    }
+                }
 
                 // ── 查字歷史 ──
                 SectionDivider()
-                Label("查字歷史", systemImage: "clock.arrow.circlepath").font(Typo.h2)
-                Text("反查模式（注音／同音／拼音）選字送出的自動記錄——就是「不會拆碼的字」清單，可匯出複習。")
-                    .font(Typo.hint).foregroundStyle(.secondary)
-                LookupHistorySection()
+                DisclosureGroup {
+                    LookupHistorySection()
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("查字歷史", systemImage: "clock.arrow.circlepath").font(Typo.h2)
+                        Text("反查模式（注音／同音／拼音）選字送出的自動記錄——就是「不會拆碼的字」清單，可匯出複習。")
+                            .font(Typo.hint).foregroundStyle(.secondary)
+                    }
+                }
 
             }
             .padding(20)
         }
+        .onAppear { refreshCinState() }
         .alert(importResult?.success == true ? "字表匯入成功" : "匯入失敗",
                isPresented: Binding(
                    get: { importResult != nil },
@@ -156,7 +181,22 @@ struct InputTab: View {
         }
     }
 
-    // MARK: - 字表匯入
+    // MARK: - CIN 狀態
+
+    /// 檢查 sharedDir/liu.cin 是否存在且非空；成功匯入後同步更新
+    private func refreshCinState() {
+        let path = sharedDir + "/liu.cin"
+        let size = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? NSNumber)?.int64Value ?? 0
+        cinImported = size > 0
+        cinSize = size
+        if cinImported { showImportForm = false }
+    }
+
+    private func formatBytes(_ n: Int64) -> String {
+        if n >= 1_048_576 { return String(format: "%.1f MB", Double(n) / 1_048_576.0) }
+        if n >= 1024 { return String(format: "%.0f KB", Double(n) / 1024.0) }
+        return "\(n) 位元組"
+    }
 
     /// 匯入字表／擴充表：寫入輸入法實際讀取的正規路徑（與 AppConstants.sharedDir 一致）：
     /// 主表固定為 ~/Library/Application Support/Yabomish/liu.cin（IM 只認這個檔名），
@@ -218,6 +258,7 @@ struct InputTab: View {
             }
             // 通知輸入法即時重載（AppDelegate 監聽 com.yabomish.reloadTables）
             DistributedNotificationCenter.default().post(name: .init("com.yabomish.reloadTables"), object: nil)
+            if clearCompiledCache { refreshCinState() }
             importResult = ImportResult(success: true,
                                         message: "已匯入 \(src.lastPathComponent)（\(destSize) 位元組）→\n\(dest)\n輸入法已收到重載通知。")
         } catch {
@@ -247,9 +288,9 @@ struct InputTab: View {
                     Text(opt.desc)
                         .font(Typo.cardDesc)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
-                .frame(maxWidth: .infinity, minHeight: 100)
+                .frame(maxWidth: .infinity, minHeight: Typo.cardMinHeight)
                 if on {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))

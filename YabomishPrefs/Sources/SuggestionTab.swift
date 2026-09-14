@@ -35,6 +35,7 @@ struct SuggestionTab: View {
     @State private var generalOrder: [DomainEntry] = []
     @State private var proOrder: [DomainEntry] = []
     @State private var showResetConfirm = false
+    @State private var domainQuery = ""
     /// 拖放落點換算用網格寬度。量測掛在 background（不佔版面）——
     /// 不能用 GeometryReader 包住網格：它在 ScrollView 裡會塌陷成極小
     /// 高度，內容溢出與後續區塊重疊。
@@ -42,7 +43,6 @@ struct SuggestionTab: View {
 
     private let threeColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
     private let layerColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
-    private let domainColumns = [GridItem(.adaptive(minimum: 104), spacing: 8)]
 
     private var hasProDomains: Bool {
         DomainData.proDomains.contains { DomainData.binEntryCount(file: $0.file) > 0 }
@@ -50,35 +50,24 @@ struct SuggestionTab: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Typo.sectionSpacing) {
                 Label("語境切換", systemImage: "arrow.triangle.swap").font(Typo.h2)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("一鍵切換輸入模式、聯想策略、詞庫組合與地區用詞。")
                         .font(Typo.body)
-                    Text("點擊切換 ｜ 右鍵編輯或複製 ｜ 輸入法中 ,,X + 碼 切換（如 ,,XTW）")
+                    Text("點擊切換 ｜ 右鍵或 … 編輯或複製 ｜ 輸入法中 ,,X + 碼 切換（如 ,,XTW）")
                         .font(Typo.hint).foregroundStyle(.secondary)
                     Text(",,XRS 重置為預設 ｜ ,,XS 儲存當前設定 ｜ ,,XI 顯示當前語境")
                         .font(Typo.hint).foregroundStyle(.secondary)
                 }
                 ContextBar(store: store)
-                SectionDivider()
-                Label("用詞習慣", systemImage: "map").font(Typo.h2)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    regionCard("tw", label: "臺灣用詞", icon: "漢", desc: "臺灣慣用詞優先")
-                    regionCard("cn", label: "中式用詞", icon: "汉", desc: "中式慣用詞優先")
-                }
-
-                SectionDivider()
                 if !hasProDomains {
-                    VStack(spacing: 8) {
-                        Image(systemName: "shippingbox").font(.system(size: 32)).foregroundStyle(.secondary)
-                        Text("目前為精簡安裝，未包含專業詞典。")
-                            .font(Typo.body)
-                        Text("重新執行 yabomish.sh 選擇「完整安裝」即可啟用 28 個專業詞典。")
+                    HStack(spacing: 8) {
+                        Image(systemName: "shippingbox").foregroundStyle(.secondary)
+                        Text("精簡安裝：重新執行 yabomish.sh 選「完整安裝」啟用 28 個專業詞典。")
                             .font(Typo.hint).foregroundStyle(.secondary)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 // 1. Hint
                 HStack(spacing: 4) {
@@ -124,10 +113,23 @@ struct SuggestionTab: View {
                     }
                 }
 
+                // 3b. 用詞習慣（屬 Corpus 策略：影響候選排序權重）
+                Label("用詞習慣", systemImage: "map").font(Typo.h2)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    regionCard("tw", label: "臺灣用詞", icon: "漢", desc: "臺灣慣用詞優先")
+                    regionCard("cn", label: "中式用詞", icon: "汉", desc: "中式慣用詞優先")
+                }
+
                 // 4. General domains
                 SectionDivider()
-                Label("一般詞庫", systemImage: "books.vertical").font(Typo.h2)
-                domainGrid(entries: $generalOrder, color: Typo.accent)
+                HStack {
+                    Label("一般詞庫", systemImage: "books.vertical").font(Typo.h2)
+                    Spacer()
+                    TextField("搜尋詞庫", text: $domainQuery)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 160)
+                }
+                domainGrid(entries: filteredBinding($generalOrder), color: Typo.accent)
 
                 // 5. Pro domains — compact chip layout, collapsed by default
                 SectionDivider()
@@ -189,6 +191,21 @@ struct SuggestionTab: View {
             }
         }
         .draggable(layer.id)
+        .contextMenu {
+            Button("左移") { moveLayer(layer.id, by: -1) }
+            Button("右移") { moveLayer(layer.id, by: 1) }
+        }
+        .accessibilityAction(named: "左移") { moveLayer(layer.id, by: -1) }
+        .accessibilityAction(named: "右移") { moveLayer(layer.id, by: 1) }
+    }
+
+    /// 鍵盤／VoiceOver 移動聯想層（拖放的等價路徑）
+    private func moveLayer(_ id: String, by delta: Int) {
+        guard let src = layerOrder.firstIndex(where: { $0.id == id }) else { return }
+        let dest = min(layerOrder.count - 1, max(0, src + delta))
+        guard dest != src else { return }
+        layerOrder.move(fromOffsets: IndexSet(integer: src), toOffset: dest > src ? dest + 1 : dest)
+        saveStrategy()
     }
 
     // MARK: - Corpus card (radio-style single select, green)
@@ -214,7 +231,7 @@ struct SuggestionTab: View {
         @State private var gridWidth: CGFloat = 0
 
         var body: some View {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], spacing: 8) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 128), spacing: 8)], spacing: 8) {
                 ForEach(entries.wrappedValue) { entry in
                     DomainCardView(
                         entry: entry,
@@ -240,10 +257,10 @@ struct SuggestionTab: View {
                 let item = arr.remove(at: srcIdx)
                 let gridWidth = self.gridWidth
                 let spacing: CGFloat = 8
-                let minCell: CGFloat = 104
+                let minCell: CGFloat = 128
                 let numCols = max(1, Int((gridWidth + spacing) / (minCell + spacing)))
                 let cellWidth = (gridWidth - CGFloat(numCols - 1) * spacing) / CGFloat(numCols)
-                let cellHeight: CGFloat = 100 + spacing
+                let cellHeight: CGFloat = 88 + spacing
                 let col = max(0, min(numCols - 1, Int(location.x / cellWidth)))
                 let row = max(0, Int(location.y / cellHeight))
                 let destIdx = min(arr.count, row * numCols + col)
@@ -304,7 +321,7 @@ struct SuggestionTab: View {
                 }
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(on ? Typo.accent.opacity(0.18) : Typo.cardOff)
@@ -374,6 +391,17 @@ struct SuggestionTab: View {
 
     private func saveDomainOrder() {
         store.domainOrder = (generalOrder + proOrder).map(\.id)
+    }
+
+    /// 詞庫搜尋過濾：query 為空回傳原 binding（拖放排序可用）；
+    /// 有 query 時顯示過濾快照（拖放停用，只做啟用／停用）
+    private func filteredBinding(_ src: Binding<[DomainEntry]>) -> Binding<[DomainEntry]> {
+        let q = domainQuery.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return src }
+        let filtered = src.wrappedValue.filter {
+            $0.label.localizedCaseInsensitiveContains(q) || $0.desc.localizedCaseInsensitiveContains(q)
+        }
+        return Binding(get: { filtered }, set: { _ in })
     }
 
     private func resetDefaults() {

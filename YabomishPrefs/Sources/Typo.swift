@@ -12,7 +12,7 @@ enum Typo {
     // Body
     static let body     = Font.system(size: 14)
     static let bodyMono = Font.system(size: 14, weight: .medium, design: .monospaced)
-    static let hint     = Font.system(size: 14)
+    static let hint     = Font.system(size: 13)
     static let caption  = Font.system(size: 12)
 
     // Cards
@@ -26,7 +26,9 @@ enum Typo {
     static let chipTitle = Font.system(size: 14, weight: .medium)
     static let chipBadge = Font.system(size: 12).monospacedDigit()
 
-    // MARK: - Colors (semantic)
+    // Layout
+    static let sectionSpacing: CGFloat = 24
+    static let cardMinHeight: CGFloat = 88
 
     /// 強調色（選中、開啟、按鈕）
     static let accent   = Color.accentColor

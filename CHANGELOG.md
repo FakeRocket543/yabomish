@@ -15,7 +15,18 @@
 - **YabomishPrefs**：`validateNew` 與 `isValidCode` 規則同步；`PinnedOrderSection` 讀 CINM v1；`SuggestionTab` 重置時 domainOrder 歸零；`ContextBar` generation 追蹤
 - **tools/*.py**：`wiki_word_bigram` checkpoint 崩潰窗口重複計數修正（記 rows/shards 對帳）；NER/phrases sparse vs bins dense 優先序分歧改 dense `nextPri` 計數器
 
-### 改進（管理程式強化，15 項）
+### 改進（偏好設定 UI，Wave1；管理程式強化，15 項）
+
+- **視窗** — 660×540／760×520 打架統一為 800×600；View menu Cmd+1..5 切 tab（MINIMAL 對齊 4 項）
+- **輸入頁** — 已匯入 liu.cin 塌成一行狀態列；固定排序／查字歷史改 DisclosureGroup 預設收起
+- **聯想頁** — 用詞習慣搬語料段下；一般／專業詞庫間加搜尋框；層卡加左移／右移（鍵盤＋VoiceOver 等價路徑）；ContextBar 右鍵功能加 … 明示按鈕
+- **卡片系統** — minHeight 統一 88、desc 放寬 2 行（詞庫截斷修復）、grid minimum 104→128、Domain 選中描邊加重（深色對比）
+- **外觀頁** — 「字型」／「固定窗背景」分組；Slider 旁加 Stepper（鍵盤可調）；`fixedAlignment`／`fixedYOffset` 既有 keys 終於有 UI；toast step 4→2；checker Canvas 抽獨立 struct；debug.log 按鈕常駐
+- **快捷碼** — 範例四條可點填入表單；內容框加 `\n` placeholder
+- **語境編輯器** — Grid 取代寫死寬度；詞庫 40 項加搜尋；空名 inline 紅字
+- **關於頁** — 版本列＋搜尋固定頂部；guide 改可折疊（搜尋命中自動展開）；key 寬 160→180；help.md 壓成 pointer（消除重複渲染）
+- **歡迎頁** — 砍 macOS 空白頂欄 TabView 換 ZStack；補「略過」；第一頁偵測 liu.cin 狀態
+- **設計 token** — hint 14→13、sectionSpacing 24；手冊偏好章引導三頁→四頁（對齊 code）
 
 - **`yabomish.sh` 非互動 CLI** — `build [full|lite|min]`／`install`／`uninstall [--yes]`／`test` 子命令，取代 `printf '2\n1\n' |` 餵選單的 hack；`all_platforms.sh` 已切換
 - **Intel 相容** — `yabomish.sh`／`run_tests.sh` 的 `-target arm64-…` 改 `$(uname -m)`；`release.sh` 上 universal binary（`swiftc_universal` helper：雙 arch 編譯＋`lipo -create`），`YABOMISH_ARCH=arm64|x86_64` 可只編單架構

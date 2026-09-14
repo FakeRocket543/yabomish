@@ -2,22 +2,38 @@ import SwiftUI
 
 struct HelpTab: View {
     @State private var helpText: String = ""
+    @State private var helpQuery = ""
+    @State private var collapsedGuides: Set<String> = []
 
+    /// 搜尋過濾：(haystack, value) 配對，query 為空全留
+    private func helpHits<T>(_ pairs: [(String, T)]) -> [T] {
+        let q = helpQuery.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return pairs.map(\.1) }
+        return pairs.filter { $0.0.localizedCaseInsensitiveContains(q) }.map(\.1)
+    }
     var body: some View {
+        VStack(spacing: 0) {
+            // ── 版本資訊（固定頂部，滾動時可見）──
+            HStack(spacing: 4) {
+                Text("Yabomish").font(Typo.h2)
+                let info = Bundle.main.infoDictionary
+                Text("\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))")
+                    .font(Typo.body).monospacedDigit().foregroundStyle(.secondary)
+                Spacer()
+                Link("回報問題",
+                     destination: URL(string: "https://github.com/FakeRocket543/yabomish/issues/new")!)
+                    .font(Typo.body)
+            }
+            .padding(.horizontal, 20).padding(.vertical, 10)
+            HStack {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("搜尋說明", text: $helpQuery)
+                    .textFieldStyle(.roundedBorder)
+            }
+            .padding(.horizontal, 20).padding(.bottom, 8)
+            Divider()
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-
-                // ── 版本資訊 ──
-                HStack(spacing: 4) {
-                    Text("Yabomish").font(Typo.h2)
-                    let info = Bundle.main.infoDictionary
-                    Text("\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))")
-                        .font(Typo.body).monospacedDigit().foregroundStyle(.secondary)
-                    Spacer()
-                    Link("回報問題",
-                         destination: URL(string: "https://github.com/FakeRocket543/yabomish/issues/new")!)
-                        .font(Typo.body)
-                }
 
                 // ── 共用說明文件 ──
                 if !helpText.isEmpty {
@@ -229,6 +245,7 @@ struct HelpTab: View {
             .padding(20)
         }
         .onAppear { loadHelp() }
+        } // 外層 VStack（版本列＋搜尋＋內容）
     }
 
     private func loadHelp() {
@@ -240,34 +257,54 @@ struct HelpTab: View {
 
     @ViewBuilder
     private func guide(_ title: String, icon: String, steps: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: icon).font(Typo.h2)
-            ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
-                HStack(alignment: .top, spacing: 8) {
-                    Text("\(i + 1).")
-                        .font(Typo.bodyMono)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 20, alignment: .trailing)
-                    Text(step).font(Typo.body)
+        let q = helpQuery.trimmingCharacters(in: .whitespaces)
+        let matched = q.isEmpty || title.localizedCaseInsensitiveContains(q)
+            || steps.contains { $0.localizedCaseInsensitiveContains(q) }
+        if matched {
+            // 搜尋命中時自動展開；平時預設展開（前兩個由呼叫端順序決定視覺，全部可折疊）
+            DisclosureGroup(isExpanded: guideExpanded(title)) {
+                ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("\(i + 1).")
+                            .font(Typo.bodyMono)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 20, alignment: .trailing)
+                        Text(step).font(Typo.body)
+                    }
                 }
+            } label: {
+                Label(title, systemImage: icon).font(Typo.h2)
             }
         }
+    }
+
+    /// guide 展開狀態：搜尋時命中項強制展開；平時預設展開，手工收起記憶在 expandedGuides
+    private func guideExpanded(_ title: String) -> Binding<Bool> {
+        let q = helpQuery.trimmingCharacters(in: .whitespaces)
+        if !q.isEmpty { return .constant(true) }
+        return Binding(
+            get: { !collapsedGuides.contains(title) },
+            set: { if $0 { collapsedGuides.remove(title) } else { collapsedGuides.insert(title) } }
+        )
     }
 
     // MARK: - Section (key-value table)
 
     @ViewBuilder
     private func section(_ title: String, icon: String, items: [(String, String)]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: icon).font(Typo.h2)
-            ForEach(items, id: \.0) { key, desc in
-                HStack(alignment: .top, spacing: 0) {
-                    Text(key)
-                        .font(Typo.bodyMono)
-                        .frame(width: 160, alignment: .leading)
-                    Text(desc)
-                        .font(Typo.body)
-                        .foregroundStyle(.secondary)
+        let hits: [(String, String)] = helpHits(items.map { ($0.0 + " " + $0.1, $0) })
+        if !hits.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(title, systemImage: icon).font(Typo.h2)
+                ForEach(hits.indices, id: \.self) { i in
+                    HStack(alignment: .top, spacing: 0) {
+                        Text(hits[i].0)
+                            .font(Typo.bodyMono)
+                            .frame(width: 180, alignment: .leading)
+                        Text(hits[i].1)
+                            .font(Typo.body)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }

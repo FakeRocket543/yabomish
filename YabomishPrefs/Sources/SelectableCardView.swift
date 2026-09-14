@@ -15,7 +15,7 @@ struct SelectableCardView: View {
     var iconText: String? = nil
     var showCheckmark: Bool = true
     var highlightText: Bool = false
-    var minHeight: CGFloat = 90
+    var minHeight: CGFloat = 88
     var labelLineLimit: Int = 2
     let action: () -> Void
 
@@ -52,7 +52,7 @@ struct SelectableCardView: View {
                     Text(desc)
                         .font(Typo.cardDesc)
                         .foregroundStyle(descColor)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
                 .frame(maxWidth: .infinity, minHeight: minHeight)
                 if selected && showCheckmark {
