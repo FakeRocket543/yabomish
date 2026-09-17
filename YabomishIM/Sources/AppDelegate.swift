@@ -30,6 +30,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DebugLog.log("YabomishIM: build=\(ver)")
         YabomishPrefs.migrateLegacyPrefs()
         YabomishInputController.startBackgroundTasks()
+        // ,,B/,,F 的 app 切換歷史：越早開始記錄越完整
+        AppSwitchTracker.warmUp()
         // YabomishPrefs 儲存快捷碼／匯入字表後會廣播此通知，等同 ,,RL：重載字表與自訂指令
         DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name("com.yabomish.reloadTables"), object: nil, queue: .main

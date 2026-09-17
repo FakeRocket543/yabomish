@@ -7,6 +7,11 @@ enum CommaCommandHelp {
         let sgxHelp = suggestCommands
             ? "• ,,SG 聯想開關\n• ,,Xxx 切換語境  ,,XS 儲存  ,,XI 顯示\n"
             : ""
+        #if os(macOS)
+        let appNavHelp = "• ,,B 切回上一個 app  ,,F 切回下一個 app\n"
+        #else
+        let appNavHelp = ""
+        #endif
         return """
         【Yabomish 輸入法 使用指南】
 
@@ -35,7 +40,7 @@ enum CommaCommandHelp {
         • ,,RS 重置字頻  ,,RL 重載字表
         • ,,LH 查字歷史  ,,RH 清除查字歷史
         • ,,PIN 固定同碼字排序  ,,UNPINx 解除
-        \(sgxHelp)• ,,P 打開設定程式
+        \(sgxHelp)\(appNavHelp)• ,,P 打開設定程式
         • ,,C 顯示目前模式
         • ,,H 顯示本說明
 

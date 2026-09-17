@@ -627,6 +627,19 @@ final class InputEngine {
             delegate?.engineDidPasteText(result); return
         }
         if cmd == "c" { delegate?.engineDidShowToast(_currentModeLabel); return }
+        #if os(macOS)
+        // ,,B/,,F：app 啟動歷史的前進後退（自有 MRU，比 Cmd+Tab 點按強，零權限）
+        if cmd == "b" {
+            let name = AppSwitchTracker.shared.back()
+            delegate?.engineDidShowToast(name != nil ? "→ \(name!)" : "無更早的 app 記錄")
+            return
+        }
+        if cmd == "f" {
+            let name = AppSwitchTracker.shared.forward()
+            delegate?.engineDidShowToast(name != nil ? "→ \(name!)" : "已是最近切換的 app")
+            return
+        }
+        #endif
         if cmd == "p" {
             #if os(macOS)
             let appPath = "/Applications/YabomishPrefs.app"
