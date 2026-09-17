@@ -66,6 +66,16 @@ yabomish_ios 無 LICENSE、僅 git.lcn.tw——現狀即閉源，維持不開。
 
 統一原則：**引擎開源（MIT 主線＝信譽＋可移植證明），產品閉源（平台殼＋練習套件＝工匠出品）**。想上架就上架，商店本身是護城河。
 
+## 終端工具是第三類（更沒有防禦）
+
+app 類開源傷害有緩衝（一般使用者不編譯，code ≠ product）；終端工具的客群恰好就是會 `git clone && make` 的人——source ≈ 成品，開源＝把貨交給唯一會買的人，連商店送審這道工都省。傷害率最高的一類。
+
+- 編譯式工具（cahiers TUI、ycai-mcp）：repo 閉、binary 進 DMG——它們是套件內容物（三前端之一）
+- 直譯式腳本（sh/py）：想閉也閉不了，發佈即源碼——認命當膠水（如 yabomish_capture.sh）
+- 主線語料 pipeline（Python）：建置基礎設施，已在 MIT 裡，抽掉會讓免費層不可用——祖父條款保留
+
+修正後分類：MIT＝引擎+主線+建置鏈（信譽層）｜閉源binary＝TUI/MCP/cahiers GUI｜閉源app＝iOS/Android｜認命開放＝部署腳本
+
 ## 待辦
 
 - [ ] DMG 打包流程（YabomishIM.app + YabomishPractice.app 同包）
