@@ -7,19 +7,22 @@ import Foundation
 ///   "auau": { "type": "text",  "text": "sudo apt update && sudo apt upgrade" },
 ///   "ss":   { "type": "shell", "run": "~/.../yabomish_capture.sh screen" },
 ///   "saf":  { "type": "open",  "app": "Safari" },
+///   "tg":   { "type": "open",  "bundle": "com.tdesktop.Telegram" },
 ///   "ask":  { "type": "hermes", "send": "幫我總結這篇" }
 /// }
 /// ```
 ///
 /// - `text`   → 展開成文字直接送出（macOS/iOS/Android 三平台）
 /// - `shell`  → 執行 shell 指令（僅 macOS）
-/// - `open`   → 開啟 app（僅 macOS）
+/// - `open`   → 開啟 app（僅 macOS）；`bundle`（open -b）優先於 `app`（open -a），
+///              bundle ID 不受系統語系影響；非零退出時 toast stderr 首行
 /// - `hermes` → POST 明確觸發的字串到本機 Hermes agent，回覆插入游標處（僅 macOS）
 enum CommaCommandRunner {
 
     struct Command: Decodable {
         let type: String
         let app: String?
+        let bundle: String?
         let run: String?
         let text: String?
         let send: String?
@@ -58,10 +61,18 @@ enum CommaCommandRunner {
         guard let command = commands[cmd] else { return false }
         switch command.type {
         case "open":
-            guard let app = command.app else { return false }
             // Process+argv，不經 shell：commands.json 為同步來源，app 名含引號
             // 曾可逃出單引號執行任意指令（cf. InputEngine `,,P` 的寫法）。
-            _runProcessAsync(executable: "/usr/bin/open", args: ["-a", app], toast: toast)
+            // bundle（open -b）比 app 名稱（open -a）穩：不受系統語系影響。
+            if let bundle = command.bundle {
+                _runProcessAsync(executable: "/usr/bin/open", args: ["-b", bundle],
+                                 toast: toast, reportExit: true)
+            } else if let app = command.app {
+                _runProcessAsync(executable: "/usr/bin/open", args: ["-a", app],
+                                 toast: toast, reportExit: true)
+            } else {
+                return false
+            }
         case "shell":
             guard let script = command.run else { return false }
             _runShellAsync(script, toast: toast)
@@ -139,20 +150,34 @@ enum CommaCommandRunner {
     /// 共用執行核心（Process+argv，無 shell）。watchdog：5 秒後 SIGTERM，
     /// 再 1 秒仍未退出則 SIGKILL 升級；stdout/stderr 導向 /dev/null——
     /// 未讀取的 pipe 會讓寫超過 64KB 的子程序卡死，waitUntilExit 永不返回。
+    /// reportExit=true 時 stderr 改接 Pipe 背景 drain，非零退出 toast 首行錯誤。
     private static func _runProcessAsync(executable: String,
                                          args: [String],
-                                         toast: @escaping (String) -> Void) {
+                                         toast: @escaping (String) -> Void,
+                                         reportExit: Bool = false) {
         DispatchQueue.global(qos: .userInitiated).async {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: executable)
             p.arguments = args
             p.standardOutput = FileHandle.nullDevice
-            p.standardError = FileHandle.nullDevice
+            let errPipe = reportExit ? Pipe() : nil
+            p.standardError = errPipe ?? FileHandle.nullDevice
             do {
                 try p.run()
             } catch {
                 DispatchQueue.main.async { toast("執行失敗: \(error.localizedDescription)") }
                 return
+            }
+            // 背景 drain：pipe 緩衝寫滿會卡住子程序，waitUntilExit 永不返回
+            var errText = ""
+            let drained = DispatchGroup()
+            if let errPipe {
+                drained.enter()
+                DispatchQueue.global().async {
+                    errText = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(),
+                                     encoding: .utf8) ?? ""
+                    drained.leave()
+                }
             }
             DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
                 guard p.isRunning else { return }
@@ -162,6 +187,13 @@ enum CommaCommandRunner {
                 }
             }
             p.waitUntilExit() // 有 SIGKILL 升級把關，最長約 6 秒必返回
+            drained.wait()
+            if reportExit, p.terminationStatus != 0 {
+                let firstLine = errText.components(separatedBy: .newlines)
+                    .first?.trimmingCharacters(in: .whitespaces) ?? ""
+                let msg = firstLine.isEmpty ? "指令失敗（exit \(p.terminationStatus)）" : firstLine
+                DispatchQueue.main.async { toast(msg) }
+            }
         }
     }
 
