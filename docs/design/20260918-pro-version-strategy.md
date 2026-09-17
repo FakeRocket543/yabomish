@@ -55,6 +55,17 @@ InputEngine = mode 狀態機
 
 單向門原則：閉源隨時能開，開了收不回。重新考慮開源的時機：套件策略失敗想換影響力時、維護勞務價值超過獨佔性時（讓社群養）。
 
+## iOS / Android 同樣不開源（2026-09-18 定論）
+
+yabomish_ios 無 LICENSE、僅 git.lcn.tw——現狀即閉源，維持不開。理由：
+
+- 開源能給的邊際價值 ≈ 0：引擎已在 MIT 主線，OhMyBias 已證明第三方可自建 shell；再開只是省抄襲者寫 shell 的工
+- shell 本身是差異化：KeyGestures 四向滑動/長按選單、UserSnippets sssr 式快捷碼、App Group dual-write 等只在 iOS repo，不在 MIT 主線
+- App Store 攻防與 macOS 相反：無 sideload 漏斗可建，開源唯一效果是讓人拿完整 shell 直接送審同類品；閉源迫使從零重寫
+- Android（yabomish_android）同理由——Play Store 同理
+
+統一原則：**引擎開源（MIT 主線＝信譽＋可移植證明），產品閉源（平台殼＋練習套件＝工匠出品）**。想上架就上架，商店本身是護城河。
+
 ## 待辦
 
 - [ ] DMG 打包流程（YabomishIM.app + YabomishPractice.app 同包）
