@@ -128,10 +128,12 @@ build_prefs() {
 sign_apps() {
     info "Signing with: $DEVELOPER_ID"
     codesign --force --deep --sign "$DEVELOPER_ID" \
+        --identifier com.yabomishim.inputmethod.YabomishIM \
         --entitlements "$ROOT/tools/YabomishIM.entitlements" \
         --options runtime --timestamp \
         "$IM_APP"
     codesign --force --deep --sign "$DEVELOPER_ID" \
+        --identifier com.yabomish.prefs \
         --options runtime --timestamp \
         "$PREFS_APP"
     codesign --verify --deep --strict --verbose=2 "$IM_APP"
@@ -237,10 +239,12 @@ EOF
     # 巢狀 App 由內而外逐一簽署：--deep 對巢狀 bundle 不會套用 runtime/timestamp，
     # 曾導致公證 Invalid（nested binary 缺 secure timestamp 與 hardened runtime）
     codesign --force --deep --sign "$DEVELOPER_ID" \
+        --identifier com.yabomishim.inputmethod.YabomishIM \
         --entitlements "$ROOT/tools/YabomishIM.entitlements" \
         --options runtime --timestamp \
         "$APP/Contents/Resources/YabomishIM.app"
     codesign --force --deep --sign "$DEVELOPER_ID" \
+        --identifier com.yabomish.prefs \
         --options runtime --timestamp \
         "$APP/Contents/Resources/YabomishPrefs.app"
     codesign --force --sign "$DEVELOPER_ID" \

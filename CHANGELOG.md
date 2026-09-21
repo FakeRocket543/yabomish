@@ -13,7 +13,7 @@
 - **FreqTracker**：跨行程 freq.db 寫入補 busy_timeout；`unstable ranked.sort` 改穩定排序
 - **WikiCorpus**：NER/phrase domain 排名從死偏好改為 `DomainOrderManager.allOrderedKeys()` 位置；Big5 `.cin` 靜默產空表修正；`entryCount` 無界 spin 加上限
 - **YabomishPrefs**：`validateNew` 與 `isValidCode` 規則同步；`PinnedOrderSection` 讀 CINM v1；`SuggestionTab` 重置時 domainOrder 歸零；`ContextBar` generation 追蹤
-- **tools/*.py**：`wiki_word_bigram` checkpoint 崩潰窗口重複計數修正（記 rows/shards 對帳）；NER/phrases sparse vs bins dense 優先序分歧改 dense `nextPri` 計數器
+- **macOS 27 簽章（issue #16）**：原始碼安裝的簽章 Identifier 曾為 `YabomishIM`（與 Bundle ID `com.yabomishim.inputmethod.YabomishIM` 不一致），IMK 拒絕 XPC endpoint、可選取但無法輸入；`yabomish.sh`／`all_platforms.sh`／`release.sh` 簽章一律帶顯式 `--identifier`，`install_im` 另驗簽章並告警
 
 ### 改進（偏好設定 UI，Wave1；管理程式強化，15 項）
 

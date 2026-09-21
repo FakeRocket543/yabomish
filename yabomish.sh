@@ -127,7 +127,11 @@ install_im() {
     sudo mv "$INSTALL_DIR/YabomishIM.app.new" "$INSTALL_DIR/YabomishIM.app"
     sudo rm -rf "$INSTALL_DIR/YabomishIM.app.old"
     sudo chmod -R a+rX "$INSTALL_DIR/YabomishIM.app"
-    sudo codesign -s - --force --deep "$INSTALL_DIR/YabomishIM.app" 2>/dev/null || true   # 與 all_platforms.sh macos_install 一致
+    # macOS 27 要求簽章 Identifier 與 Info.plist Bundle ID 一致，否則 IMK 拒絕 XPC endpoint（issue #16）：
+    # 不帶 --identifier 時曾出現 Identifier=YabomishIM（與 Bundle ID 不一致），導致「看得到圖示、無法輸入」。
+    sudo codesign -s - --force --deep --identifier "$IM_BUNDLE_ID" "$INSTALL_DIR/YabomishIM.app" 2>/dev/null || true
+    local GOT_ID; GOT_ID=$(codesign -dv "$INSTALL_DIR/YabomishIM.app" 2>&1 | awk -F= '/^Identifier=/{print $2}')
+    [ "$GOT_ID" = "$IM_BUNDLE_ID" ] || warn "簽章 Identifier 異常（$GOT_ID），macOS 27 可能無法輸入；見 issue #16"
 
     # 字表
     mkdir -p "$USER_DIR/tables"

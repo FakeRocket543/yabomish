@@ -31,7 +31,7 @@ macos_build() {
 macos_install() {
   rm -rf ~/Library/Input\ Methods/YabomishIM.app
   cp -R "$MACOS/YabomishIM/build/YabomishIM.app" ~/Library/Input\ Methods/
-  codesign -s - --force --deep ~/Library/Input\ Methods/YabomishIM.app 2>/dev/null
+  codesign -s - --force --deep --identifier com.yabomishim.inputmethod.YabomishIM ~/Library/Input\ Methods/YabomishIM.app 2>/dev/null
   killall YabomishIM 2>/dev/null || true
   ok "macOS: installed to ~/Library/Input Methods"
 }
