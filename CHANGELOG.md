@@ -14,6 +14,7 @@
 - **WikiCorpus**：NER/phrase domain 排名從死偏好改為 `DomainOrderManager.allOrderedKeys()` 位置；Big5 `.cin` 靜默產空表修正；`entryCount` 無界 spin 加上限
 - **YabomishPrefs**：`validateNew` 與 `isValidCode` 規則同步；`PinnedOrderSection` 讀 CINM v1；`SuggestionTab` 重置時 domainOrder 歸零；`ContextBar` generation 追蹤
 - **macOS 27 簽章（issue #16）**：原始碼安裝的簽章 Identifier 曾為 `YabomishIM`（與 Bundle ID `com.yabomishim.inputmethod.YabomishIM` 不一致），IMK 拒絕 XPC endpoint、可選取但無法輸入；`yabomish.sh`／`all_platforms.sh`／`release.sh` 簽章一律帶顯式 `--identifier`，`install_im` 另驗簽章並告警
+- **Quick Action 殘留移除**：`UserPhrases` 已於 0.3.62 刪除，`tools/install_quick_action.py`＋`install_quick_action.sh` 寫的 `user_phrases.txt` 已無任何 Swift 讀者；刪兩檔、清 `.gitignore` 與 `docs/usage.md` 資料路徑，並以 `--remove` 解除本機已裝 workflow
 
 ### 改進（偏好設定 UI，Wave1；管理程式強化，15 項）
 

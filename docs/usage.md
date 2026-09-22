@@ -224,7 +224,6 @@ Layer 3: 詞庫（13 一般 + 20 專業）+ 兩岸標記 + 晶晶體
 ├── freq.db           # 字頻學習資料（SQLite WAL）
 ├── tables/           # 擴充表
 │   └── user_shortcuts.txt  # 使用者快捷碼
-├── user_phrases.txt  # 使用者自訂詞組
 └── debug.log         # Debug 日誌（開啟時）
 ```
 
