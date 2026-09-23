@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [Unreleased]
+## [0.3.65] — 2026-09-23
 
 ### 修正（全專案審計，43 項）
 
@@ -15,6 +15,15 @@
 - **YabomishPrefs**：`validateNew` 與 `isValidCode` 規則同步；`PinnedOrderSection` 讀 CINM v1；`SuggestionTab` 重置時 domainOrder 歸零；`ContextBar` generation 追蹤
 - **macOS 27 簽章（issue #16）**：原始碼安裝的簽章 Identifier 曾為 `YabomishIM`（與 Bundle ID `com.yabomishim.inputmethod.YabomishIM` 不一致），IMK 拒絕 XPC endpoint、可選取但無法輸入；`yabomish.sh`／`all_platforms.sh`／`release.sh` 簽章一律帶顯式 `--identifier`，`install_im` 另驗簽章並告警
 - **Quick Action 殘留移除**：`UserPhrases` 已於 0.3.62 刪除，`tools/install_quick_action.py`＋`install_quick_action.sh` 寫的 `user_phrases.txt` 已無任何 Swift 讀者；刪兩檔、清 `.gitignore` 與 `docs/usage.md` 資料路徑，並以 `--remove` 解除本機已裝 workflow
+
+### 新增（逗號指令）
+
+- **`,,B`／`,,F` — app 切換歷史的瀏覽器式前進後退** — Cmd+Tab 只能在兩 app 間切換（恆回最近一個），合成 CGEvent 又要輔助使用權限；改用 NSWorkspace 啟動通知自建 MRU 歷史＋游標（上限 30，只追 `.regular` app），`NSRunningApplication.activate()` 是公開 API——零權限、無切換器動畫，可連退多層再 forward 回來。到底／到頂 toast 提示
+- **`,,open` 支援 bundle ID＋非零退出 toast stderr** — Command 加 `bundle` 欄位：`open -b` 不受系統語系影響（app 名會本地化）；`open` 型別改走 reportExit：stderr 背景 drain，非零退出 toast 首行，修「找不到 app 完全沒回饋」的靜默失敗
+
+### 修正（偏好設定）
+
+- **關窗後點 dock 圖示 SIGSEGV** — NSWindow 預設 `isReleasedWhenClosed=true`：關窗時系統釋放 NSWindow，之後 reopen 重建＋setter 再 release 一次 → double-free。修法：`isReleasedWhenClosed=false`、reopen 時視窗還在就直接 `makeKeyAndOrderFront` 不重創、局部變數建好再賦值避開半成品 setter
 
 ### 改進（偏好設定 UI，Wave1；管理程式強化，15 項）
 
