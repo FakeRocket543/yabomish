@@ -1,11 +1,11 @@
 {
-  "version": "0.3.64",
-  "url": "https://github.com/FakeRocket543/yabomish/releases/download/v0.3.64/yabomish-corpus-lite-0.3.64.zip",
-  "sha256": "3adde3cb15a58a55b4926562ff3e11aa023ba17e32bd19ed3b307ab05df3ac2a",
-  "fileName": "yabomish-corpus-lite-0.3.64.zip",
+  "version": "0.3.65",
+  "url": "https://github.com/FakeRocket543/yabomish/releases/download/v0.3.65/yabomish-corpus-lite-0.3.65.zip",
+  "sha256": "01942d2e501d8311959550f0685bb3979e83421355e259a17bc2297fdf794af0",
+  "fileName": "yabomish-corpus-lite-0.3.65.zip",
   "full": {
-    "url": "https://github.com/FakeRocket543/yabomish/releases/download/v0.3.64/yabomish-corpus-full-0.3.64.zip",
-    "sha256": "b1e13b168ca7c67ba75e52b6c1959296384efeafad5d83c073a79791566e5191",
-    "fileName": "yabomish-corpus-full-0.3.64.zip"
+    "url": "https://github.com/FakeRocket543/yabomish/releases/download/v0.3.65/yabomish-corpus-full-0.3.65.zip",
+    "sha256": "a0e87f487dc4fc533c54f43d7537588269201a4ddfe8cae800c127b8695faaf2",
+    "fileName": "yabomish-corpus-full-0.3.65.zip"
   }
 }
