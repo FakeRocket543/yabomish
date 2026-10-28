@@ -332,12 +332,18 @@ class YabomishInputController: IMKInputController {
         Self.activeSession = self
         panel.onCandidateSelected = { [weak self] text in
             guard let self else { return }
+            if self.engine.isEnglishMode, !self.engCandidates.isEmpty,
+               let client = self.engineClient ?? self.client() {
+                self.selectEnglishCandidate(text, client: client)
+                return
+            }
             let idx = self.candidateIndex(of: text)
             self.engine.selectCandidate(at: idx)
         }
         // Reset engine state for new session
         engine.handleEscape()
         engine.clearCandidates()
+        resetEnglishSuggestState()
         // 語境列握手（Prefs app → IM）：ContextBar 套用語境時先寫暫態鍵
         // "pendingInputMode" 再廣播 prefsChanged，refreshSnapshot() 已把該鍵
         // 讀走（讀後即移除）；於此消費（讀後即清），比照 ,,X<code> 套用輸入模式。
@@ -382,6 +388,7 @@ class YabomishInputController: IMKInputController {
         if tag == kTextServiceInputModePropertyTag {
             DebugLog.log("YabomishIM: setValue inputMode <- \(String(describing: value))")
             if let modeID = value as? String {
+                resetEnglishSuggest(client: sender as? (NSObjectProtocol & IMKTextInput))
                 engine.setEnglishMode(modeID == Self.inputModeIDEnglish)
             }
         }
@@ -401,10 +408,11 @@ class YabomishInputController: IMKInputController {
             // 下次 activateServer 重置），但仍要清掉自己 client 殘留的組字
             // 底線，否則原 app 畫面留著未確認的底線組字。
             if let client = sender as? (NSObjectProtocol & IMKTextInput),
-               !engine.composing.isEmpty {
+               !engine.composing.isEmpty || !engPrefix.isEmpty {
                 client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             }
+            resetEnglishSuggestState()
             super.deactivateServer(sender)
             return
         }
@@ -414,7 +422,7 @@ class YabomishInputController: IMKInputController {
                 if engine.isPinyinMode { engine.exitPinyinMode() }
                 client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
-            } else if !engine.composing.isEmpty {
+            } else if !engine.composing.isEmpty || !engPrefix.isEmpty {
                 // 切換視窗／輸入法時丟棄組字（多數 IM 慣例：未確認的字不代送）。
                 // 舊行為有候選時以空白鍵代送第一候選，使用者切個視窗字就憑空落底文。
                 engine.handleEscape()
@@ -422,6 +430,7 @@ class YabomishInputController: IMKInputController {
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             }
         }
+        resetEnglishSuggestState()
         panel.hide()
         Self.freqTracker.flushAll()
         Self.activeSession = nil
@@ -485,6 +494,12 @@ extension YabomishInputController {
             if flags.contains(.shift) { newEngineShiftUsed = true }
             // capsLockToggles 時 .capsLock flag 是切換鍵的殘留狀態、無大寫語意，遮罩為 false
             let wantShift = flags.contains(.shift) != (capsLockToggles ? false : flags.contains(.capsLock))
+            // 英文字典聯想（iOS 版移植）：字母攔截成 marked 組字、候選窗顯示補全；
+            // 安全輸入期間不聯想——密碼不進字典/trie 比對（與 iOS inPasswordField 一致）
+            if YabomishPrefs.englishSuggest, !IsSecureEventInputEnabled() {
+                return handleEnglishSuggest(keyCode: keyCode, wantShift: wantShift, client: client)
+            }
+            if !engPrefix.isEmpty { resetEnglishSuggest(client: client) }
             if wantShift, let sh = keyCodeToShifted[keyCode] {
                 client.insertText(String(sh), replacementRange: notFoundRange)
                 return true
@@ -672,6 +687,171 @@ extension YabomishInputController {
         }
     }
 
+    // MARK: - 英文字典聯想（移植自 yabomish iOS 版）
+
+    /// 英文聯想狀態盒：extension 不能存儲存屬性，比照 engine 用 associated object。
+    private final class EnglishSuggestState {
+        var prefix = ""               // marked 組字中的前綴（保留實際大小寫）
+        var candidates: [String] = [] // 目前面板上的候選快照
+        lazy var userDict = UserEnglishDict(dir: AppConstants.sharedDir)
+    }
+    private static var _engStateKey = 0
+    private var engState: EnglishSuggestState {
+        if let s = objc_getAssociatedObject(self, &Self._engStateKey) as? EnglishSuggestState { return s }
+        let s = EnglishSuggestState()
+        objc_setAssociatedObject(self, &Self._engStateKey, s, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        return s
+    }
+    private var engPrefix: String {
+        get { engState.prefix }
+        set { engState.prefix = newValue }
+    }
+    private var engCandidates: [String] {
+        get { engState.candidates }
+        set { engState.candidates = newValue }
+    }
+    private var engUserDict: UserEnglishDict { engState.userDict }
+    private static let englishSelKeys: [Character] = Array("123456789")
+
+    /// 英文模式＋聯想開啟時的按鍵路徑：字母累積為 marked 組字、數字鍵／
+    /// 點選送詞、Escape 丟棄、其餘鍵先送出前綴再放行（行為同無聯想）。
+    private func handleEnglishSuggest(keyCode: UInt16, wantShift: Bool,
+                                      client: NSObjectProtocol & IMKTextInput) -> Bool {
+        // marked 被外部收編（點選他處未走 deactivate）：前綴作廢重來
+        if !engPrefix.isEmpty, client.markedRange().length != engPrefix.count {
+            resetEnglishSuggestState()
+        }
+        if let ch = keyCodeToChar[keyCode], ch.isLetter {
+            engPrefix.append(wantShift ? Character(ch.uppercased()) : ch)
+            updateEnglishComposing(client: client)
+            return true
+        }
+        if keyCode == 51 { // Backspace
+            guard !engPrefix.isEmpty else { return false }
+            engPrefix.removeLast()
+            updateEnglishComposing(client: client)
+            return true
+        }
+        if let digit = keyCodeToDigit[keyCode], !engCandidates.isEmpty,
+           let word = panel.selectByKey(digit) {
+            selectEnglishCandidate(word, client: client)
+            return true
+        }
+        if keyCode == 53 { // Escape：丟棄組字不落底文
+            guard !engPrefix.isEmpty else { return false }
+            resetEnglishSuggest(client: client)
+            return true
+        }
+        // 其餘鍵（空白／Enter／Tab／標點／方向）：先落前綴再放行原按鍵
+        commitEnglishComposing(client: client)
+        return false
+    }
+
+    /// 組字更新：marked 同步 + 候選重算（user dict 在前、字頻 trie 在後，同 iOS）。
+    private func updateEnglishComposing(client: NSObjectProtocol & IMKTextInput) {
+        if engPrefix.isEmpty {
+            client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                 replacementRange: notFoundRange)
+            engCandidates = []
+            panel.hide()
+            return
+        }
+        client.setMarkedText(engPrefix,
+                             selectionRange: NSRange(location: engPrefix.count, length: 0),
+                             replacementRange: notFoundRange)
+        let lower = engPrefix.lowercased()
+        var results: [String] = []
+        if lower.count >= 2 {
+            let trie = EnglishTrie.shared.search(prefix: lower, limit: 6).filter { $0 != lower }
+            let user = engUserDict.search(prefix: lower, limit: 4)
+                .filter { $0 != lower && !trie.contains($0) }
+            results = user + trie
+            if results.isEmpty && lower.count >= 3
+                && EnglishTrie.shared.search(prefix: lower, limit: 1).first != lower
+                && !engUserDict.contains(lower) {
+                results.append("+\(lower)")
+            }
+        }
+        engCandidates = results
+        showEnglishPanel(client: client)
+    }
+
+    /// 送出前綴字面並清場（空白／Enter／標點等放行前呼叫）。
+    private func commitEnglishComposing(client: NSObjectProtocol & IMKTextInput) {
+        guard !engPrefix.isEmpty else { return }
+        client.insertText(engPrefix, replacementRange: notFoundRange)
+        resetEnglishSuggestState()
+        panel.hide()
+    }
+
+    /// 選候選：insertText 會以送出的詞取代 marked 組字。
+    private func selectEnglishCandidate(_ word: String, client: NSObjectProtocol & IMKTextInput) {
+        var w = word
+        var addToDict = false
+        if w.hasPrefix("+") {
+            // "+word" 虛候選：把生詞收進使用者字典再送出
+            w = String(w.dropFirst())
+            addToDict = true
+        }
+        // 大小寫跟隨已打前綴（字典內永遠存小寫；送出時才轉）
+        let letters = engPrefix.filter(\.isLetter)
+        if !letters.isEmpty, letters.allSatisfy(\.isUppercase), letters.count > 1 {
+            w = w.uppercased()
+        } else if engPrefix.first?.isUppercase == true {
+            w = w.capitalized
+        }
+        if addToDict {
+            engUserDict.add(w)
+            showCodeHintToast("已加入字典：\(w.lowercased())")
+        }
+        client.insertText(w, replacementRange: notFoundRange)
+        resetEnglishSuggestState()
+        panel.hide()
+    }
+
+    /// 清 marked 與面板（Escape／模式切換／聯想關閉時的殘留收拾）。
+    private func resetEnglishSuggest(client: (NSObjectProtocol & IMKTextInput)?) {
+        if let client, !engPrefix.isEmpty {
+            client.setMarkedText("", selectionRange: NSRange(location: 0, length: 0),
+                                 replacementRange: notFoundRange)
+        }
+        resetEnglishSuggestState()
+        panel.hide()
+    }
+
+    private func resetEnglishSuggestState() {
+        engPrefix = ""
+        engCandidates = []
+    }
+
+    /// 英文候選面板：與中文候選共用游標定位／固定模式邏輯。
+    private func showEnglishPanel(client: NSObjectProtocol & IMKTextInput) {
+        guard !engCandidates.isEmpty else { panel.hide(); return }
+        let cursorRect = Self.queryCursorRect(client: client,
+                                              markedLength: max(0, client.markedRange().length))
+        let hasCursor: Bool = {
+            guard cursorRect.minX > 0 || cursorRect.minY > 0
+                  || cursorRect.size.height > 0 else { return false }
+            let pt = NSPoint(x: cursorRect.midX, y: cursorRect.midY)
+            return NSScreen.screens.contains(where: { $0.visibleFrame.contains(pt) })
+        }()
+        if hasCursor {
+            let pt = NSPoint(x: cursorRect.midX, y: cursorRect.midY)
+            panel.targetScreen = NSScreen.screens.first(where: { $0.frame.contains(pt) })
+        }
+        let origin: NSPoint
+        if YabomishPrefs.panelPosition == "fixed" {
+            panel.fallbackFixed = false; origin = .zero
+        } else if hasCursor {
+            panel.fallbackFixed = false; origin = NSPoint(x: cursorRect.minX, y: cursorRect.minY)
+        } else {
+            panel.fallbackFixed = true; origin = .zero
+        }
+        panel.modeTag = engine.currentModeLabel
+        panel.show(candidates: engCandidates, selKeys: Self.englishSelKeys,
+                   at: origin, composing: engPrefix, preselectFirst: false)
+    }
+
     /// 方向鍵導候選。固定模式（或游標水平跟隨）：左右移動、上下翻頁；
     /// 直式（游標跟隨）：上下移動、左右翻頁。回傳是否已由導向處理。
     @discardableResult
@@ -736,6 +916,7 @@ extension YabomishInputController {
 
     private func toggleEnglishModeAndIcon() {
         if !engine.composing.isEmpty { engine.handleEscape() }
+        resetEnglishSuggest(client: engineClient ?? client())
         engine.toggleEnglishMode()
         if let client = engineClient ?? client() {
             applyInputModeIcon(client: client)

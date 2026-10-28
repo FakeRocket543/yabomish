@@ -77,7 +77,7 @@ build_im() {
     # 核心資源（所有版本都包含：打字、查碼、繁簡轉換）
     for f in icon.tiff icon_en.tiff icon.icns icon_right.tiff icon_left.tiff \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json \
-             char_freq.json corpus_manifest.json; do
+             char_freq.json corpus_manifest.json english_10k.txt; do
         [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
     done
     [ -d "$IM_RES/tables" ] && cp -R "$IM_RES/tables" "$IM_APP/Contents/Resources/"
@@ -141,12 +141,15 @@ build_prefs() {
     local FLAGS=""
     if [ "$MODE" = "min" ]; then FLAGS="-DMINIMAL"; fi
 
+    # Shared/UserEnglishDict.swift 與 IM 共用（英數頁的自訂詞清單）——
+    # 該檔 init 帶目錄、不依賴 AppConstants，兩個 target 都能編。
     swiftc -module-name YabomishPrefs \
         -target "$ARCH-apple-macos14.0" \
         -sdk "$(xcrun --show-sdk-path)" -O $FLAGS \
         -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers \
         -o "$PREFS_APP/Contents/MacOS/YabomishPrefs" \
-        "$PREFS_DIR"/Sources/*.swift
+        "$PREFS_DIR"/Sources/*.swift \
+        "$IM_SRC/Shared/UserEnglishDict.swift"
 
     chmod +x "$PREFS_APP/Contents/MacOS/YabomishPrefs"
     ok "YabomishPrefs.app"
@@ -260,6 +263,12 @@ install_prefs() {
 </dict>
 </plist>
 EOF
+        # 關於頁要顯示版號：從本輪 build 的 plist 帶過來（wrapper plist 沒有會顯示 "?"）
+        local PVER PBLD
+        PVER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PREFS_APP/Contents/Info.plist" 2>/dev/null || true)
+        PBLD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PREFS_APP/Contents/Info.plist" 2>/dev/null || true)
+        [ -n "$PVER" ] && /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $PVER" "$WAPP/Contents/Info.plist"
+        [ -n "$PBLD" ] && /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $PBLD" "$WAPP/Contents/Info.plist"
         cat > "$WAPP/Contents/MacOS/launch" <<EOF
 #!/bin/bash
 cd "\$(dirname "\$0")" && exec ./YabomishPrefs -prefsSuite $IM_BUNDLE_ID

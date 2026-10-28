@@ -52,6 +52,7 @@ struct YabomishPrefs {
         var shiftDigitOutput = "symbol"
         var englishToggleKey = "shift"
         var allowSecureInput = false
+        var englishSuggest = true
         #if os(iOS)
         var punctuationPairing = true
         #else
@@ -116,6 +117,7 @@ struct YabomishPrefs {
         // 合法值只有四種；異常值（舊版/手改）一律回落 shift 保現行行為
         if !["shift", "capslock", "both", "none"].contains(s.englishToggleKey) { s.englishToggleKey = "shift" }
         s.allowSecureInput = defaults.object(forKey: "allowSecureInput") as? Bool ?? false
+        s.englishSuggest = defaults.object(forKey: "englishSuggest") as? Bool ?? true
         #if os(iOS)
         s.punctuationPairing = defaults.object(forKey: "punctuationPairing") as? Bool ?? true
         #else
@@ -344,6 +346,12 @@ struct YabomishPrefs {
         }
     }
 
+    /// 英文模式下的字典補全聯想（移植自 iOS 版；預設開）
+    static var englishSuggest: Bool {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.englishSuggest }
+        set { defaults.set(newValue, forKey: "englishSuggest"); refreshSnapshot() }
+    }
+
     /// 切換顯示（切入提示 / 狀態列名稱）: "繁中" / "Yabomish" / "🦐"
     static var switchDisplay: String {
         get {
@@ -418,7 +426,7 @@ struct YabomishPrefs {
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
                 "emojiSuggest", "emojiFirst", "suggestPreselect", "corpusVariant", "shiftDigitOutput",
-                "englishToggleKey", "allowSecureInput",
+                "englishToggleKey", "allowSecureInput", "englishSuggest",
                 "punctuationPairing", "debugMode", "highContrast", "syncFolder", "currentContext",
                 "domainOrder"
             ]

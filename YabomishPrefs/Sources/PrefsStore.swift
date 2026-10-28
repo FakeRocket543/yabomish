@@ -166,6 +166,12 @@ import Foundation
         set { withMutation(keyPath: \.englishToggleKey) { ud.set(newValue, forKey: "englishToggleKey") }; postChange() }
     }
 
+    /// 英文聯想（預設開）：英文模式下字母組成標記字串、候選窗顯示單字補全。
+    var englishSuggest: Bool {
+        get { access(keyPath: \.englishSuggest); return ud.object(forKey: "englishSuggest") as? Bool ?? true }
+        set { withMutation(keyPath: \.englishSuggest) { ud.set(newValue, forKey: "englishSuggest") }; postChange() }
+    }
+
     /// 密碼／安全欄位放行（預設關）：開啟後 macOS 安全輸入期間 IM 照常組字；
     /// 安全期間 debug 記錄與字頻學習一律靜音（IM 端強制，與本開關無關）。
     var allowSecureInput: Bool {

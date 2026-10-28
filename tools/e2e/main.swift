@@ -19,6 +19,7 @@ final class MockClient: NSObject, IMKTextInput {
     var inputModeSet: String? = nil
 
     func insertText(_ string: Any!, replacementRange: NSRange) {
+        marked = ""   // 真實 IMK：insertText 以送出文字取代 marked 組字
         if let s = string as? String { inserted.append(s) }
         else if let s = string as? NSAttributedString { inserted.append(s.string) }
     }
@@ -26,7 +27,11 @@ final class MockClient: NSObject, IMKTextInput {
         marked = (string as? String) ?? (string as? NSAttributedString)?.string ?? ""
     }
     func selectedRange() -> NSRange { NSRange(location: NSNotFound, length: 0) }
-    func markedRange() -> NSRange { NSRange(location: NSNotFound, length: 0) }
+    func markedRange() -> NSRange {
+        // 真實 client：有組字時回組字範圍；無組字時 location=NSNotFound、length=0。
+        // controller 的英文聯想以 length==engPrefix.count 偵測 marked 是否被外部收編。
+        NSRange(location: marked.isEmpty ? NSNotFound : 0, length: marked.count)
+    }
     func attributedSubstring(from range: NSRange) -> NSAttributedString! { nil }
     func length() -> Int { 0 }
     func characterIndex(for point: NSPoint, tracking mappingMode: Int, inMarkedRange: UnsafeMutablePointer<ObjCBool>!) -> Int { NSNotFound }
@@ -150,6 +155,7 @@ do {
 // ─── E6: capsLock flag 遮罩 — latched 狀態不造成大寫 ───
 do {
     setToggle("capslock")
+    YabomishPrefs.englishSuggest = false  // 英文聯想開著時字母進組字不直放；此項驗 caps 遮罩
     let (c, m) = newController()
     // 模擬 flag 殘留 ON(例如 forceOff 失敗的環境):shift+a 應仍是大寫 A(shift 語意)
     // 而單純 .capsLock flag 不該把暫時英文字母變大寫 — 但暫時英文路徑本來就要 shift,
@@ -167,11 +173,13 @@ do {
     _ = c2.handleWithNewEngine(flagsEvent(56, []), client: m2)
     _ = c2.handleWithNewEngine(keyEvent(0, [.capsLock]), client: m2)   // 英文模式 caps+a
     check(m2.inserted.last == "A", "E6c pref=shift 時 .capsLock 仍是大寫語意(回歸)")
+    YabomishPrefs.englishSuggest = true
 }
 
 // ─── E7: pref=none — 兩鍵皆不切、.capsLock 恢復大寫語意 ───
 do {
     setToggle("none")
+    YabomishPrefs.englishSuggest = false  // 同上：此項驗大小寫語意，不走聯想組字
     let (c, m) = newController()
     let t0 = ProcessInfo.processInfo.systemUptime
     _ = c.handleWithNewEngine(flagsEvent(56, [.shift], ts: t0), client: m)
@@ -186,6 +194,7 @@ do {
     check(m.inserted.last == "A", "E7c none: .capsLock flag 恢復大寫語意")
     _ = c.handleWithNewEngine(keyEvent(0), client: m)
     check(m.inserted.last == "a", "E7d none: 無 flag → 小寫")
+    YabomishPrefs.englishSuggest = true
 }
 
 // ─── E8: secure-input 靜音旗標 ───
@@ -245,6 +254,101 @@ do {
     YabomishPrefs.toastStrokeColor = "#112233"
     check(YabomishPrefs.toastStrokeColor == "#112233", "E13h toastStrokeColor 寫入/讀回")
     YabomishPrefs.toastStrokeColor = "#000000"
+}
+
+// ─── E14: 英文聯想（iOS 版移植）───
+do {
+    // 14a: Trie 前綴搜尋（rank 序）
+    let trie = EnglishTrie(words: ["the", "they", "them", "there", "test", "testing"])
+    check(trie.search(prefix: "th") == ["the", "they", "them", "there"], "E14a trie prefix 依 rank 序")
+    check(trie.search(prefix: "tes") == ["test", "testing"], "E14a2 trie 兩結果")
+    check(trie.search(prefix: "zzz").isEmpty, "E14a3 trie 無匹配→空")
+
+    // 14b: UserEnglishDict 增刪查（tmp 目錄隔離）
+    let tmpDir = NSTemporaryDirectory() + "e2e-engdict-\(UUID().uuidString.prefix(8))"
+    try? FileManager.default.createDirectory(atPath: tmpDir, withIntermediateDirectories: true)
+    let dict = UserEnglishDict(dir: tmpDir)
+    dict.add("Xyzzy")
+    dict.add("Foo")
+    check(dict.contains("xyzzy") && dict.contains("foo"), "E14b1 dict add+contains（大小寫無關）")
+    check(dict.search(prefix: "x") == ["xyzzy"], "E14b2 dict prefix 搜尋")
+    let dict2 = UserEnglishDict(dir: tmpDir)
+    check(dict2.contains("xyzzy"), "E14b3 dict 持久化（重建讀回）")
+    dict2.remove("xyzzy")
+    check(!dict2.contains("xyzzy"), "E14b4 dict remove")
+    dict2.removeAll()
+    check(dict2.count == 0, "E14b5 dict removeAll")
+    try? FileManager.default.removeItem(atPath: tmpDir)
+
+    // 14c: pref 讀寫（無鍵時 Prefs.swift 的 `as? Bool ?? true` 給預設開）
+    YabomishPrefs.englishSuggest = false
+    check(YabomishPrefs.englishSuggest == false, "E14c englishSuggest 寫關/讀回")
+    YabomishPrefs.englishSuggest = true
+    check(YabomishPrefs.englishSuggest == true, "E14c2 englishSuggest 寫開/讀回")
+
+    // 14d: controller 全路徑 — 注入小詞表後走合成按鍵
+    EnglishTrie.shared = EnglishTrie(words: ["the", "they", "them", "there"])
+    setToggle("shift")
+    let (c, m) = newController()
+    let t0 = ProcessInfo.processInfo.systemUptime
+    _ = c.handleWithNewEngine(flagsEvent(56, [.shift], ts: t0), client: m)
+    _ = c.handleWithNewEngine(flagsEvent(56, [], ts: t0 + 0.1), client: m)
+    check(c.engine.isEnglishMode, "E14d0 進英文模式")
+    _ = c.handleWithNewEngine(keyEvent(17), client: m)  // t
+    _ = c.handleWithNewEngine(keyEvent(4), client: m)   // h
+    _ = c.handleWithNewEngine(keyEvent(14), client: m)  // e
+    check(m.marked == "the", "E14d1 字母累積為 marked 組字")
+    _ = c.handleWithNewEngine(keyEvent(18), client: m)  // '1' → 第一候選 "they"
+    check(m.inserted.last == "they", "E14d2 數字鍵選候選送出 they")
+    check(m.marked.isEmpty, "E14d3 選字後 marked 清空")
+
+    // 14e: Backspace 編輯 + Escape 丟棄
+    _ = c.handleWithNewEngine(keyEvent(17), client: m)  // t
+    _ = c.handleWithNewEngine(keyEvent(4), client: m)   // h
+    _ = c.handleWithNewEngine(keyEvent(51), client: m)  // Backspace → "t"
+    check(m.marked == "t", "E14e1 Backspace 刪組字")
+    _ = c.handleWithNewEngine(keyEvent(53), client: m)  // Escape 丟棄
+    check(m.marked.isEmpty && m.inserted.last != "t", "E14e2 Escape 丟棄不落底")
+
+    // 14f: 大寫跟隨 — 全大寫前綴 → 大寫補全
+    _ = c.handleWithNewEngine(keyEvent(17, [.shift]), client: m)  // T
+    _ = c.handleWithNewEngine(keyEvent(4, [.shift]), client: m)   // H
+    _ = c.handleWithNewEngine(keyEvent(14, [.shift]), client: m)  // E
+    check(m.marked == "THE", "E14f1 全大寫前綴")
+    _ = c.handleWithNewEngine(keyEvent(18), client: m)            // 選第一候選
+    check(m.inserted.last == "THEY", "E14f2 全大寫→大寫補全 THEY")
+
+    // 14g: 首字母大寫 → Capitalized
+    _ = c.handleWithNewEngine(keyEvent(17, [.shift]), client: m)  // T
+    _ = c.handleWithNewEngine(keyEvent(4), client: m)             // h
+    _ = c.handleWithNewEngine(keyEvent(14), client: m)            // e
+    _ = c.handleWithNewEngine(keyEvent(18), client: m)
+    check(m.inserted.last == "They", "E14g 首大寫→They")
+
+    // 14h: 空白放行先落前綴
+    _ = c.handleWithNewEngine(keyEvent(17), client: m)  // t
+    _ = c.handleWithNewEngine(keyEvent(4), client: m)   // h
+    let consumed = c.handleWithNewEngine(keyEvent(49), client: m) // Space
+    check(!consumed && m.inserted.last == "th", "E14h Space 先落前綴再放行")
+    check(m.marked.isEmpty, "E14h2 放行後組字清")
+
+    // 14i: 無匹配 ≥3 字母 → "+前綴" 虛候選；選它入字典
+    _ = c.handleWithNewEngine(keyEvent(7), client: m)   // x
+    _ = c.handleWithNewEngine(keyEvent(16), client: m)  // y
+    _ = c.handleWithNewEngine(keyEvent(6), client: m)   // z
+    check(m.marked == "xyz", "E14i1 無匹配前綴組字")
+    _ = c.handleWithNewEngine(keyEvent(18), client: m)  // '1' → "+xyz"
+    check(m.inserted.last == "xyz", "E14i2 選 +xyz 送出")
+    // +word 寫進真實使用者字典（AppConstants.sharedDir）——測完清掉不污染
+    UserEnglishDict(dir: AppConstants.sharedDir).remove("xyz")
+
+    // 14j: 聯想關閉 → 英文模式字母直放（不組字）
+    YabomishPrefs.englishSuggest = false
+    let (c2, m2) = newController()
+    c2.engine.setEnglishMode(true)
+    _ = c2.handleWithNewEngine(keyEvent(17), client: m2)
+    check(m2.marked.isEmpty && m2.inserted.last == "t", "E14j 關閉時字母直放")
+    YabomishPrefs.englishSuggest = true
 }
 
 print("\n=== \(passed) passed, \(failed) failed ===")

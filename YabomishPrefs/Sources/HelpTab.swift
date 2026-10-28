@@ -5,6 +5,12 @@ struct HelpTab: View {
     @State private var helpQuery = ""
     @State private var collapsedGuides: Set<String> = []
 
+    /// dev suite → YabomishDev（與 PrefsStore.dataDirName 同規則）
+    private var dataDirName: String {
+        (UserDefaults.standard.string(forKey: "prefsSuite") ?? "").contains("Dev")
+            ? "YabomishDev" : "Yabomish"
+    }
+
     /// 搜尋過濾：(haystack, value) 配對，query 為空全留
     private func helpHits<T>(_ pairs: [(String, T)]) -> [T] {
         let q = helpQuery.trimmingCharacters(in: .whitespaces)
@@ -13,24 +19,12 @@ struct HelpTab: View {
     }
     var body: some View {
         VStack(spacing: 0) {
-            // ── 版本資訊（固定頂部，滾動時可見）──
-            HStack(spacing: 4) {
-                Text("Yabomish").font(Typo.h2)
-                let info = Bundle.main.infoDictionary
-                Text("\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))")
-                    .font(Typo.body).monospacedDigit().foregroundStyle(.secondary)
-                Spacer()
-                Link("回報問題",
-                     destination: URL(string: "https://github.com/FakeRocket543/yabomish/issues/new")!)
-                    .font(Typo.body)
-            }
-            .padding(.horizontal, 20).padding(.vertical, 10)
             HStack {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField("搜尋說明", text: $helpQuery)
                     .textFieldStyle(.roundedBorder)
             }
-            .padding(.horizontal, 20).padding(.bottom, 8)
+            .padding(.horizontal, 20).padding(.vertical, 8)
             Divider()
         SettingsPage {
 
@@ -187,62 +181,14 @@ struct HelpTab: View {
 
                 HStack {
                     Spacer()
-                    Text("所有資料存放於 ~/Library/Application Support/Yabomish/")
+                    Text("所有資料存放於 ~/Library/Application Support/\(dataDirName)/")
                         .font(Typo.caption).foregroundStyle(.tertiary)
                     Spacer()
                 }
 
-                SectionDivider()
-
-                // ── 語料來源與授權 ──
-
-                Label("語料來源與授權", systemImage: "doc.text").font(Typo.h1)
-
-                #if MINIMAL
-                creditSection("核心資料", items: [
-                    ("注音對照表", "威注音 VanguardLexicon", "MIT"),
-                    ("繁簡對照表", "OpenCC", "Apache 2.0"),
-                    ("萌典字頻", "萌典（教育部辭典）", "CC0"),
-                ])
-                #else
-                creditSection("核心資料", items: [
-                    ("注音對照表", "威注音 VanguardLexicon", "MIT"),
-                    ("繁簡對照表", "OpenCC", "Apache 2.0"),
-                    ("萌典字頻", "萌典（教育部辭典）", "CC0"),
-                    ("Emoji", "Unicode CLDR", "Unicode License"),
-                ])
-                creditSection("語料統計", items: [
-                    ("維基語料", "中文維基百科 zhwiki dump", "CC-BY-SA 3.0"),
-                    ("新聞詞頻", "國家教育研究院 新聞語料庫", "政府開放資料"),
-                ])
-                creditSection("一般詞庫", items: [
-                    ("成語", "教育部成語典", "政府開放資料"),
-                    ("歇後語", "chinese-xinhua", "MIT"),
-                    ("台灣俗諺", "教育部閩南語常用詞辭典", "政府開放資料"),
-                    ("客語辭典（六腔）", "教育部臺灣客語辭典", "政府開放資料"),
-                    ("台灣地名", "教育部本土語言地名", "CC-BY 3.0 TW"),
-                    ("台語學科", "教育部台語學科術語", "CC-BY 3.0 TW"),
-                    ("韓語漢字詞", "Kengdic", "MPL 2.0"),
-                    ("兩岸用詞對照", "國家教育研究院 樂詞網", "政府開放資料"),
-                ])
-                creditSection("專業詞典", items: [
-                    ("專業詞典 ×28", "國家教育研究院 樂詞網（NAER）", "政府開放資料"),
-                    ("外國地名", "國家教育研究院 譯名", "政府開放資料"),
-                ])
-                #endif
-
-                Text("本程式碼以 MIT 授權釋出。各語料依其原始授權條款使用。")
-                    .font(Typo.caption).foregroundStyle(.secondary)
-
-                HStack(spacing: 4) {
-                    Text("原始碼：").font(Typo.caption).foregroundStyle(.secondary)
-                    Link("github.com/FakeRocket543/yabomish",
-                         destination: URL(string: "https://github.com/FakeRocket543/yabomish")!)
-                        .font(Typo.caption)
-                }
         }
         .onAppear { loadHelp() }
-        } // 外層 VStack（版本列＋搜尋＋內容）
+        } // 外層 VStack（搜尋＋內容）
     }
 
     private func loadHelp() {
@@ -260,15 +206,20 @@ struct HelpTab: View {
         if matched {
             // 搜尋命中時自動展開；平時預設展開（前兩個由呼叫端順序決定視覺，全部可折疊）
             DisclosureGroup(isExpanded: guideExpanded(title)) {
-                ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
-                    HStack(alignment: .top, spacing: 8) {
-                        Text("\(i + 1).")
-                            .font(Typo.bodyMono)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 20, alignment: .trailing)
-                        Text(step).font(Typo.body)
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(i + 1).")
+                                .font(Typo.bodyMono)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 20, alignment: .trailing)
+                            Text(step).font(Typo.body)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 6)
             } label: {
                 Label(title, systemImage: icon).font(Typo.h2)
             }
@@ -307,36 +258,4 @@ struct HelpTab: View {
         }
     }
 
-    // MARK: - Credit section (name / source / license)
-
-    @ViewBuilder
-    private func creditSection(_ title: String, items: [(String, String, String)]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(Typo.h3).foregroundStyle(.secondary)
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8)
-                ],
-                spacing: 4
-            ) {
-                ForEach(items, id: \.0) { name, source, license in
-                    Text(name)
-                        .font(Typo.bodyMono)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(source)
-                        .font(Typo.body)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(license)
-                        .font(Typo.cardDesc)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-        }
-    }
 }

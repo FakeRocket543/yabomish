@@ -29,15 +29,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let appItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         mainMenu.addItem(appItem)
         mainMenu.addItem(editItem)
-        // View menu — Cmd+1..5 切換頂層 tab（經 NotificationCenter 轉給 ContentView.selection）
+        // View menu — Cmd+數字 切換側邊欄頁（經 NotificationCenter 轉給 ContentView.selection）
         let viewMenu = NSMenu(title: "View")
         #if MINIMAL
-        let tabTitles = ["輸入", "快捷碼", "外觀", "關於"]
+        let tabTitles = ["輸入", "切換", "英數", "快捷碼", "候選窗", "模式提示", "介面", "說明", "關於"]
         #else
-        let tabTitles = ["輸入", "聯想與詞庫", "快捷碼", "外觀", "關於"]
+        let tabTitles = ["輸入", "切換", "英數", "聯想", "一般詞庫", "專業詞庫", "快捷碼", "候選窗", "模式提示", "介面", "說明", "關於"]
         #endif
         for (i, title) in tabTitles.enumerated() {
-            let item = NSMenuItem(title: title, action: #selector(AppDelegate.selectTab(_:)), keyEquivalent: "\(i + 1)")
+            // Cmd+1..9、Cmd+0 對應前 10 頁；第 11、12 頁無快捷鍵
+            let key = i < 9 ? "\(i + 1)" : (i == 9 ? "0" : "")
+            let item = NSMenuItem(title: title, action: #selector(AppDelegate.selectTab(_:)), keyEquivalent: key)
             item.tag = i
             viewMenu.addItem(item)
         }
@@ -48,6 +50,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         createWindow()
         NSApp.activate(ignoringOtherApps: true)
+
+        // 測試掛鉤：`-page N` 啟動後直接跳第 N 頁（視覺驗收/截圖用）
+        let page = UserDefaults.standard.integer(forKey: "page")
+        if page > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                NotificationCenter.default.post(name: .selectPrefsTab, object: page)
+            }
+        }
     }
 
     private func createWindow() {
@@ -64,10 +74,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         w.title = "Yabomish 設定"
         let store = PrefsStore()
         w.contentView = NSHostingView(rootView: ContentView(store: store))
+        applyAppearance(mode: store.appearanceMode, to: w)
+        // AppKit 層對齊：preferredColorScheme 之外，NSColor 橋接色也要跟著模式。
+        // 自動 → nil（跟隨系統）；淺色/深色 → 固定 appearance，切換瞬間不會半淺半深。
+        DistributedNotificationCenter.default().addObserver(
+            forName: .init("com.yabomish.prefsChanged"), object: nil, queue: .main
+        ) { [weak w] _ in
+            guard let w else { return }
+            self.applyAppearance(mode: store.appearanceMode, to: w)
+        }
         w.center()
         w.makeKeyAndOrderFront(nil)
+        // 設定程式的側邊欄是主導覽，不該被收起——整條 toolbar 移除：
+        // isVisible=false 只藏按鈕、材質還在會蓋住頁首內容；設 nil 才真的消失。
+        // toolbar 由 NavigationSplitView 延遲建立，首輪 layout 後再拔一次。
+        w.toolbar = nil
+        DispatchQueue.main.async { w.toolbar = nil }
         window = w
     }
+    private func applyAppearance(mode: String, to w: NSWindow) {
+        switch mode {
+        case "light": w.appearance = NSAppearance(named: .aqua)
+        case "dark":  w.appearance = NSAppearance(named: .darkAqua)
+        default:      w.appearance = nil
+        }
+    }
+
     @objc func selectTab(_ sender: NSMenuItem) {
         NotificationCenter.default.post(name: .selectPrefsTab, object: sender.tag)
     }

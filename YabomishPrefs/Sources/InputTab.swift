@@ -9,12 +9,7 @@ private struct InputOption: Identifiable {
 }
 
 private let inputOptions: [InputOption] = {
-    var opts: [InputOption] = []
-    #if !MINIMAL
-    opts.append(.init(id: "suggestEnabled", label: "聯想輸入", icon: "lightbulb", desc: "送字後推薦候選"))
-    opts.append(.init(id: "suggestPreselect", label: "聯想預先反白", icon: "highlighter", desc: "反白聯想列第一個候選（預設關）"))
-    #endif
-    opts += [
+    [
     .init(id: "autoCommit",           label: "自動送字",  icon: "arrow.right.circle",    desc: "滿碼自動送出"),
     .init(id: "showCodeHint",         label: "拆碼提示",  icon: "eye",                   desc: "送字後顯示碼"),
     .init(id: "homophoneMultiReading",label: "同音多讀",  icon: "speaker.wave.2",        desc: "含罕見讀音"),
@@ -22,7 +17,6 @@ private let inputOptions: [InputOption] = {
     .init(id: "fuzzyMatch",           label: "鄰鍵容錯",  icon: "magnifyingglass",       desc: "打錯相鄰鍵時自動容錯修正"),
     .init(id: "punctuationPairing",   label: "標點配對",  icon: "quote.opening",         desc: "打「自動補「」"),
     ]
-    return opts
 }()
 
 struct InputTab: View {
@@ -80,43 +74,6 @@ struct InputTab: View {
                 }
                 }
 
-                SettingsSection(title: "選字窗") {
-                    ChoiceRow(label: "游標跟隨", icon: "cursorarrow.click",
-                              desc: "選字窗跟游標",
-                              selected: store.panelPosition == "cursor") { store.panelPosition = "cursor" }
-                    InsetDivider()
-                    ChoiceRow(label: "固定位置", icon: "rectangle.bottomhalf.filled",
-                              desc: "選字窗固定底部",
-                              selected: store.panelPosition == "fixed") { store.panelPosition = "fixed" }
-                }
-
-                // 選字窗 demo — 只顯示選中的模式，外圍加「預覽」標籤
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("預覽").font(Typo.caption).foregroundStyle(.secondary)
-                Group {
-                    if store.panelPosition == "cursor" {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("1蝦").font(.system(size: 16))
-                            Text("2米").font(.system(size: 16)).foregroundStyle(.secondary)
-                            Text("3蟹").font(.system(size: 16)).foregroundStyle(.secondary)
-                        }
-                        .padding(8)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Typo.accent.opacity(0.7), lineWidth: 1.5))
-                    } else {
-                        HStack(spacing: 10) {
-                            Text("1蝦").font(.system(size: 16))
-                            Text("2米").font(.system(size: 16)).foregroundStyle(.secondary)
-                            Text("3蟹").font(.system(size: 16)).foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(.ultraThinMaterial))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Typo.accent.opacity(0.7), lineWidth: 1.5))
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                }
-
                 SettingsSection(title: "輸入功能") {
                     ForEach(Array(inputOptions.enumerated()), id: \.element.id) { i, opt in
                         if i > 0 { InsetDivider() }
@@ -138,34 +95,6 @@ struct InputTab: View {
                               selected: store.shiftDigitOutput == "digit") { store.shiftDigitOutput = "digit" }
                 }
                 #endif
-
-                // ── 中英切換鍵（issue #18）──
-                SettingsSection(title: "中英切換鍵",
-                                footnote: "切換中／英模式的按鍵。選 ⇪ 或「兩者」後 Caps Lock 成為專用切換鍵（大寫燈不亮、大寫改由 Shift＋字母）；注意 macOS 會丟棄過快的輕點（<100ms），需稍長一點按壓。選「全都不用」時英文改從輸入法選單點選。") {
-                    ChoiceRow(label: "Shift 快按", icon: "shift",
-                              desc: "全系統慣例（預設）",
-                              selected: store.englishToggleKey == "shift") { store.englishToggleKey = "shift" }
-                    InsetDivider()
-                    ChoiceRow(label: "⇪ Caps Lock", icon: "capslock",
-                              desc: "改用 ⇪ 切換",
-                              selected: store.englishToggleKey == "capslock") { store.englishToggleKey = "capslock" }
-                    InsetDivider()
-                    ChoiceRow(label: "兩者皆可", icon: "keyboard",
-                              desc: "⇪ 與 Shift 快按都能切",
-                              selected: store.englishToggleKey == "both") { store.englishToggleKey = "both" }
-                    InsetDivider()
-                    ChoiceRow(label: "全都不用", icon: "keyboard.badge.ellipsis",
-                              desc: "只從輸入法選單切換",
-                              selected: store.englishToggleKey == "none") { store.englishToggleKey = "none" }
-                }
-
-                // ── 密碼／安全欄位 ──
-                SettingsSection(title: "密碼／安全欄位",
-                                footnote: "macOS 安全輸入啟用時（密碼欄、Keychain 對話框等），預設輸入法暫停、按鍵原樣送達——避免組字緩衝、字頻學習、debug 記錄接觸密碼。某些 app 會卡住安全輸入不放，造成整個 app 無法輸入；此時可開啟上方選項強行使用。無論是否開啟，安全期間 debug 記錄與字頻學習一律靜音。") {
-                    ToggleRow(label: "密碼欄位照打", icon: "lock.open",
-                              desc: "安全輸入時仍處理按鍵（預設關，慎用）",
-                              on: $store.allowSecureInput)
-                }
 
                 // ── 固定排序 ──
                 DisclosureGroup {
@@ -287,18 +216,16 @@ struct InputTab: View {
         }
     }
 
-    /// 正規資料目錄：~/Library/Application Support/Yabomish（與 IM 的 AppConstants.sharedDir 相同）
+    /// 正規資料目錄：~/Library/Application Support/<dataDirName>
+    /// （stable=Yabomish、dev=YabomishDev —— 依 PrefsStore 的 suite 區分，
+    ///  dev 設定程式匯入字表不會寫到 stable 目錄）
     private var sharedDir: String {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return appSupport.appendingPathComponent("Yabomish", isDirectory: true).path
+        return appSupport.appendingPathComponent(store.dataDirName, isDirectory: true).path
     }
 
     private func binding(for key: String) -> Binding<Bool> {
         switch key {
-        #if !MINIMAL
-        case "suggestEnabled":        return $store.suggestEnabled
-        case "suggestPreselect":      return $store.suggestPreselect
-        #endif
         case "autoCommit":            return $store.autoCommit
         case "showCodeHint":          return $store.showCodeHint
         case "homophoneMultiReading": return $store.homophoneMultiReading

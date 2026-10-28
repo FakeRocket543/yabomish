@@ -22,7 +22,7 @@ struct SettingsGroupBox<Content: View>: View {
     var body: some View {
         VStack(spacing: 0, content: content)
             .background(RoundedRectangle(cornerRadius: 10)
-                .fill(Color(nsColor: .controlBackgroundColor)))
+                .fill(.regularMaterial))
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10)
                 .stroke(Typo.strokeOff.opacity(0.6), lineWidth: 0.5))
@@ -148,6 +148,7 @@ struct ToggleRow: View {
     let label: String
     let icon: String
     let desc: String
+    var badge: String? = nil
     @Binding var on: Bool
 
     var body: some View {
@@ -161,6 +162,9 @@ struct ToggleRow: View {
                 Text(desc).font(Typo.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
+            if let badge {
+                Text(badge).font(Typo.chipBadge).foregroundStyle(.secondary)
+            }
             Toggle("", isOn: $on)
                 .labelsHidden()
                 .toggleStyle(.switch)
