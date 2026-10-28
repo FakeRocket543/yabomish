@@ -30,7 +30,7 @@ struct DomainCardView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .frame(minWidth: 112, minHeight: 88)
+            .frame(minWidth: 112, maxWidth: .infinity, minHeight: Typo.cardMinHeight)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(isEnabled ? color.opacity(0.18) : Typo.cardOff)
@@ -38,11 +38,13 @@ struct DomainCardView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(isEnabled ? color.opacity(0.7) : Typo.strokeOff,
-                            lineWidth: isEnabled ? 2 : 1)
+                            lineWidth: isEnabled ? 1.5 : 1)
             )
         }
         .buttonStyle(.plain)
         .draggable(entry.id)
+        .accessibilityLabel(entry.label)
+        .accessibilityValue(isEnabled ? "已啟用" : "已停用")
     }
 
     private func formatCount(_ n: Int) -> String {

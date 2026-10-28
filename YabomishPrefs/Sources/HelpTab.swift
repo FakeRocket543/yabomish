@@ -32,8 +32,7 @@ struct HelpTab: View {
             }
             .padding(.horizontal, 20).padding(.bottom, 8)
             Divider()
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+        SettingsPage {
 
                 // ── 共用說明文件 ──
                 if !helpText.isEmpty {
@@ -42,7 +41,7 @@ struct HelpTab: View {
                     } else {
                         Text(helpText)
                     }
-                    Divider()
+                    SectionDivider()
                 }
 
                 // ── 使用方法 ──
@@ -116,7 +115,7 @@ struct HelpTab: View {
                     "也可在設定程式 →「輸入」→「固定同碼字排序」中操作",
                 ])
 
-                Divider()
+                SectionDivider()
 
                 // ── 快捷鍵速查 ──
 
@@ -193,7 +192,7 @@ struct HelpTab: View {
                     Spacer()
                 }
 
-                Divider()
+                SectionDivider()
 
                 // ── 語料來源與授權 ──
 
@@ -241,8 +240,6 @@ struct HelpTab: View {
                          destination: URL(string: "https://github.com/FakeRocket543/yabomish")!)
                         .font(Typo.caption)
                 }
-            }
-            .padding(20)
         }
         .onAppear { loadHelp() }
         } // 外層 VStack（版本列＋搜尋＋內容）

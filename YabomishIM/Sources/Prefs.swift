@@ -29,6 +29,7 @@ struct YabomishPrefs {
         var fixedFontSize: CGFloat = 18.0
         var showCodeHint = false
         var toastFontSize: CGFloat = 36.0
+        var toastOpacity: CGFloat = 1.0
         var showActivateToast = true
         var switchDisplay = "Yabo"
         var appearanceMode = "auto"
@@ -84,6 +85,7 @@ struct YabomishPrefs {
         s.fixedFontSize = CGFloat(defaults.object(forKey: "fixedFontSize") as? Double ?? 18.0)
         s.showCodeHint = defaults.object(forKey: "showCodeHint") as? Bool ?? false
         s.toastFontSize = CGFloat(defaults.object(forKey: "toastFontSize") as? Double ?? 36.0)
+        s.toastOpacity = CGFloat(defaults.object(forKey: "toastOpacity") as? Double ?? 1.0)
         s.showActivateToast = defaults.object(forKey: "showActivateToast") as? Bool ?? true
         s.switchDisplay = defaults.string(forKey: "switchDisplay") ?? "Yabo"
         // 舊值遷移：繁中／🦐 已移除，統一為 Yabo
@@ -286,6 +288,18 @@ struct YabomishPrefs {
         }
     }
 
+    /// Toast 視窗透明度 0.3–1.0
+    static var toastOpacity: CGFloat {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.toastOpacity
+        }
+        set {
+            defaults.set(Double(newValue), forKey: "toastOpacity")
+            refreshSnapshot()
+        }
+    }
+
     /// 切換進 Yabomish 時顯示模式 toast
     static var showActivateToast: Bool {
         get {
@@ -366,7 +380,7 @@ struct YabomishPrefs {
             let knownKeys = [
                 "autoCommit", "panelPosition", "fixedAlignment", "fixedAlpha", "fixedYOffset",
                 "fontSize", "fixedFontSize", "showCodeHint", "zhuyinReverseLookup",
-                "toastFontSize", "showActivateToast", "menuBarLabel",
+                "toastFontSize", "toastOpacity", "showActivateToast", "menuBarLabel",
                 "appearanceMode",
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",

@@ -62,6 +62,12 @@ build_im() {
         /usr/libexec/PlistBuddy -c "Set :CFBundleName $IM_APP_NAME" "$IM_APP/Contents/Info.plist"
         /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $IM_APP_NAME" "$IM_APP/Contents/Info.plist"
         /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $IM_APP_NAME" "$IM_APP/Contents/Info.plist"
+        # dev 中文 mode 用 β 圖示與 stable 蝦字圖示視覺區分；英文 mode 維持 icon_en.tiff
+        /usr/libexec/PlistBuddy -c "Set :tsInputMethodIconFileKey icon_dev.tiff" "$IM_APP/Contents/Info.plist"
+        for k in tsInputModeIconFileKey tsInputModeMenuIconFileKey tsInputModePaletteIconFileKey; do
+            /usr/libexec/PlistBuddy -c "Set :ComponentInputModeDict:tsInputModeListKey:$IM_BUNDLE_ID:$k icon_dev.tiff" "$IM_APP/Contents/Info.plist"
+        done
+        cp "$IM_RES/icon_dev.tiff" "$IM_APP/Contents/Resources/"
     fi
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)

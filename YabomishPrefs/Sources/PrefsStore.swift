@@ -75,6 +75,10 @@ import Foundation
         get { access(keyPath: \.toastFontSize); return ud.object(forKey: "toastFontSize") as? Double ?? 36.0 }
         set { withMutation(keyPath: \.toastFontSize) { ud.set(newValue, forKey: "toastFontSize") }; postChange() }
     }
+    var toastOpacity: Double {
+        get { access(keyPath: \.toastOpacity); return ud.object(forKey: "toastOpacity") as? Double ?? 1.0 }
+        set { withMutation(keyPath: \.toastOpacity) { ud.set(newValue, forKey: "toastOpacity") }; postChange() }
+    }
 
     // MARK: - Panel
 

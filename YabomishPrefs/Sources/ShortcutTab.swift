@@ -40,8 +40,7 @@ struct ShortcutTab: View {
     private static let filePath = dir + "user_shortcuts.txt"
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+        SettingsPage {
 
                 #if !MINIMAL
                 // ── 詞庫查詢 ──
@@ -81,8 +80,6 @@ struct ShortcutTab: View {
 
                 Text("檔案路徑：~/Library/Application Support/Yabomish/tables/user_shortcuts.txt\n# 開頭為註解，可用來分類。修改後輸入 ,,RL + 空白鍵 即時重載。")
                     .font(Typo.caption).foregroundStyle(.secondary)
-            }
-            .padding(20)
         }
         .onAppear {
             loadShortcuts()

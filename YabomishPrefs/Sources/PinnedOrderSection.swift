@@ -64,13 +64,13 @@ struct PinnedOrderSection: View {
                                     Spacer()
                                     Button { if i > 0 { pinned.swapAt(i, i - 1) } } label: {
                                         Image(systemName: "chevron.up").font(.caption)
-                                    }.disabled(i == 0).buttonStyle(.borderless)
+                                    }.disabled(i == 0).buttonStyle(.borderless).accessibilityLabel("上移")
                                     Button { if i < pinned.count - 1 { pinned.swapAt(i, i + 1) } } label: {
                                         Image(systemName: "chevron.down").font(.caption)
-                                    }.disabled(i == pinned.count - 1).buttonStyle(.borderless)
+                                    }.disabled(i == pinned.count - 1).buttonStyle(.borderless).accessibilityLabel("下移")
                                     Button { pinned.remove(at: i) } label: {
                                         Image(systemName: "xmark").font(.caption).foregroundStyle(Typo.error)
-                                    }.buttonStyle(.borderless)
+                                    }.buttonStyle(.borderless).accessibilityLabel("移除")
                                 }
                                 .padding(.horizontal, 8).padding(.vertical, 3)
                                 .background(Typo.accent.opacity(0.1))
@@ -104,7 +104,7 @@ struct PinnedOrderSection: View {
                             deleteCode(item.code); loadAll()
                         } label: {
                             Image(systemName: "trash").font(.caption).foregroundStyle(Typo.error)
-                        }.buttonStyle(.borderless)
+                        }.buttonStyle(.borderless).accessibilityLabel("刪除固定排序")
                     }
                     .contentShape(Rectangle())
                     .onTapGesture(count: 2) { code = item.code; lookup() }

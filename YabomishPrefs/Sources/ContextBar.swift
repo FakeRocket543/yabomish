@@ -112,7 +112,7 @@ struct ContextBar: View {
             Text("新增語境").font(Typo.h2)
             HStack {
                 Text("Icon").frame(width: 60, alignment: .leading)
-                TextField("圖示名稱", text: $newIcon).textFieldStyle(.roundedBorder).frame(width: 60)
+                TextField("圖示名稱", text: $newIcon).textFieldStyle(.roundedBorder).frame(width: 90)
             }
             HStack {
                 Text("名稱").frame(width: 60, alignment: .leading)

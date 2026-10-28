@@ -47,8 +47,7 @@ struct InputTab: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Typo.sectionSpacing) {
+        SettingsPage {
                 // CIN import — 已匯入時塌成一行狀態列
                 if cinImported && !showImportForm {
                     HStack(spacing: 8) {
@@ -88,9 +87,6 @@ struct InputTab: View {
                 }
                 }
 
-                Text("點擊卡片啟用／停用功能。")
-                    .font(Typo.hint).foregroundStyle(.secondary)
-
                 Label("選字窗", systemImage: "keyboard").font(Typo.h2)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     ForEach(panelOptions) { opt in
@@ -98,7 +94,9 @@ struct InputTab: View {
                     }
                 }
 
-                // 選字窗 demo — 只顯示選中的模式
+                // 選字窗 demo — 只顯示選中的模式，外圍加「預覽」標籤
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("預覽").font(Typo.caption).foregroundStyle(.secondary)
                 Group {
                     if store.panelPosition == "cursor" {
                         VStack(alignment: .leading, spacing: 1) {
@@ -121,12 +119,15 @@ struct InputTab: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
+                }
 
                 SectionDivider()
                 Label("輸入功能", systemImage: "character.cursor.ibeam").font(Typo.h2)
-                LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(inputOptions) { opt in
-                        toggleCard(opt)
+                SettingsGroupBox {
+                    ForEach(Array(inputOptions.enumerated()), id: \.element.id) { i, opt in
+                        if i > 0 { InsetDivider() }
+                        ToggleRow(label: opt.label, icon: opt.icon, desc: opt.desc,
+                                  on: binding(for: opt.id))
                     }
                 }
 
@@ -159,8 +160,10 @@ struct InputTab: View {
                 Label("密碼／安全欄位", systemImage: "lock.shield").font(Typo.h2)
                 Text("macOS 安全輸入啟用時（密碼欄、Keychain 對話框等），預設輸入法暫停、按鍵原樣送達——避免組字緩衝、字頻學習、debug 記錄接觸密碼。某些 app 會卡住安全輸入不放，造成整個 app 無法輸入；此時可開啟下方選項強行使用。無論是否開啟，安全期間 debug 記錄與字頻學習一律靜音。")
                     .font(Typo.hint).foregroundStyle(.secondary)
-                LazyVGrid(columns: columns, spacing: 8) {
-                    toggleCard(.init(id: "allowSecureInput", label: "密碼欄位照打", icon: "lock.open", desc: "安全輸入時仍處理按鍵（預設關，慎用）"))
+                SettingsGroupBox {
+                    ToggleRow(label: "密碼欄位照打", icon: "lock.open",
+                              desc: "安全輸入時仍處理按鍵（預設關，慎用）",
+                              on: $store.allowSecureInput)
                 }
 
                 // ── 固定排序 ──
@@ -187,8 +190,6 @@ struct InputTab: View {
                     }
                 }
 
-            }
-            .padding(20)
         }
         .onAppear { refreshCinState() }
         .alert(importResult?.success == true ? "字表匯入成功" : "匯入失敗",
@@ -291,43 +292,6 @@ struct InputTab: View {
     private var sharedDir: String {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         return appSupport.appendingPathComponent("Yabomish", isDirectory: true).path
-    }
-
-    @ViewBuilder
-    private func toggleCard(_ opt: InputOption) -> some View {
-        let on = binding(for: opt.id).wrappedValue
-        Button { binding(for: opt.id).wrappedValue.toggle() } label: {
-            ZStack(alignment: .topTrailing) {
-                VStack(spacing: 5) {
-                    Image(systemName: opt.icon)
-                        .font(Typo.cardIcon)
-                        .foregroundStyle(on ? Typo.accent : .secondary)
-                    Text(opt.label)
-                        .font(Typo.cardTitle)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                    Text(opt.desc)
-                        .font(Typo.cardDesc)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                .frame(maxWidth: .infinity, minHeight: Typo.cardMinHeight)
-                if on {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.accent)
-                        .padding(6)
-                }
-            }
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(on ? Typo.accent.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(on ? Typo.accent.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: on ? 1.5 : 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(opt.label)
-        .accessibilityValue(on ? "已啟用" : "已停用")
     }
 
     @ViewBuilder

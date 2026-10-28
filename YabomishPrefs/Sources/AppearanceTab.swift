@@ -32,8 +32,7 @@ struct AppearanceTab: View {
     private let columns = [GridItem(.adaptive(minimum: 128), spacing: 8)]
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Typo.sectionSpacing) {
+        SettingsPage {
 
                 Label("介面外觀", systemImage: "circle.lefthalf.filled").font(Typo.h2)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -52,6 +51,7 @@ struct AppearanceTab: View {
                         fontRow(label: "游標模式", value: $store.fontSize, in: 10...30, step: 1, format: { "\(Int($0)) pt" })
                         fontRow(label: "固定模式", value: $store.fixedFontSize, in: 10...30, step: 1, format: { "\(Int($0)) pt" })
                         fontRow(label: "模式提示", value: $store.toastFontSize, in: 20...72, step: 2, format: { "\(Int($0)) pt" })
+                        fontRow(label: "提示透明度", value: $store.toastOpacity, in: 0.3...1.0, step: 0.05, format: { "\(Int($0 * 100))%" })
                     }
                 }
 
@@ -135,15 +135,17 @@ struct AppearanceTab: View {
 
                 SectionDivider()
                 Label("功能", systemImage: "switch.2").font(Typo.h2)
-                LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(toastOptions) { opt in
-                        toggleCard(opt)
+                SettingsGroupBox {
+                    ForEach(Array(toastOptions.enumerated()), id: \.element.id) { i, opt in
+                        if i > 0 { InsetDivider() }
+                        ToggleRow(label: opt.label, icon: opt.icon, desc: opt.desc,
+                                  on: binding(for: opt.id))
                     }
                 }
 
                 SectionDivider()
                 Label("切換顯示", systemImage: "text.badge.star").font(Typo.h2)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(switchOptions) { opt in
                         switchDisplayCard(opt)
                     }
@@ -157,49 +159,9 @@ struct AppearanceTab: View {
                     Label("打開 debug.log⋯", systemImage: "doc.text.magnifyingglass")
                 }
                 .disabled(!store.debugMode)
-                .help(store.debugMode ? "" : "先開啟上方的除錯記錄卡片")
-            }
-            .padding(20)
+                .help(store.debugMode ? "" : "先開啟上方的除錯記錄開關")
         }
     }
-
-    @ViewBuilder
-    private func toggleCard(_ opt: ToggleOption) -> some View {
-        let on = binding(for: opt.id).wrappedValue
-        Button { binding(for: opt.id).wrappedValue.toggle() } label: {
-            ZStack(alignment: .topTrailing) {
-                VStack(spacing: 5) {
-                    Image(systemName: opt.icon)
-                        .font(Typo.cardIcon)
-                        .foregroundStyle(on ? Typo.accent : .secondary)
-                    Text(opt.label)
-                        .font(Typo.cardTitle)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                    Text(opt.desc)
-                        .font(Typo.cardDesc)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                .frame(maxWidth: .infinity, minHeight: Typo.cardMinHeight)
-                if on {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Typo.accent)
-                        .padding(6)
-                }
-            }
-            .background(RoundedRectangle(cornerRadius: 10)
-                .fill(on ? Typo.accent.opacity(0.18) : Typo.cardOff))
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .stroke(on ? Typo.accent.opacity(0.7) : Typo.strokeOff,
-                        lineWidth: on ? 1.5 : 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(opt.label)
-        .accessibilityValue(on ? "已啟用" : "已停用")
-    }
-
 
     @ViewBuilder
     private func appearanceModeCard(_ opt: ToggleOption) -> some View {
@@ -228,7 +190,7 @@ struct AppearanceTab: View {
     @ViewBuilder
     private func fontRow(label: String, value: Binding<Double>, in range: ClosedRange<Double>, step: Double, format: @escaping (Double) -> String) -> some View {
         HStack {
-            Text(label).font(Typo.body).frame(width: 64, alignment: .leading)
+            Text(label).font(Typo.body).frame(width: 80, alignment: .leading)
             Slider(value: value, in: range, step: step)
             Stepper("", value: value, in: range, step: step)
                 .labelsHidden()

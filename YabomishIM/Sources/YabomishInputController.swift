@@ -182,6 +182,7 @@ class YabomishInputController: IMKInputController {
         win.level = .popUpMenu
         win.isOpaque = false
         win.backgroundColor = .clear
+        win.alphaValue = YabomishPrefs.toastOpacity
         win.appearance = YabomishPrefs.resolvedAppearance
         let bg = NSVisualEffectView(frame: NSRect(origin: .zero, size: rect.size))
         bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = style.cornerRadius
