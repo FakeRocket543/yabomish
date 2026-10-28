@@ -13,6 +13,12 @@ struct InterfaceTab: View {
                              options: [("auto", "自動"), ("light", "淺色"), ("dark", "深色")])
             }
 
+            SettingsSection(title: "視覺效果",
+                            footnote: "「完整」啟用 Liquid Glass：HUD 中央提示呈玻璃質感、語境膠囊與搜尋欄帶折射效果（需 macOS 26 以上，舊系統自動回落）。「無」改為純色不透明、不含任何玻璃或材質效果。") {
+                SegmentedRow("效果等級", selection: $store.visualEffects,
+                             options: [("full", "完整"), ("none", "無")])
+            }
+
             SettingsSection(title: "切換顯示",
                             footnote: "切換輸入法時，輸入法選單與切入提示顯示的名稱。") {
                 SegmentedRow("名稱", selection: $store.switchDisplay,

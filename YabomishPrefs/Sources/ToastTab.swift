@@ -21,6 +21,7 @@ struct ToastTab: View {
                             Text("系統").tag("system")
                             Text("圓體").tag("rounded")
                             Text("明體").tag("serif")
+                            Text("黑體").tag("heiti")
                         }
                         .labelsHidden()
                         .pickerStyle(.segmented)

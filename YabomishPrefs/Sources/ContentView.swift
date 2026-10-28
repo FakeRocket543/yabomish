@@ -6,6 +6,19 @@ extension Notification.Name {
 }
 
 /// 側邊欄導覽項目（full/min 兩種 build 各一份）。
+/// 搜尋欄底層：glass=true 且 macOS 26+ → Liquid Glass；否則純色底。
+private struct SearchSurface: ViewModifier {
+    let glass: Bool
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *), glass {
+            content.glassEffect(.regular, in: .rect(cornerRadius: 7))
+        } else {
+            content.background(RoundedRectangle(cornerRadius: 7)
+                .fill(Color(nsColor: .controlBackgroundColor)))
+        }
+    }
+}
+
 private struct NavItem: Identifiable {
     let tag: Int
     let title: String
@@ -158,8 +171,7 @@ struct ContentView: View {
                     }
                 }
                 .padding(.horizontal, 10).padding(.vertical, 7)
-                .background(RoundedRectangle(cornerRadius: 7)
-                    .fill(Color(nsColor: .controlBackgroundColor)))
+                .modifier(SearchSurface(glass: store.visualEffects == "full"))
                 .padding(.horizontal, 10).padding(.vertical, 8)
                 Divider()
                 List(selection: $selection) {

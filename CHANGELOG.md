@@ -14,6 +14,8 @@
 - **YabomishDev 專屬 β 圖示**：dev 中文 mode 改用黑底 β 徽章（`icon_dev.tiff`），與 stable 蝦字圖示在 menu bar 一眼區分；英文 mode 仍為 ABC
 - **HUD 提示個性化（字幕式）**：`toastFontStyle`（系統／圓體／明體，明體用 Songti-TC、缺字回退系統體）、`toastTextColor` 文字色、`toastStroke` 描邊開關與 `toastStrokeColor` 描邊色（NSAttributedString 負 strokeWidth＝填色＋外框，字幕同原理），外觀分頁提供字體分段選項與 ColorPicker
 - **偏好設定程式第二輪原生化**：互斥選項從大卡片改為群組列＋右側勾選記號（`ChoiceRow`）或分段控制（`SegmentedRow`）；section 標題改純文字（`SettingsHeader`）、移除圖示與橫線，群組下方小字註腳（`SettingsFootnote`）；側邊欄項目改彩色圓角圖示；「打開 debug.log」按鈕依 suite 指向正確資料目錄（dev 開 YabomishDev/debug.log）
+- **視覺效果等級 `visualEffects`（完整／無，預設完整）**：介面頁新增二選一——「完整」在 macOS 26+ 啟用 Liquid Glass：HUD 中央提示改 `NSGlassEffectView`、語境膠囊與側邊欄搜尋欄套 `.glassEffect`；「無」全部改純色不透明底（HUD 用新 `SolidBackdrop`）；舊系統 `if #available` 自動回落原材質樣式，與深淺色/自動外觀獨立組合
+- **模式提示字體擴充**：明體修正為正確字體名 `Songti TC`（原 `Songti-TC` 不存在、一直靜默回退系統體），新增黑體選項（PingFang TC → Heiti TC → 系統體）；候選窗頁「游標模式」區塊改名「顯示」
 
 ## [0.3.65] — 2026-09-23
 

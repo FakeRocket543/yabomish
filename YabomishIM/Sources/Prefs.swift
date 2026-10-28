@@ -30,7 +30,8 @@ struct YabomishPrefs {
         var showCodeHint = false
         var toastFontSize: CGFloat = 36.0
         var toastOpacity: CGFloat = 1.0
-        var toastFontStyle = "system"     // system / rounded / serif
+        var toastFontStyle = "system"     // system / rounded / serif / heiti
+        var visualEffects = "full"      // full（Liquid Glass 完整效果）/ none（純色無效果）
         var toastTextColor = "#FFFFFF"
         var toastStroke = false
         var toastStrokeColor = "#000000"
@@ -92,6 +93,7 @@ struct YabomishPrefs {
         s.toastFontSize = CGFloat(defaults.object(forKey: "toastFontSize") as? Double ?? 36.0)
         s.toastOpacity = CGFloat(defaults.object(forKey: "toastOpacity") as? Double ?? 1.0)
         s.toastFontStyle = defaults.string(forKey: "toastFontStyle") ?? "system"
+        s.visualEffects = defaults.string(forKey: "visualEffects") ?? "full"
         s.toastTextColor = defaults.string(forKey: "toastTextColor") ?? "#FFFFFF"
         s.toastStroke = defaults.object(forKey: "toastStroke") as? Bool ?? false
         s.toastStrokeColor = defaults.string(forKey: "toastStrokeColor") ?? "#000000"
@@ -316,6 +318,12 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "toastFontStyle"); refreshSnapshot() }
     }
 
+    /// 視覺效果等級: "full"（Liquid Glass）/ "none"（純色無效果）
+    static var visualEffects: String {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.visualEffects }
+        set { defaults.set(newValue, forKey: "visualEffects"); refreshSnapshot() }
+    }
+
     /// Toast 文字色（#RRGGBB hex）
     static var toastTextColor: String {
         get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.toastTextColor }
@@ -426,7 +434,7 @@ struct YabomishPrefs {
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
                 "emojiSuggest", "emojiFirst", "suggestPreselect", "corpusVariant", "shiftDigitOutput",
-                "englishToggleKey", "allowSecureInput", "englishSuggest",
+                "englishToggleKey", "allowSecureInput", "englishSuggest", "visualEffects",
                 "punctuationPairing", "debugMode", "highContrast", "syncFolder", "currentContext",
                 "domainOrder"
             ]

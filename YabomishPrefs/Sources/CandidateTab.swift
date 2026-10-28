@@ -60,7 +60,7 @@ struct CandidateTab: View {
                 .padding(.horizontal, 12).padding(.vertical, 8)
             }
 
-            SettingsSection(title: "游標模式") {
+            SettingsSection(title: "顯示") {
                 ToggleRow(label: "橫向候選", icon: "rectangle.grid.1x2",
                           desc: "游標模式下候選橫排（預設直排）",
                           on: $store.cursorHorizontal)

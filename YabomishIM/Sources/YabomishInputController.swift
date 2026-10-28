@@ -161,7 +161,16 @@ class YabomishInputController: IMKInputController {
         }
     }
 
-    /// 依偏好組合 toast 字體：system／rounded（SF Rounded）／serif（宋體系）
+    /// 「無視覺效果」HUD 底：純色不透明圓角，顏色隨 win.appearance 深淺色解析
+    private final class SolidBackdrop: NSView {
+        var radius: CGFloat = 0
+        override func draw(_ dirtyRect: NSRect) {
+            NSColor.controlBackgroundColor.setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
+        }
+    }
+
+    /// 依偏好組合 toast 字體：system／rounded（SF Rounded）／serif（宋體系）／heiti（黑體系）
     private func toastLabelFont(size: CGFloat) -> NSFont {
         switch YabomishPrefs.toastFontStyle {
         case "rounded":
@@ -169,7 +178,12 @@ class YabomishInputController: IMKInputController {
                let f = NSFont(descriptor: desc, size: size) { return f }
             return .systemFont(ofSize: size, weight: .semibold)
         case "serif":
-            return NSFont(name: "Songti-TC", size: size) ?? .systemFont(ofSize: size, weight: .medium)
+            // 名稱是「Songti TC」（空格）；「Songti-TC」在系統上不存在會靜默回退
+            return NSFont(name: "Songti TC", size: size) ?? .systemFont(ofSize: size, weight: .medium)
+        case "heiti":
+            return NSFont(name: "PingFang TC", size: size)
+                ?? NSFont(name: "Heiti TC", size: size)
+                ?? .systemFont(ofSize: size, weight: .medium)
         default:
             return .systemFont(ofSize: size, weight: .medium)
         }
@@ -219,11 +233,29 @@ class YabomishInputController: IMKInputController {
         win.backgroundColor = .clear
         win.alphaValue = YabomishPrefs.toastOpacity
         win.appearance = YabomishPrefs.resolvedAppearance
-        let bg = NSVisualEffectView(frame: NSRect(origin: .zero, size: rect.size))
-        bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = style.cornerRadius
-        win.contentView = bg
         label.frame = NSRect(x: 0, y: style.labelYOffset, width: rect.width, height: label.frame.height)
-        bg.addSubview(label)
+        let effects = YabomishPrefs.visualEffects
+        if effects == "none" {
+            // 無視覺效果：純色不透明底，無材質無玻璃
+            let bg = SolidBackdrop(frame: NSRect(origin: .zero, size: rect.size))
+            bg.radius = style.cornerRadius
+            bg.addSubview(label)
+            win.contentView = bg
+        } else if effects == "full", #available(macOS 26.0, *) {
+            // 完整效果：Liquid Glass——邊緣折射＋果凍質感
+            let glass = NSGlassEffectView(frame: NSRect(origin: .zero, size: rect.size))
+            glass.cornerRadius = style.cornerRadius
+            let container = NSView(frame: NSRect(origin: .zero, size: rect.size))
+            container.addSubview(label)
+            glass.contentView = container
+            win.contentView = glass
+        } else {
+            // 舊系統回落：hudWindow 毛玻璃
+            let bg = NSVisualEffectView(frame: NSRect(origin: .zero, size: rect.size))
+            bg.material = .hudWindow; bg.state = .active; bg.wantsLayer = true; bg.layer?.cornerRadius = style.cornerRadius
+            bg.addSubview(label)
+            win.contentView = bg
+        }
         win.orderFront(nil)
         Self.storeToastPanel(win, for: slot)
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {

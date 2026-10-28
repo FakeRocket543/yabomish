@@ -10,6 +10,28 @@ struct ContextBar: View {
     @State private var editTarget: ContextProfile?
     @State private var importAlert: String?
 
+/// 膠囊底層：glass=true 且 macOS 26+ → Liquid Glass（選中帶 accent 染色）；
+/// 否則回落原本的純色底＋描邊。
+private struct PillSurface: ViewModifier {
+    let selected: Bool
+    let glass: Bool
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *), glass {
+            if selected {
+                content.glassEffect(.regular.tint(Typo.accent.opacity(0.45)).interactive(), in: .capsule)
+            } else {
+                content.glassEffect(.regular.interactive(), in: .capsule)
+            }
+        } else {
+            content
+                .background(selected ? Typo.accent.opacity(0.25) : Color.primary.opacity(0.06))
+                .cornerRadius(6)
+                .overlay(RoundedRectangle(cornerRadius: 6)
+                    .stroke(selected ? Typo.accent : Color.clear, lineWidth: 1.5))
+        }
+    }
+}
+
     // New profile form
     @State private var newName = ""
     @State private var newCode = ""
@@ -29,10 +51,8 @@ struct ContextBar: View {
                                     Text(p.name).font(Typo.caption)
                                 }
                                 .padding(.horizontal, 10).padding(.vertical, 8)
-                                .background(store.currentContext == p.code ? Typo.accent.opacity(0.25) : Color.primary.opacity(0.06))
-                                .cornerRadius(6)
-                                .overlay(RoundedRectangle(cornerRadius: 6)
-                                    .stroke(store.currentContext == p.code ? Typo.accent : Color.clear, lineWidth: 1.5))
+                                .modifier(PillSurface(selected: store.currentContext == p.code,
+                                                      glass: store.visualEffects == "full"))
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
@@ -64,8 +84,8 @@ struct ContextBar: View {
                                 Text("新增").font(Typo.caption)
                             }
                             .padding(.horizontal, 8).padding(.vertical, 5)
-                            .background(Color.primary.opacity(0.04))
-                            .cornerRadius(6)
+                            .modifier(PillSurface(selected: false,
+                                                glass: store.visualEffects == "full"))
                         }
                         .buttonStyle(.plain)
                     }

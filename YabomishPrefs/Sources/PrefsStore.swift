@@ -89,6 +89,11 @@ import Foundation
         get { access(keyPath: \.toastFontStyle); return ud.string(forKey: "toastFontStyle") ?? "system" }
         set { withMutation(keyPath: \.toastFontStyle) { ud.set(newValue, forKey: "toastFontStyle") }; postChange() }
     }
+
+    var visualEffects: String {
+        get { access(keyPath: \.visualEffects); return ud.string(forKey: "visualEffects") ?? "full" }
+        set { withMutation(keyPath: \.visualEffects) { ud.set(newValue, forKey: "visualEffects") }; postChange() }
+    }
     var toastTextColor: String {
         get { access(keyPath: \.toastTextColor); return ud.string(forKey: "toastTextColor") ?? "#FFFFFF" }
         set { withMutation(keyPath: \.toastTextColor) { ud.set(newValue, forKey: "toastTextColor") }; postChange() }
