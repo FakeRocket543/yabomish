@@ -129,10 +129,17 @@ import Foundation
         get { access(keyPath: \.showCodeHint); return ud.object(forKey: "showCodeHint") as? Bool ?? false }
         set { withMutation(keyPath: \.showCodeHint) { ud.set(newValue, forKey: "showCodeHint") }; postChange() }
     }
-    /// 中英切換鍵："shift"（預設，Shift 快按）/ "capslock" / "both"
+    /// 中英切換鍵："shift"（預設，Shift 快按）/ "capslock" / "both" / "none"（只從選單切）
     var englishToggleKey: String {
         get { access(keyPath: \.englishToggleKey); return ud.string(forKey: "englishToggleKey") ?? "shift" }
         set { withMutation(keyPath: \.englishToggleKey) { ud.set(newValue, forKey: "englishToggleKey") }; postChange() }
+    }
+
+    /// 密碼／安全欄位放行（預設關）：開啟後 macOS 安全輸入期間 IM 照常組字；
+    /// 安全期間 debug 記錄與字頻學習一律靜音（IM 端強制，與本開關無關）。
+    var allowSecureInput: Bool {
+        get { access(keyPath: \.allowSecureInput); return ud.object(forKey: "allowSecureInput") as? Bool ?? false }
+        set { withMutation(keyPath: \.allowSecureInput) { ud.set(newValue, forKey: "allowSecureInput") }; postChange() }
     }
     var homophoneMultiReading: Bool {
         get { access(keyPath: \.homophoneMultiReading); return ud.object(forKey: "homophoneMultiReading") as? Bool ?? false }

@@ -5,7 +5,8 @@
 
 ### 新增
 
-- **中英切換鍵可選 Shift／Caps Lock／兩者（issue #18）**：新偏好 `englishToggleKey`（`shift` 預設／`capslock`／`both`），偏好設定「輸入」分頁提供三張選項卡。選 Caps Lock 時 ⇪ 變專用切換鍵：IOHID 強制把系統鎖定壓回 off（LED 不亮、`.capsLock` flag 不殘留大寫語意），IOHID 不可用時退回每次按壓切換＋遮罩保證不產生大寫；Shift 的暫時英文、萬用碼、符號等修飾鍵功能不受影響。macOS 會丟棄過快的 ⇪ 輕點，UI 已註明「稍長按」
+- **中英切換鍵可選 Shift／Caps Lock／兩者／全都不用（issue #18）**：新偏好 `englishToggleKey`（`shift` 預設／`capslock`／`both`／`none`），偏好設定「輸入」分頁提供四張選項卡。選 Caps Lock 時 ⇪ 變專用切換鍵：IOHID 強制把系統鎖定壓回 off（LED 不亮、`.capsLock` flag 不殘留大寫語意），IOHID 不可用時退回每次按壓切換＋遮罩保證不產生大寫；Shift 的暫時英文、萬用碼、符號等修飾鍵功能不受影響；選「全都不用」時英文僅從輸入法選單點選、`.capsLock` 恢復正常大寫語意。macOS 會丟棄過快的 ⇪ 輕點，UI 已註明「稍長按」
+- **密碼／安全欄位放行選項 `allowSecureInput`（預設關）**：macOS 安全輸入（密碼欄、Keychain 對話框等）啟用時，預設輸入法暫停、按鍵原樣送達；某些 app 會卡住安全輸入不放導致無法輸入，開啟後可強行使用。**無論是否開啟，安全期間 `debug.log` 與字頻學習一律靜音不落檔**；暫停發生時每行程顯示一次 toast「密碼欄位：輸入法暫停」
 - **YabomishDev 實驗變體與 rollback 安全網**：`YABOMISH_DEV=1 ./yabomish.sh build/install/uninstall` 產生獨立變體——專屬 bundle ID（`com.yabomishim.inputmethod.YabomishIMDev`）、app 名、XPC 連線名、`~/Library/Application Support/YabomishDev` 資料目錄與 UserDefaults suite（依 `Bundle.main.bundleIdentifier` 推導，dev/stable 偏好完全隔離），裝在 `~/Library/Input Methods` 免 sudo、不碰系統正式版；`YABOMISH_APP`/`YABOMISH_BID` 可再改名開多個測試變體。install 改保留上一版為 `.prev`，`./yabomish.sh rollback` 可雙向還原
 - **右上角圖示隨中英模式切換（issue #17）**：`Info.plist` 註冊 `ComponentInputModeDict` 兩個 input mode（中文 `com.yabomishim.inputmethod.YabomishIM` ／英文 `…YabomishIM.English`，各有圖示），`setValue(_:forTag:kTextServiceInputModePropertyTag)` 切換時 menu bar 圖示切換為黑底圓角「ABC」鏤空徽章（仿官方風格）；中文圖示同步改為「yabo」鏤空徽章；輸入法選單新增可點選的「英文」mode，選單點選與 Shift 狀態經 `setValue` override 雙向同步；英文狀態維持 per-app
 

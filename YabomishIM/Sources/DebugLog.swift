@@ -10,10 +10,14 @@ enum DebugLog {
     /// debug.log 記實打內容，檔案權限收緊為 0600（僅擁有者可讀寫）。
     private static let secureAttrs: [FileAttributeKey: Any] = [.posixPermissions: 0o600]
 
+    /// 全域靜音：macOS Secure Event Input 啟用期間由 controller 設 true，
+    /// 讓「密碼欄位放行輸入法」的狀況下 commit/按鍵內容也不會落 debug.log。
+    static var muted = false
+
     /// 以 @autoclosure 延遲組字：debugMode 關閉時（常態）訊息字串完全不求值，
     /// 呼叫端即使傳入昂貴的插值運算也不付出成本。
     static func log(_ message: @autoclosure () -> String) {
-        guard YabomishPrefs.debugMode else { return }
+        guard !muted, YabomishPrefs.debugMode else { return }
         writeLock.lock()
         defer { writeLock.unlock() }
         let ts = formatter.string(from: Date())

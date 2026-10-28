@@ -98,10 +98,23 @@ class YabomishInputController: IMKInputController {
         guard let event = event else { return false }
         guard event.type == .keyDown || event.type == .flagsChanged else { return false }
         guard let client = sender as? (NSObjectProtocol & IMKTextInput) else { return false }
-        if IsSecureEventInputEnabled() {
-            if !engine.composing.isEmpty { engine.handleEscape() }
-            panel.hide()
-            return false
+        // macOS Secure Event Input（密碼欄／Keychain 提示等）：
+        // 預設放行不處理（密碼原樣送達，IM 完全不接觸）；使用者於偏好
+        // 開放 allowSecureInput 時照常組字——但即使放行，安全期間
+        // debug.log 與字頻學習一律靜音，不落檔不留學習記錄。
+        let secure = IsSecureEventInputEnabled()
+        DebugLog.muted = secure
+        Self.freqTracker.suppressRecording = secure
+        if secure {
+            if !YabomishPrefs.allowSecureInput {
+                if !engine.composing.isEmpty { engine.handleEscape() }
+                panel.hide()
+                if !Self.didNotifySecureInput {
+                    Self.didNotifySecureInput = true
+                    showModeToast("密碼欄位：輸入法暫停（可在設定開放）")
+                }
+                return false
+            }
         }
         return handleWithNewEngine(event, client: client)
     }
@@ -652,24 +665,35 @@ extension YabomishInputController {
         set { objc_setAssociatedObject(self, &Self._shiftDownKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 
+    /// 每行程只提示一次「密碼欄位暫停」toast（避免每個按鍵都彈窗）。
+    private static var didNotifySecureInput = false
+
     private static var _shiftUsedKey = 0
     private var newEngineShiftUsed: Bool {
         get { (objc_getAssociatedObject(self, &Self._shiftUsedKey) as? NSNumber)?.boolValue ?? false }
         set { objc_setAssociatedObject(self, &Self._shiftUsedKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 
-    /// 中英切換鍵（issue #18）：englishToggleKey ∈ {shift, capslock, both}。
+    /// 中英切換鍵（issue #18）：englishToggleKey ∈ {shift, capslock, both, none}。
     /// capslock/both → Caps Lock 變專用切換鍵，.capsLock flag 不再有「大寫」語意，
     /// 系統 caps 狀態/LED 是否翻轉皆不影響打字行為（由呼叫端遮罩）。
     /// capslock → Shift 快按不觸發切換，但 Shift 當修飾鍵（暫時英文/萬用碼/符號）照常用。
-    private var capsLockToggles: Bool { YabomishPrefs.englishToggleKey != "shift" }
-    private var shiftToggles: Bool { YabomishPrefs.englishToggleKey != "capslock" }
+    /// none → 兩鍵皆不切（英文僅從輸入法選單選），.capsLock 恢復大寫語意。
+    private var capsLockToggles: Bool {
+        let k = YabomishPrefs.englishToggleKey
+        return k == "capslock" || k == "both"
+    }
+    private var shiftToggles: Bool {
+        let k = YabomishPrefs.englishToggleKey
+        return k == "shift" || k == "both"
+    }
 
     /// 切換鍵的顯示名（首次使用提示等文案用）。
     private var toggleKeyDisplay: String {
         switch YabomishPrefs.englishToggleKey {
         case "capslock": return "⇪"
         case "both": return "⇪/Shift"
+        case "none": return "選單"
         default: return "Shift"
         }
     }

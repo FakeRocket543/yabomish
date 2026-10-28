@@ -154,7 +154,12 @@ final class FreqTracker {
 
     // MARK: - Record
 
+    /// 學習靜音：macOS Secure Event Input 啟用期間由 controller 設 true，
+    /// 即使使用者放行密碼欄位輸入，字頻／n-gram／查字歷史也不落庫。
+    var suppressRecording = false
+
     func record(code: String, char: String) {
+        guard !suppressRecording else { return }
         // Cache updates synchronously (read-your-writes on the typing thread);
         // SQLite persistence stays batched on bgQueue.
         cacheLock.lock()
@@ -170,7 +175,7 @@ final class FreqTracker {
     }
 
     func recordBigram(prev: String, char: String) {
-        guard !prev.isEmpty else { return }
+        guard !suppressRecording, !prev.isEmpty else { return }
         cacheLock.lock()
         bigramCache[prev, default: [:]][char, default: 0] += 1
         cacheLock.unlock()
@@ -182,7 +187,7 @@ final class FreqTracker {
     }
 
     func recordTrigram(prev2: String, prev1: String, char: String) {
-        guard !prev2.isEmpty, !prev1.isEmpty else { return }
+        guard !suppressRecording, !prev2.isEmpty, !prev1.isEmpty else { return }
         let key = prev2 + "|" + prev1
         cacheLock.lock()
         bigramCache[key, default: [:]][char, default: 0] += 1
@@ -300,6 +305,7 @@ final class FreqTracker {
 
     /// Set pinned order for a code. chars is the ordered list of characters.
     func pin(code: String, chars: [String]) {
+        guard !suppressRecording else { return }
         let joined = chars.joined()
         bgQueue.sync {
             guard let stmt = stmtUpsertPinned else { return }
@@ -336,6 +342,7 @@ final class FreqTracker {
     /// Record one reverse-lookup selection. Lookups are rare (a few per day):
     /// no pending batch, direct insert on bgQueue + prune to cap.
     func recordLookup(mode: String, query: String, char: String, code: String) {
+        guard !suppressRecording else { return }
         let entry = LookupEntry(mode: mode, query: query, char: char, code: code,
                                 ts: Date().timeIntervalSince1970)
         bgQueue.async { [weak self] in

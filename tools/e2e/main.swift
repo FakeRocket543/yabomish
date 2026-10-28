@@ -1,5 +1,6 @@
 // controller 層 e2e:實體化 YabomishInputController + mock client,
-// 以合成 NSEvent 驗證 issue #18 中英切換鍵邏輯(shift/capslock/both)。
+// 以合成 NSEvent 驗證 issue #18 中英切換鍵邏輯(shift/capslock/both/none)
+// 與 secure-input 靜音旗標。
 // 編譯:全部 YabomishIM/Sources + 本檔 → 獨立 binary(不需安裝/啟用 IM)。
 import Cocoa
 import InputMethodKit
@@ -166,6 +167,47 @@ do {
     _ = c2.handleWithNewEngine(flagsEvent(56, []), client: m2)
     _ = c2.handleWithNewEngine(keyEvent(0, [.capsLock]), client: m2)   // 英文模式 caps+a
     check(m2.inserted.last == "A", "E6c pref=shift 時 .capsLock 仍是大寫語意(回歸)")
+}
+
+// ─── E7: pref=none — 兩鍵皆不切、.capsLock 恢復大寫語意 ───
+do {
+    setToggle("none")
+    let (c, m) = newController()
+    let t0 = ProcessInfo.processInfo.systemUptime
+    _ = c.handleWithNewEngine(flagsEvent(56, [.shift], ts: t0), client: m)
+    _ = c.handleWithNewEngine(flagsEvent(56, [], ts: t0 + 0.1), client: m)
+    check(c.engine.isEnglishMode == false, "E7a none: shift 快按不切")
+    _ = c.handleWithNewEngine(flagsEvent(57, [.capsLock]), client: m)
+    check(c.engine.isEnglishMode == false, "E7b none: caps 不切")
+    // none 下 .capsLock flag 恢復大寫語意（需英文模式才看得到字母大小寫差異；
+    // 用選單路徑進英文——不經切換鍵）
+    c.engine.setEnglishMode(true)
+    _ = c.handleWithNewEngine(keyEvent(0, [.capsLock]), client: m)
+    check(m.inserted.last == "A", "E7c none: .capsLock flag 恢復大寫語意")
+    _ = c.handleWithNewEngine(keyEvent(0), client: m)
+    check(m.inserted.last == "a", "E7d none: 無 flag → 小寫")
+}
+
+// ─── E8: secure-input 靜音旗標 ───
+do {
+    // freqTracker.suppressRecording：被擋的寫入不落庫
+    let ft = FreqTracker()
+    let before = ft.recentLookups(limit: 50).count
+    ft.suppressRecording = true
+    ft.record(code: "zz", char: "對")
+    ft.recordBigram(prev: "我", char: "對")
+    ft.recordLookup(mode: "x", query: "zzq", char: "對", code: "zz")
+    ft.pin(code: "zz", chars: ["對"])
+    ft.suppressRecording = false
+    ft.recordLookup(mode: "x", query: "zzq", char: "對", code: "zz")
+    let after = ft.recentLookups(limit: 50).count
+    check(after == before + 1, "E8a suppressRecording 擋住全部寫入、放行後正常")
+
+    // allowSecureInput pref 讀寫
+    YabomishPrefs.allowSecureInput = true
+    check(YabomishPrefs.allowSecureInput == true, "E8b allowSecureInput pref 寫入/讀回")
+    YabomishPrefs.allowSecureInput = false
+    check(YabomishPrefs.allowSecureInput == false, "E8c allowSecureInput 預設關")
 }
 
 // ─── E11: IOHID force-off 真的解鎖 ───

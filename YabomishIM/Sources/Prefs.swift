@@ -46,6 +46,7 @@ struct YabomishPrefs {
         var corpusVariant = "lite"
         var shiftDigitOutput = "symbol"
         var englishToggleKey = "shift"
+        var allowSecureInput = false
         #if os(iOS)
         var punctuationPairing = true
         #else
@@ -102,8 +103,9 @@ struct YabomishPrefs {
         s.corpusVariant = defaults.string(forKey: "corpusVariant") ?? "lite"
         s.shiftDigitOutput = defaults.string(forKey: "shiftDigitOutput") ?? "symbol"
         s.englishToggleKey = defaults.string(forKey: "englishToggleKey") ?? "shift"
-        // 合法值只有三種；異常值（舊版/手改）一律回落 shift 保現行行為
-        if s.englishToggleKey != "capslock" && s.englishToggleKey != "both" { s.englishToggleKey = "shift" }
+        // 合法值只有四種；異常值（舊版/手改）一律回落 shift 保現行行為
+        if !["shift", "capslock", "both", "none"].contains(s.englishToggleKey) { s.englishToggleKey = "shift" }
+        s.allowSecureInput = defaults.object(forKey: "allowSecureInput") as? Bool ?? false
         #if os(iOS)
         s.punctuationPairing = defaults.object(forKey: "punctuationPairing") as? Bool ?? true
         #else
@@ -369,7 +371,7 @@ struct YabomishPrefs {
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
                 "emojiSuggest", "emojiFirst", "suggestPreselect", "corpusVariant", "shiftDigitOutput",
-                "englishToggleKey",
+                "englishToggleKey", "allowSecureInput",
                 "punctuationPairing", "debugMode", "highContrast", "syncFolder", "currentContext",
                 "domainOrder"
             ]
@@ -535,9 +537,10 @@ struct YabomishPrefs {
         }
     }
 
-    /// 中英切換鍵："shift"（預設，Shift 快按）/ "capslock" / "both"。
+    /// 中英切換鍵："shift"（預設，Shift 快按）/ "capslock" / "both" / "none"。
     /// capslock/both 時 Caps Lock 變專用切換鍵——.capsLock flag 不再有
     /// 「大寫」語意（由 controller 遮罩），LED/系統 caps 狀態不影響打字行為。
+    /// none 時兩鍵都不切（只能從輸入法選單選英文），.capsLock 恢復大寫語意。
     /// 注意：macOS 系統設定「使用 Caps Lock 切換輸入來源」若開啟會先攔截事件。
     static var englishToggleKey: String {
         get {
@@ -546,6 +549,21 @@ struct YabomishPrefs {
         }
         set {
             defaults.set(newValue, forKey: "englishToggleKey")
+            refreshSnapshot()
+        }
+    }
+
+    /// 密碼／安全欄位放行：macOS Secure Event Input 啟用時，預設（false）
+    /// IM 直接放行按鍵不處理——組字緩衝、字頻學習、debug.log 都不接觸密碼。
+    /// 設 true 則安全欄位照常組字；即使如此，安全期間 debug.log 與字頻
+    /// 學習依然靜音（不落檔），僅在記憶體中處理。
+    static var allowSecureInput: Bool {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.allowSecureInput
+        }
+        set {
+            defaults.set(newValue, forKey: "allowSecureInput")
             refreshSnapshot()
         }
     }
