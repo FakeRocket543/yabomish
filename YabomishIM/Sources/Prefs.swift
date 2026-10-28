@@ -5,8 +5,12 @@ import Cocoa
 struct YabomishPrefs {
     /// Shared defaults using the same suite as YabomishPrefs, so that the
     /// input method and the preferences app read/write the same keys.
+    /// Suite 名跟隨本 bundle 的 CFBundleIdentifier：stable=…YabomishIM，
+    /// dev 變體（…YabomishIMDev）自動取得獨立 suite，實驗偏好不會漏進 stable。
+    /// YabomishPrefs app 仍固定寫 stable suite；dev 偏好用 defaults write 設。
     private static let _standard = UserDefaults.standard
-    static let defaults = UserDefaults(suiteName: "com.yabomishim.inputmethod.YabomishIM") ?? _standard
+    static let defaults = UserDefaults(suiteName:
+        Bundle.main.bundleIdentifier ?? "com.yabomishim.inputmethod.YabomishIM") ?? _standard
 
     // MARK: - 偏好快照（按鍵熱路徑效能）
 
@@ -41,6 +45,7 @@ struct YabomishPrefs {
         var suggestPreselect = false
         var corpusVariant = "lite"
         var shiftDigitOutput = "symbol"
+        var englishToggleKey = "shift"
         #if os(iOS)
         var punctuationPairing = true
         #else
@@ -96,6 +101,9 @@ struct YabomishPrefs {
         s.suggestPreselect = defaults.object(forKey: "suggestPreselect") as? Bool ?? false
         s.corpusVariant = defaults.string(forKey: "corpusVariant") ?? "lite"
         s.shiftDigitOutput = defaults.string(forKey: "shiftDigitOutput") ?? "symbol"
+        s.englishToggleKey = defaults.string(forKey: "englishToggleKey") ?? "shift"
+        // 合法值只有三種；異常值（舊版/手改）一律回落 shift 保現行行為
+        if s.englishToggleKey != "capslock" && s.englishToggleKey != "both" { s.englishToggleKey = "shift" }
         #if os(iOS)
         s.punctuationPairing = defaults.object(forKey: "punctuationPairing") as? Bool ?? true
         #else
@@ -361,6 +369,7 @@ struct YabomishPrefs {
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
                 "emojiSuggest", "emojiFirst", "suggestPreselect", "corpusVariant", "shiftDigitOutput",
+                "englishToggleKey",
                 "punctuationPairing", "debugMode", "highContrast", "syncFolder", "currentContext",
                 "domainOrder"
             ]
@@ -522,6 +531,21 @@ struct YabomishPrefs {
         }
         set {
             defaults.set(newValue, forKey: "shiftDigitOutput")
+            refreshSnapshot()
+        }
+    }
+
+    /// 中英切換鍵："shift"（預設，Shift 快按）/ "capslock" / "both"。
+    /// capslock/both 時 Caps Lock 變專用切換鍵——.capsLock flag 不再有
+    /// 「大寫」語意（由 controller 遮罩），LED/系統 caps 狀態不影響打字行為。
+    /// 注意：macOS 系統設定「使用 Caps Lock 切換輸入來源」若開啟會先攔截事件。
+    static var englishToggleKey: String {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.englishToggleKey
+        }
+        set {
+            defaults.set(newValue, forKey: "englishToggleKey")
             refreshSnapshot()
         }
     }

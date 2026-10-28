@@ -69,13 +69,16 @@ build_im() {
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
 
     # Core resources
-    for f in icon.tiff icon.icns icon_right.tiff icon_left.tiff \
+    for f in icon.tiff icon_en.tiff icon.icns icon_right.tiff icon_left.tiff \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json \
              char_freq.json corpus_manifest.json; do
         [ -f "$ROOT/YabomishIM/Resources/$f" ] && cp "$ROOT/YabomishIM/Resources/$f" "$IM_APP/Contents/Resources/"
     done
     [ -d "$ROOT/YabomishIM/Resources/tables" ] && cp -R "$ROOT/YabomishIM/Resources/tables" "$IM_APP/Contents/Resources/"
     [ -d "$ROOT/YabomishIM/Resources/Plugins" ] && cp -R "$ROOT/YabomishIM/Resources/Plugins" "$IM_APP/Contents/Resources/"
+
+    # mode 名稱本地化（輸入法選單名稱走 InfoPlist.loctable，非 .lproj）
+    [ -f "$ROOT/YabomishIM/Resources/InfoPlist.loctable" ] && cp "$ROOT/YabomishIM/Resources/InfoPlist.loctable" "$IM_APP/Contents/Resources/"
 
     # 基礎語料（極簡版與網路版不含；網路版首次啟動由 DataDownloader 依
     # corpus_manifest.json 自 GitHub Releases 下載並解壓至 Application Support，

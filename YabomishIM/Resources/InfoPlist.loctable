@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>en</key>
+	<dict>
+		<key>CFBundleDisplayName</key>
+		<string>Yabomish</string>
+		<key>CFBundleName</key>
+		<string>Yabomish</string>
+		<key>com.yabomishim.inputmethod.YabomishIM</key>
+		<string>Yabomish</string>
+		<key>com.yabomishim.inputmethod.YabomishIM.English</key>
+		<string>English</string>
+	</dict>
+	<key>zh-Hant</key>
+	<dict>
+		<key>CFBundleDisplayName</key>
+		<string>Yabomish</string>
+		<key>CFBundleName</key>
+		<string>Yabomish</string>
+		<key>com.yabomishim.inputmethod.YabomishIM</key>
+		<string>Yabomish</string>
+		<key>com.yabomishim.inputmethod.YabomishIM.English</key>
+		<string>英文</string>
+	</dict>
+</dict>
+</plist>

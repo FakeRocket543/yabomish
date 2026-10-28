@@ -22,6 +22,59 @@
 	<string>0.3.63</string>
 	<key>CFBundleVersion</key>
 	<string>0.3.63</string>
+	<key>ComponentInputModeDict</key>
+	<dict>
+		<key>tsInputModeListKey</key>
+		<dict>
+			<key>com.yabomishim.inputmethod.YabomishIM</key>
+			<dict>
+				<key>TISInputSourceID</key>
+				<string>com.yabomishim.inputmethod.YabomishIM</string>
+				<key>TISIntendedLanguage</key>
+				<string>zh-Hant</string>
+				<key>tsInputModeDefaultStateKey</key>
+				<true/>
+				<key>tsInputModeIsVisibleKey</key>
+				<true/>
+				<key>tsInputModeMenuIconFileKey</key>
+				<string>icon.tiff</string>
+				<key>tsInputModeIconFileKey</key>
+				<string>icon.tiff</string>
+				<key>tsInputModePaletteIconFileKey</key>
+				<string>icon.tiff</string>
+				<key>tsInputModePrimaryInScriptKey</key>
+				<true/>
+				<key>tsInputModeScriptKey</key>
+				<string>smTradChinese</string>
+			</dict>
+			<key>com.yabomishim.inputmethod.YabomishIM.English</key>
+			<dict>
+				<key>TISInputSourceID</key>
+				<string>com.yabomishim.inputmethod.YabomishIM.English</string>
+				<key>TISIntendedLanguage</key>
+				<string>en</string>
+				<key>tsInputModeDefaultStateKey</key>
+				<false/>
+				<key>tsInputModeIsVisibleKey</key>
+				<true/>
+				<key>tsInputModeMenuIconFileKey</key>
+				<string>icon_en.tiff</string>
+				<key>tsInputModeIconFileKey</key>
+				<string>icon_en.tiff</string>
+				<key>tsInputModePaletteIconFileKey</key>
+				<string>icon_en.tiff</string>
+				<key>tsInputModePrimaryInScriptKey</key>
+				<false/>
+				<key>tsInputModeScriptKey</key>
+				<string>smRoman</string>
+			</dict>
+		</dict>
+		<key>tsVisibleInputModeOrderedArrayKey</key>
+		<array>
+			<string>com.yabomishim.inputmethod.YabomishIM</string>
+			<string>com.yabomishim.inputmethod.YabomishIM.English</string>
+		</array>
+	</dict>
 	<key>InputMethodConnectionName</key>
 	<string>com.yabomishim.inputmethod.YabomishIM_Connection</string>
 	<key>InputMethodServerControllerClass</key>
@@ -36,6 +89,8 @@
 	<string>YabomishIM.NSManualApplication</string>
 	<key>TISIntendedLanguage</key>
 	<string>zh-Hant</string>
+	<key>TISIconIsTemplate</key>
+	<true/>
 	<key>tsInputMethodCharacterRepertoireKey</key>
 	<array>
 		<string>zh-Hant</string>

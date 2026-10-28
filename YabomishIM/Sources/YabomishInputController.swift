@@ -235,14 +235,35 @@ class YabomishInputController: IMKInputController {
         try? proc.run()
     }
 
+    /// InputModeID（同時是該 mode 的 TISInputSourceID），與
+    /// Info.plist 的 ComponentInputModeDict/tsInputModeListKey 對應；
+    /// 切換透過 kTextServiceInputModePropertyTag，menu bar 圖示隨之更新。
+    private static let inputModeIDChinese = Bundle.main.bundleIdentifier ?? "com.yabomishim.inputmethod.YabomishIM"
+    private static let inputModeIDEnglish = (Bundle.main.bundleIdentifier ?? "com.yabomishim.inputmethod.YabomishIM") + ".English"
+
+    /// 依引擎目前的中/英狀態設定系統 input mode（顯示在右上角圖示）。
+    /// engine 是 per-client（controller 實例），此 property 亦 per-client。
+    private func applyInputModeIcon(client: NSObjectProtocol & IMKTextInput) {
+        let modeID = engine.isEnglishMode ? Self.inputModeIDEnglish : Self.inputModeIDChinese
+        DebugLog.log("YabomishIM: applyInputModeIcon -> \(modeID) client=\(type(of: client))")
+        super.setValue(modeID, forTag: kTextServiceInputModePropertyTag, client: client)
+        DebugLog.log("YabomishIM: applyInputModeIcon done")
+    }
+
     private static var lastAppliedKeyboardLayout: String?
 
     override func activateServer(_ sender: Any!) {
         super.activateServer(sender)
         _ = Self.inputSourceObserver
         let targetLayout = "com.apple.keylayout.ABC"
-        if let client = sender as? IMKTextInput {
+        if let client = sender as? (NSObjectProtocol & IMKTextInput) {
             client.overrideKeyboard(withKeyboardNamed: targetLayout)
+            applyInputModeIcon(client: client)
+            // 啟用當下呼叫 overrideKeyboard 經常被 IMK 忽略（尤其 Globe/Fn 切過來）；
+            // 延遲重送一次，確保鍵盤佈局真的換成 ABC 而非沿用前一個來源（如 AZERTY）。
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak client] in
+                client?.overrideKeyboard(withKeyboardNamed: targetLayout)
+            }
         }
         if Self.cinTable.isEmpty && !CINImportCoordinator.hasPromptedImport {
             CINImportCoordinator.hasPromptedImport = true
@@ -283,7 +304,7 @@ class YabomishInputController: IMKInputController {
         if CINImportCoordinator.showFirstUseTip {
             CINImportCoordinator.showFirstUseTip = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-                self?.showModeToast("空白鍵送字 ｜ Shift 切英文 ｜ ,,H 說明")
+                self?.showModeToast("空白鍵送字 ｜ \(self?.toggleKeyDisplay ?? "Shift") 切英文 ｜ ,,H 說明")
             }
         }
         #if !MINIMAL
@@ -304,6 +325,18 @@ class YabomishInputController: IMKInputController {
             }
         }
         #endif
+    }
+
+    /// 使用者在輸入法選單直接點選 mode（Yabomish / English）時同步引擎狀態；
+    /// applyInputModeIcon 走 super，不會回到這裡。
+    override func setValue(_ value: Any!, forTag tag: Int, client sender: Any!) {
+        if tag == kTextServiceInputModePropertyTag {
+            DebugLog.log("YabomishIM: setValue inputMode <- \(String(describing: value))")
+            if let modeID = value as? String {
+                engine.setEnglishMode(modeID == Self.inputModeIDEnglish)
+            }
+        }
+        super.setValue(value, forTag: tag, client: sender)
     }
 
     /// 收編期間旗標：exitZhuyin/exitPinyinMode、handleEscape 會經 delegate 觸發
@@ -387,6 +420,7 @@ extension YabomishInputController {
         engineClient = client
 
         if event.type == .flagsChanged {
+            DebugLog.log("YabomishIM: flagsChanged key=\(event.keyCode) shift=\(event.modifierFlags.contains(.shift)) caps=\(event.modifierFlags.contains(.capsLock)) lastDown=\(newEngineLastShiftDown)")
             return handleNewEngineFlagsChanged(event)
         }
 
@@ -400,7 +434,8 @@ extension YabomishInputController {
         // English mode
         if engine.isEnglishMode {
             if flags.contains(.shift) { newEngineShiftUsed = true }
-            let wantShift = flags.contains(.shift) != flags.contains(.capsLock)
+            // capsLockToggles 時 .capsLock flag 是切換鍵的殘留狀態、無大寫語意，遮罩為 false
+            let wantShift = flags.contains(.shift) != (capsLockToggles ? false : flags.contains(.capsLock))
             if wantShift, let sh = keyCodeToShifted[keyCode] {
                 client.insertText(String(sh), replacementRange: notFoundRange)
                 return true
@@ -444,7 +479,7 @@ extension YabomishInputController {
             }
             commitOrEscapeComposing()
             if let ch = keyCodeToChar[keyCode], ch.isLetter {
-                let s = flags.contains(.capsLock) ? String(ch).uppercased() : String(ch)
+                let s = (!capsLockToggles && flags.contains(.capsLock)) ? String(ch).uppercased() : String(ch)
                 client.insertText(s, replacementRange: notFoundRange)
                 return true
             }
@@ -623,15 +658,59 @@ extension YabomishInputController {
         set { objc_setAssociatedObject(self, &Self._shiftUsedKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 
+    /// 中英切換鍵（issue #18）：englishToggleKey ∈ {shift, capslock, both}。
+    /// capslock/both → Caps Lock 變專用切換鍵，.capsLock flag 不再有「大寫」語意，
+    /// 系統 caps 狀態/LED 是否翻轉皆不影響打字行為（由呼叫端遮罩）。
+    /// capslock → Shift 快按不觸發切換，但 Shift 當修飾鍵（暫時英文/萬用碼/符號）照常用。
+    private var capsLockToggles: Bool { YabomishPrefs.englishToggleKey != "shift" }
+    private var shiftToggles: Bool { YabomishPrefs.englishToggleKey != "capslock" }
+
+    /// 切換鍵的顯示名（首次使用提示等文案用）。
+    private var toggleKeyDisplay: String {
+        switch YabomishPrefs.englishToggleKey {
+        case "capslock": return "⇪"
+        case "both": return "⇪/Shift"
+        default: return "Shift"
+        }
+    }
+
+    private func toggleEnglishModeAndIcon() {
+        if !engine.composing.isEmpty { engine.handleEscape() }
+        engine.toggleEnglishMode()
+        if let client = engineClient ?? client() {
+            applyInputModeIcon(client: client)
+        }
+    }
+
     private func handleNewEngineFlagsChanged(_ event: NSEvent) -> Bool {
+        // Caps Lock（keyCode 57，kVK_CapsLock）：每次實體按壓產生一個
+        // flagsChanged，.capsLock flag 為 toggle 後的新狀態。
+        // 消費事件無法阻止系統鎖定（狀態在派發前已翻轉），因此：
+        //   IOHID 可用（正常）→ 只在 →ON 轉換觸發切換，切完 forceOff 把鎖定
+        //     壓回 off；force-off 產生的 flag=false 回聲被同一閘門濾掉。
+        //     若使用者在別處留下 latched ON，進來的第一下（→OFF）只清鎖不
+        //     觸發——再按即正常。
+        //   IOHID 不可用 → 退回每按壓切一次（無 force-off 就無回聲）；
+        //     殘留狀態由 capsLockToggles 遮罩擋住打字行為。
+        if capsLockToggles && event.keyCode == 57 {
+            if CapsLockControl.available {
+                if event.modifierFlags.contains(.capsLock) {
+                    toggleEnglishModeAndIcon()
+                    CapsLockControl.forceOff()
+                }
+            } else {
+                toggleEnglishModeAndIcon()
+            }
+            return true
+        }
         let shiftDown = event.modifierFlags.contains(.shift)
+        guard shiftToggles else { return false }
         if shiftDown {
             newEngineLastShiftDown = event.timestamp
             newEngineShiftUsed = false
         } else if newEngineLastShiftDown > 0 {
             if event.timestamp - newEngineLastShiftDown < 0.3 && !newEngineShiftUsed {
-                if !engine.composing.isEmpty { engine.handleEscape() }
-                engine.toggleEnglishMode()
+                toggleEnglishModeAndIcon()
             }
             newEngineLastShiftDown = 0
         }

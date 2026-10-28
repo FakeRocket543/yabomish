@@ -142,6 +142,17 @@ struct InputTab: View {
                 }
                 #endif
 
+                // ── 中英切換鍵（issue #18）──
+                SectionDivider()
+                Label("中英切換鍵", systemImage: "capslock").font(Typo.h2)
+                Text("切換中／英模式的按鍵。選 ⇪ 或「兩者」後 Caps Lock 成為專用切換鍵（大寫燈不亮、大寫改由 Shift＋字母）；注意 macOS 會丟棄過快的輕點（<100ms），需稍長一點按壓。")
+                    .font(Typo.hint).foregroundStyle(.secondary)
+                LazyVGrid(columns: columns, spacing: 8) {
+                    toggleKeyCard("shift", label: "Shift 快按", icon: "shift", desc: "全系統慣例（預設）")
+                    toggleKeyCard("capslock", label: "⇪ Caps Lock", icon: "capslock", desc: "改用 ⇪ 切換")
+                    toggleKeyCard("both", label: "兩者皆可", icon: "keyboard", desc: "⇪ 與 Shift 快按都能切")
+                }
+
                 // ── 固定排序 ──
                 SectionDivider()
                 DisclosureGroup {
@@ -326,6 +337,15 @@ struct InputTab: View {
                            labelLineLimit: 1) { store.shiftDigitOutput = id }
     }
     #endif
+
+    @ViewBuilder
+    private func toggleKeyCard(_ id: String, label: String, icon: String, desc: String) -> some View {
+        SelectableCardView(label: label, desc: desc,
+                           selected: store.englishToggleKey == id,
+                           icon: icon,
+                           showCheckmark: false,
+                           labelLineLimit: 1) { store.englishToggleKey = id }
+    }
 
     private func binding(for key: String) -> Binding<Bool> {
         switch key {

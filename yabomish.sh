@@ -13,13 +13,30 @@ err()  { printf "${R}[ERR] %s${N}\n" "$1"; exit 1; }
 IM_SRC="$ROOT/YabomishIM/Sources"
 IM_RES="$ROOT/YabomishIM/Resources"
 IM_BUILD="$ROOT/YabomishIM/build"
-IM_APP="$IM_BUILD/YabomishIM.app"
+# YABOMISH_DEV=1 產生獨立實驗變體：不同 bundle ID / app 名 / App Support 目錄，
+# 與 stable 並存互不干擾（dev 搞壞輸入法時 stable 仍可打字）。
+# dev 裝在 ~/Library/Input Methods：免 sudo、不碰系統目錄，可全自動安裝測試。
+if [ "${YABOMISH_DEV:-0}" = "1" ]; then
+    # YABOMISH_APP/YABOMISH_BID 可再覆寫名稱與 ID：本機殘留同 ID 舊 bundle 時
+    # 用不同 ID 再開一個變體測試（產品預設仍是 YabomishDev / …IMDev）。
+    IM_APP_NAME="${YABOMISH_APP:-YabomishDev}"
+    IM_BUNDLE_ID="${YABOMISH_BID:-com.yabomishim.inputmethod.YabomishIMDev}"
+    USER_DIR="$HOME/Library/Application Support/$IM_APP_NAME"
+    INSTALL_DIR="$HOME/Library/Input Methods"
+    SUDO=""
+else
+    IM_APP_NAME="YabomishIM"
+    IM_BUNDLE_ID="com.yabomishim.inputmethod.YabomishIM"
+    USER_DIR="$HOME/Library/Application Support/Yabomish"
+    INSTALL_DIR="/Library/Input Methods"
+    SUDO="sudo"
+fi
+# build 產物故意不用 .app 副檔名：留在專案目錄的 .app 會被 LaunchServices/TIS
+# 註冊成另一個同名輸入法來源，Settings 與輸入法選單會長出重複的 YabomishDev。
+IM_APP="$IM_BUILD/$IM_APP_NAME.appbuild"
 PREFS_DIR="$ROOT/YabomishPrefs"
 PREFS_APP="$PREFS_DIR/YabomishPrefs.app"
-INSTALL_DIR="/Library/Input Methods"
-USER_DIR="$HOME/Library/Application Support/Yabomish"
 USER_DIR_LEGACY="$HOME/Library/YabomishIM"
-IM_BUNDLE_ID="com.yabomishim.inputmethod.YabomishIM"
 
 check_xcode() {
     if ! xcode-select -p &>/dev/null; then
@@ -39,19 +56,35 @@ build_im() {
     mkdir -p "$IM_APP/Contents/MacOS" "$IM_APP/Contents/Resources"
 
     cp "$IM_RES/Info.plist" "$IM_APP/Contents/Info.plist"
+    if [ "$IM_APP_NAME" != "YabomishIM" ]; then
+        # dev 變體：bundle ID 全文替換（含 ComponentInputModeDict 的 mode ID/InputSourceID、連線名）
+        sed -i '' "s/com.yabomishim.inputmethod.YabomishIM/$IM_BUNDLE_ID/g" "$IM_APP/Contents/Info.plist"
+        /usr/libexec/PlistBuddy -c "Set :CFBundleName $IM_APP_NAME" "$IM_APP/Contents/Info.plist"
+        /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $IM_APP_NAME" "$IM_APP/Contents/Info.plist"
+        /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $IM_APP_NAME" "$IM_APP/Contents/Info.plist"
+    fi
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$IM_APP/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
 
     # 核心資源（所有版本都包含：打字、查碼、繁簡轉換）
-    for f in icon.tiff icon.icns icon_right.tiff icon_left.tiff \
+    for f in icon.tiff icon_en.tiff icon.icns icon_right.tiff icon_left.tiff \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json \
              char_freq.json corpus_manifest.json; do
         [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
     done
     [ -d "$IM_RES/tables" ] && cp -R "$IM_RES/tables" "$IM_APP/Contents/Resources/"
     [ -d "$IM_RES/Plugins" ] && cp -R "$IM_RES/Plugins" "$IM_APP/Contents/Resources/"
+
+    # mode 名稱本地化（輸入法選單名稱走 InfoPlist.loctable，非 .lproj）；
+    # dev 變體需把 key 裡的 bundle ID 一併改名
+    if [ -f "$IM_RES/InfoPlist.loctable" ]; then
+        # key 的 bundle ID 跟 Info.plist 同步改名；value 的顯示名加 Dev 以便與 stable 區分
+        sed -e "s/com.yabomishim.inputmethod.YabomishIM/${IM_BUNDLE_ID}/g" \
+            -e "s/>Yabomish</>${IM_APP_NAME}</g" \
+            "$IM_RES/InfoPlist.loctable" > "$IM_APP/Contents/Resources/InfoPlist.loctable"
+    fi
 
     # 聯想／詞庫基礎語料（極簡版不含）
     if [ "$MODE" != "min" ]; then
@@ -77,10 +110,10 @@ build_im() {
     swiftc -module-name YabomishIM \
         -target "$ARCH-apple-macos14.0" \
         -sdk "$(xcrun --show-sdk-path)" -O $FLAGS \
-        -o "$IM_APP/Contents/MacOS/YabomishIM" \
+        -o "$IM_APP/Contents/MacOS/$IM_APP_NAME" \
         "${SRCS[@]}"
 
-    ok "YabomishIM.app [$MODE] (build $STAMP.$HASH, $(du -sh "$IM_APP" | cut -f1))"
+    ok "$IM_APP_NAME.app [$MODE] (build $STAMP.$HASH, $(du -sh "$IM_APP" | cut -f1))"
 }
 
 build_prefs() {
@@ -116,21 +149,22 @@ build_prefs() {
 
 install_im() {
     [ ! -d "$IM_APP" ] && err "請先選 1 或 2 編譯"
-    sudo -v   # 預先快取 sudo 時間戳，後續連續 sudo 不會反覆要密碼
+    [ -n "$SUDO" ] && sudo -v   # 預先快取 sudo 時間戳，後續連續 sudo 不會反覆要密碼
     printf "${C}> 安裝輸入法...${N}\n"
-    killall YabomishIM 2>/dev/null || true; sleep 1
+    killall "$IM_APP_NAME" 2>/dev/null || true; sleep 1
+    mkdir -p "$INSTALL_DIR"   # dev 的使用者層級目錄可能不存在
 
-    # 原子式換裝：先裝 .new、再換下 .old——中途失敗不會留下「沒有輸入法」的空窗
-    sudo cp -R "$IM_APP" "$INSTALL_DIR/YabomishIM.app.new"
-    sudo rm -rf "$INSTALL_DIR/YabomishIM.app.old"
-    [ -d "$INSTALL_DIR/YabomishIM.app" ] && sudo mv "$INSTALL_DIR/YabomishIM.app" "$INSTALL_DIR/YabomishIM.app.old"
-    sudo mv "$INSTALL_DIR/YabomishIM.app.new" "$INSTALL_DIR/YabomishIM.app"
-    sudo rm -rf "$INSTALL_DIR/YabomishIM.app.old"
-    sudo chmod -R a+rX "$INSTALL_DIR/YabomishIM.app"
+    # 原子式換裝＋保留一版：先裝 .new、現版移到 .prev（rollback 用）、再換上 .new。
+    # 中途失敗不會留下「沒有輸入法」的空窗；.prev 只留最近一版。
+    $SUDO cp -R "$IM_APP" "$INSTALL_DIR/$IM_APP_NAME.app.new"
+    $SUDO rm -rf "$INSTALL_DIR/$IM_APP_NAME.app.prev"
+    [ -d "$INSTALL_DIR/$IM_APP_NAME.app" ] && $SUDO mv "$INSTALL_DIR/$IM_APP_NAME.app" "$INSTALL_DIR/$IM_APP_NAME.app.prev"
+    $SUDO mv "$INSTALL_DIR/$IM_APP_NAME.app.new" "$INSTALL_DIR/$IM_APP_NAME.app"
+    $SUDO chmod -R a+rX "$INSTALL_DIR/$IM_APP_NAME.app"
     # macOS 27 要求簽章 Identifier 與 Info.plist Bundle ID 一致，否則 IMK 拒絕 XPC endpoint（issue #16）：
     # 不帶 --identifier 時曾出現 Identifier=YabomishIM（與 Bundle ID 不一致），導致「看得到圖示、無法輸入」。
-    sudo codesign -s - --force --deep --identifier "$IM_BUNDLE_ID" "$INSTALL_DIR/YabomishIM.app" 2>/dev/null || true
-    local GOT_ID; GOT_ID=$(codesign -dv "$INSTALL_DIR/YabomishIM.app" 2>&1 | awk -F= '/^Identifier=/{print $2}')
+    $SUDO codesign -s - --force --deep --identifier "$IM_BUNDLE_ID" "$INSTALL_DIR/$IM_APP_NAME.app" 2>/dev/null || true
+    local GOT_ID; GOT_ID=$(codesign -dv "$INSTALL_DIR/$IM_APP_NAME.app" 2>&1 | awk -F= '/^Identifier=/{print $2}')
     [ "$GOT_ID" = "$IM_BUNDLE_ID" ] || warn "簽章 Identifier 異常（$GOT_ID），macOS 27 可能無法輸入；見 issue #16"
 
     # 字表
@@ -144,28 +178,60 @@ install_im() {
 
     ok "輸入法已安裝"
     [ -f "$USER_DIR/liu.cin" ] || [ -f "$USER_DIR/liu.bin" ] && ok "字表就緒" || warn "尚未偵測到字表，首次切換時會引導匯入"
+    [ -d "$INSTALL_DIR/$IM_APP_NAME.app.prev" ] && ok "上一版已保留為 .prev（rollback 可還原）"
 
+    restart_im
+}
+
+restart_im() {
     printf "${C}> 重新啟動輸入法...${N}\n"
-    killall YabomishIM 2>/dev/null || true
+    killall "$IM_APP_NAME" 2>/dev/null || true
     sleep 1
 
     # Force the system to re-scan input sources (imklaunchagent is blocked by
     # Launch Constraint Violation on macOS 26+ — kills TextInputMenuAgent instead)
     killall TextInputMenuAgent 2>/dev/null || true
 
+    # 覆蓋安裝不會自動重掃 bundle：舊註冊快取會讓新 plist/icon 失效，
+    # 輸入法選單消失或輪替跳過。顯式 TISRegisterInputSource（tools/register_im）。
+    if [ ! -x "$ROOT/tools/register_im" ]; then
+        clang -framework Carbon -framework Foundation "$ROOT/tools/register_im.m" -o "$ROOT/tools/register_im" 2>/dev/null || true
+    fi
+    [ -x "$ROOT/tools/register_im" ] && "$ROOT/tools/register_im" "$INSTALL_DIR/$IM_APP_NAME.app" || true
+
     # Try launching directly
-    open "$INSTALL_DIR/YabomishIM.app" 2>/dev/null || true
+    open "$INSTALL_DIR/$IM_APP_NAME.app" 2>/dev/null || true
     sleep 2
 
-    if pgrep -q YabomishIM; then
+    if pgrep -q "$IM_APP_NAME"; then
         ok "輸入法已啟動"
-        ok "到 系統設定 → 鍵盤 → 輸入方式 → + → 繁體中文 → Yabomish"
+        ok "到 系統設定 → 鍵盤 → 輸入方式 → + → 繁體中文 → $IM_APP_NAME"
     else
         warn "系統未自動啟動，請登出再登入"
     fi
 }
 
+# 還原上一版：install 保留的 .prev 與現版互換（rollback 本身可逆）。
+do_rollback() {
+    local CUR="$INSTALL_DIR/$IM_APP_NAME.app"
+    local PREV="$INSTALL_DIR/$IM_APP_NAME.app.prev"
+    [ -d "$PREV" ] || err "沒有可還原的上一版（$PREV 不存在）"
+    [ -n "$SUDO" ] && sudo -v
+    printf "${C}> 還原上一版 $IM_APP_NAME...${N}\n"
+    killall "$IM_APP_NAME" 2>/dev/null || true; sleep 1
+    [ -d "$CUR" ] && $SUDO mv "$CUR" "$INSTALL_DIR/$IM_APP_NAME.app.rollback-tmp"
+    $SUDO mv "$PREV" "$CUR"
+    [ -d "$INSTALL_DIR/$IM_APP_NAME.app.rollback-tmp" ] && \
+        $SUDO mv "$INSTALL_DIR/$IM_APP_NAME.app.rollback-tmp" "$PREV"
+    $SUDO chmod -R a+rX "$CUR"
+    ok "已還原上一版（現版降為 .prev）"
+    restart_im
+}
+
 install_prefs() {
+    # dev 變體共用 stable 的 Prefs app（寫 stable suite）；
+    # dev 自己的偏好用 defaults write $IM_BUNDLE_ID 設定，不需 Prefs 副本。
+    [ "${YABOMISH_DEV:-0}" = "1" ] && { ok "dev 變體不裝 Prefs（用 defaults write $IM_BUNDLE_ID 設定）"; return 0; }
     [ ! -d "$PREFS_APP" ] && err "請先選 1 或 2 編譯"
     printf "${C}> 安裝偏好設定...${N}\n"
     sudo -v   # 預先快取 sudo 時間戳
@@ -183,15 +249,19 @@ do_uninstall() {
     # $1 = 1（CLI --yes）：跳過所有確認，連使用者資料一併刪除
     local ASSUME_YES="${1:-0}"
     if [ "$ASSUME_YES" != "1" ]; then
-        printf "確定要移除 Yabomish？[y/N] "; read -r c || c=""
+        printf "確定要移除 $IM_APP_NAME？[y/N] "; read -r c || c=""
         [[ "$c" =~ ^[Yy]$ ]] || { echo "已取消。"; return 0; }
     fi
-    killall YabomishIM 2>/dev/null || true
-    killall YabomishPrefs 2>/dev/null || true
+    killall "$IM_APP_NAME" 2>/dev/null || true
+    [ "${YABOMISH_DEV:-0}" != "1" ] && killall YabomishPrefs 2>/dev/null || true
     sleep 0.5
-    sudo rm -rf "$INSTALL_DIR/YabomishIM.app"
-    sudo rm -rf "$HOME/Library/Input Methods/YabomishIM.app"   # all_platforms.sh 裝在使用者層級的副本
-    sudo rm -rf /Applications/YabomishPrefs.app
+    $SUDO rm -rf "$INSTALL_DIR/$IM_APP_NAME.app"
+    $SUDO rm -rf "$INSTALL_DIR/$IM_APP_NAME.app.prev"
+    $SUDO rm -rf "$INSTALL_DIR/$IM_APP_NAME.app.new"
+    if [ "${YABOMISH_DEV:-0}" != "1" ]; then
+        $SUDO rm -rf "$HOME/Library/Input Methods/$IM_APP_NAME.app"   # all_platforms.sh 裝在使用者層級的副本
+        $SUDO rm -rf /Applications/YabomishPrefs.app
+    fi
     defaults delete $IM_BUNDLE_ID 2>/dev/null || true
     local WIPE="n"
     if [ "$ASSUME_YES" = "1" ]; then
@@ -297,6 +367,7 @@ show_menu() {
     printf "  ${B}3)${N} 只安裝（已編譯過）\n"
     printf "  ${B}4)${N} 快速重裝偏好設定\n"
     printf "  ${B}5)${N} 移除 Yabomish\n"
+    printf "  ${B}6)${N} 還原上一版（rollback）\n"
     printf "  ${B}T)${N} 執行測試\n"
     printf "  ${B}0)${N} 離開\n"
     echo "-----------------------------"
@@ -308,8 +379,11 @@ usage() {
 用法: ./yabomish.sh                       互動選單
       ./yabomish.sh build [full|lite|min] 編譯輸入法＋偏好設定（預設 full）
       ./yabomish.sh install               安裝輸入法＋偏好設定
+      ./yabomish.sh rollback              還原上一版（與 .prev 互換，可再換回）
       ./yabomish.sh uninstall [--yes]     移除（--yes 跳過所有確認，連使用者資料一起刪）
       ./yabomish.sh test                  執行測試（YabomishIM/Tests/run_tests.sh）
+      YABOMISH_DEV=1 ./yabomish.sh build  編譯實驗變體 YabomishDev（獨立 bundle ID/資料目錄，
+                                        與 stable 並存；install/uninstall 同樣加 YABOMISH_DEV=1）
 EOF
 }
 
@@ -359,6 +433,11 @@ case "${1:-}" in
         install_prefs
         exit 0
         ;;
+    rollback)
+        [ $# -eq 1 ] || { usage; exit 2; }
+        do_rollback
+        exit 0
+        ;;
     uninstall)
         if [ $# -eq 2 ] && [ "$2" = "--yes" ]; then
             do_uninstall 1
@@ -392,8 +471,9 @@ while true; do
         3) menu_run do_install;;
         4) menu_run do_prefs;;
         5) menu_run do_uninstall;;
+        6) menu_run do_rollback;;
         t|T) menu_run bash "$ROOT/YabomishIM/Tests/run_tests.sh";;
         0) echo "Bye!"; exit 0;;
-        *) warn "請輸入 0-5 或 T";;
+        *) warn "請輸入 0-6 或 T";;
     esac
 done

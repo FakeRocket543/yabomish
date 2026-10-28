@@ -12,10 +12,14 @@ enum AppConstants {
     }
     #else
     static var sharedDir: String {
+        // 依 bundle 名取目錄：stable=Yabomish、dev 變體（YabomishDev）各自獨立，
+        // 實驗不會弄髒正式版字頻/語料。
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Yabomish"
+        let dirName = appName.hasPrefix("Yabomish") ? appName : "Yabomish"
         guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return NSHomeDirectory() + "/Library/Application Support/Yabomish"
+            return NSHomeDirectory() + "/Library/Application Support/\(dirName)"
         }
-        let dir = appSupport.appendingPathComponent("Yabomish")
+        let dir = appSupport.appendingPathComponent(dirName)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.path
     }

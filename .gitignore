@@ -37,3 +37,13 @@ site/node_modules/
 site/dist/
 site/.astro/
 *.pkg
+
+# e2e / TIS 測試工具的編譯產物（由對應 .m / .swift 重建）
+tools/disable_im
+tools/postkeys
+tools/probe_im
+tools/register_im
+tools/select_im
+tools/e2e/e2e
+tools/e2e_live/e2e_live
+tools/e2e_live.app/

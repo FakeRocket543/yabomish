@@ -129,6 +129,11 @@ import Foundation
         get { access(keyPath: \.showCodeHint); return ud.object(forKey: "showCodeHint") as? Bool ?? false }
         set { withMutation(keyPath: \.showCodeHint) { ud.set(newValue, forKey: "showCodeHint") }; postChange() }
     }
+    /// 中英切換鍵："shift"（預設，Shift 快按）/ "capslock" / "both"
+    var englishToggleKey: String {
+        get { access(keyPath: \.englishToggleKey); return ud.string(forKey: "englishToggleKey") ?? "shift" }
+        set { withMutation(keyPath: \.englishToggleKey) { ud.set(newValue, forKey: "englishToggleKey") }; postChange() }
+    }
     var homophoneMultiReading: Bool {
         get { access(keyPath: \.homophoneMultiReading); return ud.object(forKey: "homophoneMultiReading") as? Bool ?? false }
         set { withMutation(keyPath: \.homophoneMultiReading) { ud.set(newValue, forKey: "homophoneMultiReading") }; postChange() }

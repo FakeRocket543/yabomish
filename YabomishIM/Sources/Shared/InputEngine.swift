@@ -422,6 +422,15 @@ final class InputEngine {
         delegate?.engineDidShowToast(_currentModeLabel)
     } }
 
+    /// 設定英文模式（idempotent）。`setValue(_:forTag:)` 收到 menu bar
+    /// input mode 選擇時呼叫；Shift 快按仍走 toggleEnglishMode()。
+    func setEnglishMode(_ on: Bool) { sync {
+        guard _isEnglishMode != on else { return }
+        _isEnglishMode = on
+        _resetComposing()
+        delegate?.engineDidShowToast(_currentModeLabel)
+    } }
+
     func exitZhuyinMode() { sync {
         _exitZhuyinModeImpl()
     } }
