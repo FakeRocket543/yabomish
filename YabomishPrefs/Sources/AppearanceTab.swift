@@ -15,49 +15,52 @@ private let toastOptions: [ToggleOption] = [
 ]
 
 
-private let switchOptions: [ToggleOption] = [
-    .init(id: "Yabo",     label: "Yabo",     icon: "textformat.abc", desc: "短名（推薦）"),
-    .init(id: "Yabomish", label: "Yabomish", icon: "keyboard",      desc: "英文品牌名"),
-]
-
-private let appearanceOptions: [ToggleOption] = [
-    .init(id: "auto",  label: "自動", icon: "circle.lefthalf.filled", desc: "跟隨系統外觀"),
-    .init(id: "light", label: "淺色", icon: "sun.max",                desc: "固定淺色模式"),
-    .init(id: "dark",  label: "深色", icon: "moon",                   desc: "固定深色模式"),
-]
-
 struct AppearanceTab: View {
     @Bindable var store: PrefsStore
-
-    private let columns = [GridItem(.adaptive(minimum: 128), spacing: 8)]
 
     var body: some View {
         SettingsPage {
 
-                Label("介面外觀", systemImage: "circle.lefthalf.filled").font(Typo.h2)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    ForEach(appearanceOptions) { opt in
-                        appearanceModeCard(opt)
-                    }
+                SettingsSection(title: "介面外觀",
+                                footnote: "套用對象：候選字窗、固定模式列與切換提示。設為「自動」時跟隨系統深淺色。") {
+                    SegmentedRow("模式", selection: $store.appearanceMode,
+                                 options: [("auto", "自動"), ("light", "淺色"), ("dark", "深色")])
                 }
-                Text("套用對象：候選字窗、固定模式列與切換提示。設為「自動」時跟隨系統深淺色。")
-                    .font(Typo.caption)
-                    .foregroundStyle(.secondary)
 
-                SectionDivider()
-                Label("字型", systemImage: "textformat.size").font(Typo.h2)
-                GroupBox {
+                SettingsSection(title: "字型") {
                     VStack(spacing: 10) {
                         fontRow(label: "游標模式", value: $store.fontSize, in: 10...30, step: 1, format: { "\(Int($0)) pt" })
                         fontRow(label: "固定模式", value: $store.fixedFontSize, in: 10...30, step: 1, format: { "\(Int($0)) pt" })
                         fontRow(label: "模式提示", value: $store.toastFontSize, in: 20...72, step: 2, format: { "\(Int($0)) pt" })
                         fontRow(label: "提示透明度", value: $store.toastOpacity, in: 0.3...1.0, step: 0.05, format: { "\(Int($0 * 100))%" })
+                        HStack {
+                            Text("提示字體").font(Typo.body).frame(width: 80, alignment: .leading)
+                            Picker("", selection: $store.toastFontStyle) {
+                                Text("系統").tag("system")
+                                Text("圓體").tag("rounded")
+                                Text("明體").tag("serif")
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.segmented)
+                        }
+                        HStack {
+                            Text("提示字色").font(Typo.body).frame(width: 80, alignment: .leading)
+                            ColorPicker("", selection: $store.toastTextColor.asColor(), supportsOpacity: false)
+                                .labelsHidden()
+                            Spacer()
+                            Toggle("描邊", isOn: $store.toastStroke)
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
+                            if store.toastStroke {
+                                ColorPicker("", selection: $store.toastStrokeColor.asColor(), supportsOpacity: false)
+                                    .labelsHidden()
+                            }
+                        }
                     }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
                 }
 
-                SectionDivider()
-                Label("固定窗背景", systemImage: "rectangle.transparent").font(Typo.h2)
-                GroupBox {
+                SettingsSection(title: "固定窗背景") {
                     VStack(spacing: 10) {
                         fontRow(label: "透明度", value: $store.fixedAlpha, in: 0.3...1.0, step: 0.05, format: { "\(Int($0 * 100))%" })
                         HStack {
@@ -77,6 +80,7 @@ struct AppearanceTab: View {
                             Stepper("\(Int(store.fixedYOffset)) pt", value: $store.fixedYOffset, in: 0...64, step: 2)
                         }
                     }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
                 }
 
                 // 預覽：游標模式（垂直/水平）+ 固定模式（水平）
@@ -133,9 +137,7 @@ struct AppearanceTab: View {
                 }
                 .frame(maxWidth: .infinity)
 
-                SectionDivider()
-                Label("功能", systemImage: "switch.2").font(Typo.h2)
-                SettingsGroupBox {
+                SettingsSection(title: "功能") {
                     ForEach(Array(toastOptions.enumerated()), id: \.element.id) { i, opt in
                         if i > 0 { InsetDivider() }
                         ToggleRow(label: opt.label, icon: opt.icon, desc: opt.desc,
@@ -143,17 +145,15 @@ struct AppearanceTab: View {
                     }
                 }
 
-                SectionDivider()
-                Label("切換顯示", systemImage: "text.badge.star").font(Typo.h2)
-                LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(switchOptions) { opt in
-                        switchDisplayCard(opt)
-                    }
+                SettingsSection(title: "切換顯示",
+                                footnote: "切換輸入法時，輸入法選單與切入提示顯示的名稱。") {
+                    SegmentedRow("名稱", selection: $store.switchDisplay,
+                                 options: [("Yabo", "Yabo"), ("Yabomish", "Yabomish")])
                 }
 
                 Button {
                     let url = URL(fileURLWithPath: NSHomeDirectory())
-                        .appendingPathComponent("Library/Application Support/Yabomish/debug.log")
+                        .appendingPathComponent("Library/Application Support/\(store.dataDirName)/debug.log")
                     NSWorkspace.shared.open(url)
                 } label: {
                     Label("打開 debug.log⋯", systemImage: "doc.text.magnifyingglass")
@@ -161,20 +161,6 @@ struct AppearanceTab: View {
                 .disabled(!store.debugMode)
                 .help(store.debugMode ? "" : "先開啟上方的除錯記錄開關")
         }
-    }
-
-    @ViewBuilder
-    private func appearanceModeCard(_ opt: ToggleOption) -> some View {
-        SelectableCardView(label: opt.label, desc: opt.desc,
-                           selected: store.appearanceMode == opt.id,
-                           icon: opt.icon) { store.appearanceMode = opt.id }
-    }
-
-    @ViewBuilder
-    private func switchDisplayCard(_ opt: ToggleOption) -> some View {
-        SelectableCardView(label: opt.label, desc: opt.desc,
-                           selected: store.switchDisplay == opt.id,
-                           icon: opt.icon) { store.switchDisplay = opt.id }
     }
 
     private func binding(for key: String) -> Binding<Bool> {

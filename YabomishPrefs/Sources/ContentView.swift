@@ -32,16 +32,16 @@ struct ContentView: View {
     private var mainView: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                Label("輸入", systemImage: "keyboard").tag(0)
+                sidebarItem("輸入", icon: "keyboard", color: .blue).tag(0)
                 #if !MINIMAL
-                Label("聯想與詞庫", systemImage: "text.magnifyingglass").tag(1)
-                Label("快捷碼", systemImage: "text.cursor").tag(2)
-                Label("外觀", systemImage: "paintbrush").tag(3)
-                Label("關於", systemImage: "info.circle").tag(4)
+                sidebarItem("聯想與詞庫", icon: "text.magnifyingglass", color: .purple).tag(1)
+                sidebarItem("快捷碼", icon: "text.cursor", color: .orange).tag(2)
+                sidebarItem("外觀", icon: "paintbrush", color: .pink).tag(3)
+                sidebarItem("關於", icon: "info.circle", color: .gray).tag(4)
                 #else
-                Label("快捷碼", systemImage: "text.cursor").tag(1)
-                Label("外觀", systemImage: "paintbrush").tag(2)
-                Label("關於", systemImage: "info.circle").tag(3)
+                sidebarItem("快捷碼", icon: "text.cursor", color: .orange).tag(1)
+                sidebarItem("外觀", icon: "paintbrush", color: .pink).tag(2)
+                sidebarItem("關於", icon: "info.circle", color: .gray).tag(3)
                 #endif
             }
             .listStyle(.sidebar)
@@ -53,6 +53,19 @@ struct ContentView: View {
         .onAppear { clampSelection() }
         .onReceive(NotificationCenter.default.publisher(for: .selectPrefsTab)) { note in
             if let idx = note.object as? Int { selection = idx; clampSelection() }
+        }
+    }
+
+    /// 側邊欄項目：系統設定式彩色圓角圖示＋標題
+    private func sidebarItem(_ title: String, icon: String, color: Color) -> some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 22, height: 22)
+                .background(RoundedRectangle(cornerRadius: 5).fill(color))
         }
     }
 

@@ -25,19 +25,12 @@ private let inputOptions: [InputOption] = {
     return opts
 }()
 
-private let panelOptions: [InputOption] = [
-    .init(id: "cursor", label: "游標跟隨", icon: "cursorarrow.click", desc: "選字窗跟游標"),
-    .init(id: "fixed",  label: "固定位置", icon: "rectangle.bottomhalf.filled", desc: "選字窗固定底部"),
-]
-
 struct InputTab: View {
     @Bindable var store: PrefsStore
     @State private var importResult: ImportResult?
     @State private var cinImported = false
     @State private var cinSize: Int64 = 0
     @State private var showImportForm = false
-
-    private let columns = [GridItem(.adaptive(minimum: 128), spacing: 8)]
 
     /// 匯入結果回饋（成功／失敗共用同一個 alert）
     struct ImportResult: Identifiable {
@@ -87,11 +80,14 @@ struct InputTab: View {
                 }
                 }
 
-                Label("選字窗", systemImage: "keyboard").font(Typo.h2)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                    ForEach(panelOptions) { opt in
-                        panelCard(opt)
-                    }
+                SettingsSection(title: "選字窗") {
+                    ChoiceRow(label: "游標跟隨", icon: "cursorarrow.click",
+                              desc: "選字窗跟游標",
+                              selected: store.panelPosition == "cursor") { store.panelPosition = "cursor" }
+                    InsetDivider()
+                    ChoiceRow(label: "固定位置", icon: "rectangle.bottomhalf.filled",
+                              desc: "選字窗固定底部",
+                              selected: store.panelPosition == "fixed") { store.panelPosition = "fixed" }
                 }
 
                 // 選字窗 demo — 只顯示選中的模式，外圍加「預覽」標籤
@@ -121,9 +117,7 @@ struct InputTab: View {
                 .frame(maxWidth: .infinity)
                 }
 
-                SectionDivider()
-                Label("輸入功能", systemImage: "character.cursor.ibeam").font(Typo.h2)
-                SettingsGroupBox {
+                SettingsSection(title: "輸入功能") {
                     ForEach(Array(inputOptions.enumerated()), id: \.element.id) { i, opt in
                         if i > 0 { InsetDivider() }
                         ToggleRow(label: opt.label, icon: opt.icon, desc: opt.desc,
@@ -133,60 +127,65 @@ struct InputTab: View {
 
                 // ── Shift+數字鍵輸出 ──
                 #if !MINIMAL
-                SectionDivider()
-                Label("Shift＋數字鍵（候選顯示時）", systemImage: "shift").font(Typo.h2)
-                Text("候選字／聯想顯示中，按住 Shift 再按數字列的輸出。閒置狀態恆為符號；組字中 Shift+8 萬用碼不受影響。")
-                    .font(Typo.hint).foregroundStyle(.secondary)
-                LazyVGrid(columns: columns, spacing: 8) {
-                    shiftDigitCard("symbol", label: "符號 !@#$%", icon: "exclamationmark", desc: "全系統慣例（預設）")
-                    shiftDigitCard("digit", label: "數字 12345", icon: "number", desc: "候選顯示時快速輸入數字")
+                SettingsSection(title: "Shift＋數字鍵（候選顯示時）",
+                                footnote: "候選字／聯想顯示中，按住 Shift 再按數字列的輸出。閒置狀態恆為符號；組字中 Shift+8 萬用碼不受影響。") {
+                    ChoiceRow(label: "符號 !@#$%", icon: "exclamationmark",
+                              desc: "全系統慣例（預設）",
+                              selected: store.shiftDigitOutput == "symbol") { store.shiftDigitOutput = "symbol" }
+                    InsetDivider()
+                    ChoiceRow(label: "數字 12345", icon: "number",
+                              desc: "候選顯示時快速輸入數字",
+                              selected: store.shiftDigitOutput == "digit") { store.shiftDigitOutput = "digit" }
                 }
                 #endif
 
                 // ── 中英切換鍵（issue #18）──
-                SectionDivider()
-                Label("中英切換鍵", systemImage: "capslock").font(Typo.h2)
-                Text("切換中／英模式的按鍵。選 ⇪ 或「兩者」後 Caps Lock 成為專用切換鍵（大寫燈不亮、大寫改由 Shift＋字母）；注意 macOS 會丟棄過快的輕點（<100ms），需稍長一點按壓。選「全都不用」時英文改從輸入法選單點選。")
-                    .font(Typo.hint).foregroundStyle(.secondary)
-                LazyVGrid(columns: columns, spacing: 8) {
-                    toggleKeyCard("shift", label: "Shift 快按", icon: "shift", desc: "全系統慣例（預設）")
-                    toggleKeyCard("capslock", label: "⇪ Caps Lock", icon: "capslock", desc: "改用 ⇪ 切換")
-                    toggleKeyCard("both", label: "兩者皆可", icon: "keyboard", desc: "⇪ 與 Shift 快按都能切")
-                    toggleKeyCard("none", label: "全都不用", icon: "keyboard.badge.ellipsis", desc: "只從輸入法選單切換")
+                SettingsSection(title: "中英切換鍵",
+                                footnote: "切換中／英模式的按鍵。選 ⇪ 或「兩者」後 Caps Lock 成為專用切換鍵（大寫燈不亮、大寫改由 Shift＋字母）；注意 macOS 會丟棄過快的輕點（<100ms），需稍長一點按壓。選「全都不用」時英文改從輸入法選單點選。") {
+                    ChoiceRow(label: "Shift 快按", icon: "shift",
+                              desc: "全系統慣例（預設）",
+                              selected: store.englishToggleKey == "shift") { store.englishToggleKey = "shift" }
+                    InsetDivider()
+                    ChoiceRow(label: "⇪ Caps Lock", icon: "capslock",
+                              desc: "改用 ⇪ 切換",
+                              selected: store.englishToggleKey == "capslock") { store.englishToggleKey = "capslock" }
+                    InsetDivider()
+                    ChoiceRow(label: "兩者皆可", icon: "keyboard",
+                              desc: "⇪ 與 Shift 快按都能切",
+                              selected: store.englishToggleKey == "both") { store.englishToggleKey = "both" }
+                    InsetDivider()
+                    ChoiceRow(label: "全都不用", icon: "keyboard.badge.ellipsis",
+                              desc: "只從輸入法選單切換",
+                              selected: store.englishToggleKey == "none") { store.englishToggleKey = "none" }
                 }
 
                 // ── 密碼／安全欄位 ──
-                SectionDivider()
-                Label("密碼／安全欄位", systemImage: "lock.shield").font(Typo.h2)
-                Text("macOS 安全輸入啟用時（密碼欄、Keychain 對話框等），預設輸入法暫停、按鍵原樣送達——避免組字緩衝、字頻學習、debug 記錄接觸密碼。某些 app 會卡住安全輸入不放，造成整個 app 無法輸入；此時可開啟下方選項強行使用。無論是否開啟，安全期間 debug 記錄與字頻學習一律靜音。")
-                    .font(Typo.hint).foregroundStyle(.secondary)
-                SettingsGroupBox {
+                SettingsSection(title: "密碼／安全欄位",
+                                footnote: "macOS 安全輸入啟用時（密碼欄、Keychain 對話框等），預設輸入法暫停、按鍵原樣送達——避免組字緩衝、字頻學習、debug 記錄接觸密碼。某些 app 會卡住安全輸入不放，造成整個 app 無法輸入；此時可開啟上方選項強行使用。無論是否開啟，安全期間 debug 記錄與字頻學習一律靜音。") {
                     ToggleRow(label: "密碼欄位照打", icon: "lock.open",
                               desc: "安全輸入時仍處理按鍵（預設關，慎用）",
                               on: $store.allowSecureInput)
                 }
 
                 // ── 固定排序 ──
-                SectionDivider()
                 DisclosureGroup {
                     PinnedOrderSection()
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
-                        Label("固定同碼字排序", systemImage: "pin.fill").font(Typo.h2)
+                        Text("固定同碼字排序").font(.system(size: 13, weight: .semibold))
                         Text("指定某碼的候選字固定順序，不受學習排序影響。")
-                            .font(Typo.hint).foregroundStyle(.secondary)
+                            .font(Typo.caption).foregroundStyle(.secondary)
                     }
                 }
 
                 // ── 查字歷史 ──
-                SectionDivider()
                 DisclosureGroup {
                     LookupHistorySection()
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
-                        Label("查字歷史", systemImage: "clock.arrow.circlepath").font(Typo.h2)
+                        Text("查字歷史").font(.system(size: 13, weight: .semibold))
                         Text("反查模式（注音／同音／拼音）選字送出的自動記錄——就是「不會拆碼的字」清單，可匯出複習。")
-                            .font(Typo.hint).foregroundStyle(.secondary)
+                            .font(Typo.caption).foregroundStyle(.secondary)
                     }
                 }
 
@@ -292,33 +291,6 @@ struct InputTab: View {
     private var sharedDir: String {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         return appSupport.appendingPathComponent("Yabomish", isDirectory: true).path
-    }
-
-    @ViewBuilder
-    private func panelCard(_ opt: InputOption) -> some View {
-        SelectableCardView(label: opt.label, desc: opt.desc,
-                           selected: store.panelPosition == opt.id,
-                           icon: opt.icon) { store.panelPosition = opt.id }
-    }
-
-    #if !MINIMAL
-    @ViewBuilder
-    private func shiftDigitCard(_ id: String, label: String, icon: String, desc: String) -> some View {
-        SelectableCardView(label: label, desc: desc,
-                           selected: store.shiftDigitOutput == id,
-                           icon: icon,
-                           showCheckmark: false,
-                           labelLineLimit: 1) { store.shiftDigitOutput = id }
-    }
-    #endif
-
-    @ViewBuilder
-    private func toggleKeyCard(_ id: String, label: String, icon: String, desc: String) -> some View {
-        SelectableCardView(label: label, desc: desc,
-                           selected: store.englishToggleKey == id,
-                           icon: icon,
-                           showCheckmark: false,
-                           labelLineLimit: 1) { store.englishToggleKey = id }
     }
 
     private func binding(for key: String) -> Binding<Bool> {

@@ -161,13 +161,48 @@ class YabomishInputController: IMKInputController {
         }
     }
 
+    /// 依偏好組合 toast 字體：system／rounded（SF Rounded）／serif（宋體系）
+    private func toastLabelFont(size: CGFloat) -> NSFont {
+        switch YabomishPrefs.toastFontStyle {
+        case "rounded":
+            if let desc = NSFont.systemFont(ofSize: size, weight: .semibold).fontDescriptor.withDesign(.rounded),
+               let f = NSFont(descriptor: desc, size: size) { return f }
+            return .systemFont(ofSize: size, weight: .semibold)
+        case "serif":
+            return NSFont(name: "Songti-TC", size: size) ?? .systemFont(ofSize: size, weight: .medium)
+        default:
+            return .systemFont(ofSize: size, weight: .medium)
+        }
+    }
+
+    /// #RRGGBB → NSColor（解析失敗回 fallback）
+    private static func hexColor(_ hex: String, fallback: NSColor) -> NSColor {
+        var s = hex.trimmingCharacters(in: .whitespaces)
+        if s.hasPrefix("#") { s.removeFirst() }
+        guard s.count == 6, let v = UInt64(s, radix: 16) else { return fallback }
+        return NSColor(srgbRed: CGFloat((v >> 16) & 0xFF) / 255,
+                       green: CGFloat((v >> 8) & 0xFF) / 255,
+                       blue: CGFloat(v & 0xFF) / 255, alpha: 1)
+    }
+
     /// 建立並顯示 HUD 提示：先收起同槽位舊窗，淡出後僅在仍是同窗時清空槽位。
     private func showToast(_ text: String, style: ToastStyle, duration: Double, slot: ToastSlot) {
         Self.toastPanel(for: slot)?.orderOut(nil)
         guard let screen = NSScreen.main else { return }
         let label = NSTextField(labelWithString: text)
         label.font = style.font
-        label.textColor = .white
+        let fill = Self.hexColor(YabomishPrefs.toastTextColor, fallback: .white)
+        if YabomishPrefs.toastStroke {
+            // 字幕式描邊：strokeWidth 負值＝填色＋外框並存
+            label.attributedStringValue = NSAttributedString(string: text, attributes: [
+                .font: style.font,
+                .foregroundColor: fill,
+                .strokeColor: Self.hexColor(YabomishPrefs.toastStrokeColor, fallback: .black),
+                .strokeWidth: -4.0,
+            ])
+        } else {
+            label.textColor = fill
+        }
         label.alignment = .center
         label.sizeToFit()
         let w = max(label.frame.width + style.horizontalPadding, style.minWidth)
@@ -200,7 +235,7 @@ class YabomishInputController: IMKInputController {
 
     private func showModeToast(_ text: String) {
         showToast(text, style: ToastStyle(
-            font: .systemFont(ofSize: YabomishPrefs.toastFontSize, weight: .medium),
+            font: toastLabelFont(size: YabomishPrefs.toastFontSize),
             horizontalPadding: 32, minWidth: 56, verticalPadding: 20,
             vertical: .centered, cornerRadius: 12, labelYOffset: 10
         ), duration: 0.6, slot: .mode)

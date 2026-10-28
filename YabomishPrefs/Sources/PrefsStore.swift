@@ -10,6 +10,12 @@ import Foundation
         UserDefaults.standard.string(forKey: "prefsSuite")
         ?? "com.yabomishim.inputmethod.YabomishIM") ?? .standard
 
+    /// IM 端 AppConstants.sharedDir 對應的資料目錄名（dev suite → YabomishDev）。
+    var dataDirName: String {
+        (UserDefaults.standard.string(forKey: "prefsSuite") ?? "").contains("Dev")
+            ? "YabomishDev" : "Yabomish"
+    }
+
     // MARK: - Suggestion
 
     #if !MINIMAL
@@ -78,6 +84,22 @@ import Foundation
     var toastOpacity: Double {
         get { access(keyPath: \.toastOpacity); return ud.object(forKey: "toastOpacity") as? Double ?? 1.0 }
         set { withMutation(keyPath: \.toastOpacity) { ud.set(newValue, forKey: "toastOpacity") }; postChange() }
+    }
+    var toastFontStyle: String {
+        get { access(keyPath: \.toastFontStyle); return ud.string(forKey: "toastFontStyle") ?? "system" }
+        set { withMutation(keyPath: \.toastFontStyle) { ud.set(newValue, forKey: "toastFontStyle") }; postChange() }
+    }
+    var toastTextColor: String {
+        get { access(keyPath: \.toastTextColor); return ud.string(forKey: "toastTextColor") ?? "#FFFFFF" }
+        set { withMutation(keyPath: \.toastTextColor) { ud.set(newValue, forKey: "toastTextColor") }; postChange() }
+    }
+    var toastStroke: Bool {
+        get { access(keyPath: \.toastStroke); return ud.object(forKey: "toastStroke") as? Bool ?? false }
+        set { withMutation(keyPath: \.toastStroke) { ud.set(newValue, forKey: "toastStroke") }; postChange() }
+    }
+    var toastStrokeColor: String {
+        get { access(keyPath: \.toastStrokeColor); return ud.string(forKey: "toastStrokeColor") ?? "#000000" }
+        set { withMutation(keyPath: \.toastStrokeColor) { ud.set(newValue, forKey: "toastStrokeColor") }; postChange() }
     }
 
     // MARK: - Panel

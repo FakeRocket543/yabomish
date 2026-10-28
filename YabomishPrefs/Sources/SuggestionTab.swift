@@ -50,7 +50,7 @@ struct SuggestionTab: View {
 
     var body: some View {
         SettingsPage {
-                Label("語境切換", systemImage: "arrow.triangle.swap").font(Typo.h2)
+                SettingsHeader("語境切換")
                 VStack(alignment: .leading, spacing: 4) {
                     Text("一鍵切換輸入模式、聯想策略、詞庫組合與地區用詞。")
                         .font(Typo.body)
@@ -77,7 +77,7 @@ struct SuggestionTab: View {
 
                 // 2. Layer order
                 SectionDivider()
-                Label("聯想層順序", systemImage: "square.3.layers.3d").font(Typo.h2)
+                SettingsHeader("聯想層順序")
                 Text("Emoji 排最前時一定看得到；排其餘位置則文字聯想優先，聯想列有空位才顯示。")
                     .font(Typo.hint).foregroundStyle(.secondary)
                 LazyVGrid(columns: layerColumns, spacing: 8) {
@@ -106,7 +106,7 @@ struct SuggestionTab: View {
 
                 // 3. Word corpus source
                 SectionDivider()
-                Label("詞級語料來源", systemImage: "text.book.closed").font(Typo.h2)
+                SettingsHeader("詞級語料來源")
                 LazyVGrid(columns: threeColumns, spacing: 8) {
                     ForEach(corpusEntries) { entry in
                         corpusCard(entry)
@@ -115,7 +115,7 @@ struct SuggestionTab: View {
 
                 // 3b. 用詞習慣（屬 Corpus 策略：影響候選排序權重）
                 SectionDivider()
-                Label("用詞習慣", systemImage: "map").font(Typo.h2)
+                SettingsHeader("用詞習慣")
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                     regionCard("tw", label: "臺灣用詞", icon: "漢", desc: "臺灣慣用詞優先")
                     regionCard("cn", label: "中式用詞", icon: "汉", desc: "中式慣用詞優先")
@@ -124,7 +124,7 @@ struct SuggestionTab: View {
                 // 4. General domains
                 SectionDivider()
                 HStack {
-                    Label("一般詞庫", systemImage: "books.vertical").font(Typo.h2)
+                    SettingsHeader("一般詞庫")
                     Spacer()
                     TextField("搜尋詞庫", text: $domainQuery)
                         .textFieldStyle(.roundedBorder)
@@ -151,9 +151,8 @@ struct SuggestionTab: View {
                         }
                     }
                 }
-                .font(Typo.h2)
+                .font(.system(size: 13, weight: .semibold))
 
-                // 6. Bottom bar
                 // 6. Bottom bar
                 HStack {
                     Button("重置") { showResetConfirm = true }

@@ -44,13 +44,13 @@ struct ShortcutTab: View {
 
                 #if !MINIMAL
                 // ── 詞庫查詢 ──
-                Label("詞庫查詢", systemImage: "magnifyingglass").font(Typo.h2)
+                SettingsHeader("詞庫查詢")
                 corpusSearchSection
 
                 // ── 快捷碼說明 ──
                 SectionDivider()
                 #endif
-                Label("快捷碼", systemImage: "bolt.fill").font(Typo.h2)
+                SettingsHeader("快捷碼")
                 VStack(alignment: .leading, spacing: 6) {
                     Text("把空碼變成你的快捷碼 — 打 2–4 碼直接輸出整段文字。")
                         .font(Typo.hint)
@@ -60,7 +60,7 @@ struct ShortcutTab: View {
 
                 // Demo examples
                 SectionDivider()
-                Label("範例", systemImage: "lightbulb").font(Typo.h2)
+                SettingsHeader("範例")
                 VStack(alignment: .leading, spacing: 4) {
                         demoRow("agpt", "請用繁體中文回答，並附上參考來源")
                         demoRow("amtg", "@channel 今天的 standup 更新如下：")
@@ -70,12 +70,12 @@ struct ShortcutTab: View {
 
                 // ── 新增 ──
                 SectionDivider()
-                Label("新增快捷碼", systemImage: "plus.circle").font(Typo.h2)
+                SettingsHeader("新增快捷碼")
                 addSection
 
                 // ── 列表 ──
                 SectionDivider()
-                Label("已建立", systemImage: "list.bullet").font(Typo.h2)
+                SettingsHeader("已建立")
                 listSection
 
                 Text("檔案路徑：~/Library/Application Support/Yabomish/tables/user_shortcuts.txt\n# 開頭為註解，可用來分類。修改後輸入 ,,RL + 空白鍵 即時重載。")

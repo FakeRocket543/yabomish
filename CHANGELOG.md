@@ -12,6 +12,8 @@
 - **模式提示透明度 `toastOpacity`（30–100%）**：既有中央 HUD 提示新增透明度偏好，搭配原有 `toastFontSize`（外觀分頁「模式提示」下方「提示透明度」滑桿）
 - **偏好設定程式改版為系統設定格局**：頂部 TabView 改 `NavigationSplitView` 側邊欄；內容經新元件 `SettingsPage` 置中限寬 720pt；開關型設定改 `SettingsGroupBox`+`ToggleRow` 群組列（與互斥選項卡語意分層）；卡片 desc 放寬至 3 行、選字窗 demo 加「預覽」標籤；多處 token／間距／a11y 一致性修正
 - **YabomishDev 專屬 β 圖示**：dev 中文 mode 改用黑底 β 徽章（`icon_dev.tiff`），與 stable 蝦字圖示在 menu bar 一眼區分；英文 mode 仍為 ABC
+- **HUD 提示個性化（字幕式）**：`toastFontStyle`（系統／圓體／明體，明體用 Songti-TC、缺字回退系統體）、`toastTextColor` 文字色、`toastStroke` 描邊開關與 `toastStrokeColor` 描邊色（NSAttributedString 負 strokeWidth＝填色＋外框，字幕同原理），外觀分頁提供字體分段選項與 ColorPicker
+- **偏好設定程式第二輪原生化**：互斥選項從大卡片改為群組列＋右側勾選記號（`ChoiceRow`）或分段控制（`SegmentedRow`）；section 標題改純文字（`SettingsHeader`）、移除圖示與橫線，群組下方小字註腳（`SettingsFootnote`）；側邊欄項目改彩色圓角圖示；「打開 debug.log」按鈕依 suite 指向正確資料目錄（dev 開 YabomishDev/debug.log）
 
 ## [0.3.65] — 2026-09-23
 

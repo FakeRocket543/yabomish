@@ -30,6 +30,10 @@ struct YabomishPrefs {
         var showCodeHint = false
         var toastFontSize: CGFloat = 36.0
         var toastOpacity: CGFloat = 1.0
+        var toastFontStyle = "system"     // system / rounded / serif
+        var toastTextColor = "#FFFFFF"
+        var toastStroke = false
+        var toastStrokeColor = "#000000"
         var showActivateToast = true
         var switchDisplay = "Yabo"
         var appearanceMode = "auto"
@@ -86,6 +90,10 @@ struct YabomishPrefs {
         s.showCodeHint = defaults.object(forKey: "showCodeHint") as? Bool ?? false
         s.toastFontSize = CGFloat(defaults.object(forKey: "toastFontSize") as? Double ?? 36.0)
         s.toastOpacity = CGFloat(defaults.object(forKey: "toastOpacity") as? Double ?? 1.0)
+        s.toastFontStyle = defaults.string(forKey: "toastFontStyle") ?? "system"
+        s.toastTextColor = defaults.string(forKey: "toastTextColor") ?? "#FFFFFF"
+        s.toastStroke = defaults.object(forKey: "toastStroke") as? Bool ?? false
+        s.toastStrokeColor = defaults.string(forKey: "toastStrokeColor") ?? "#000000"
         s.showActivateToast = defaults.object(forKey: "showActivateToast") as? Bool ?? true
         s.switchDisplay = defaults.string(forKey: "switchDisplay") ?? "Yabo"
         // 舊值遷移：繁中／🦐 已移除，統一為 Yabo
@@ -300,6 +308,30 @@ struct YabomishPrefs {
         }
     }
 
+    /// Toast 字體風格: "system" / "rounded" / "serif"
+    static var toastFontStyle: String {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.toastFontStyle }
+        set { defaults.set(newValue, forKey: "toastFontStyle"); refreshSnapshot() }
+    }
+
+    /// Toast 文字色（#RRGGBB hex）
+    static var toastTextColor: String {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.toastTextColor }
+        set { defaults.set(newValue, forKey: "toastTextColor"); refreshSnapshot() }
+    }
+
+    /// Toast 文字描邊（字幕式外框，亮背景可讀）
+    static var toastStroke: Bool {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.toastStroke }
+        set { defaults.set(newValue, forKey: "toastStroke"); refreshSnapshot() }
+    }
+
+    /// Toast 描邊色（#RRGGBB hex）
+    static var toastStrokeColor: String {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.toastStrokeColor }
+        set { defaults.set(newValue, forKey: "toastStrokeColor"); refreshSnapshot() }
+    }
+
     /// 切換進 Yabomish 時顯示模式 toast
     static var showActivateToast: Bool {
         get {
@@ -380,7 +412,8 @@ struct YabomishPrefs {
             let knownKeys = [
                 "autoCommit", "panelPosition", "fixedAlignment", "fixedAlpha", "fixedYOffset",
                 "fontSize", "fixedFontSize", "showCodeHint", "zhuyinReverseLookup",
-                "toastFontSize", "toastOpacity", "showActivateToast", "menuBarLabel",
+                "toastFontSize", "toastOpacity", "toastFontStyle", "toastTextColor",
+                "toastStroke", "toastStrokeColor", "showActivateToast", "menuBarLabel",
                 "appearanceMode",
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",

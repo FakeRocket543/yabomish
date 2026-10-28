@@ -226,5 +226,26 @@ do {
     setToggle("shift")
 }
 
+// ─── E13: HUD 個性化 prefs 讀寫與預設 ───
+do {
+    check(YabomishPrefs.toastFontStyle == "system", "E13a toastFontStyle 預設 system")
+    check(YabomishPrefs.toastTextColor == "#FFFFFF", "E13b toastTextColor 預設白")
+    check(YabomishPrefs.toastStroke == false, "E13c toastStroke 預設關")
+    check(YabomishPrefs.toastStrokeColor == "#000000", "E13d toastStrokeColor 預設黑")
+    for v in ["rounded", "serif", "system"] {
+        YabomishPrefs.toastFontStyle = v
+        check(YabomishPrefs.toastFontStyle == v, "E13e toastFontStyle=\(v) 寫入/讀回")
+    }
+    YabomishPrefs.toastTextColor = "#FF8800"
+    check(YabomishPrefs.toastTextColor == "#FF8800", "E13f toastTextColor 寫入/讀回")
+    YabomishPrefs.toastTextColor = "#FFFFFF"
+    YabomishPrefs.toastStroke = true
+    check(YabomishPrefs.toastStroke == true, "E13g toastStroke 開啟")
+    YabomishPrefs.toastStroke = false
+    YabomishPrefs.toastStrokeColor = "#112233"
+    check(YabomishPrefs.toastStrokeColor == "#112233", "E13h toastStrokeColor 寫入/讀回")
+    YabomishPrefs.toastStrokeColor = "#000000"
+}
+
 print("\n=== \(passed) passed, \(failed) failed ===")
 exit(failed == 0 ? 0 : 1)
