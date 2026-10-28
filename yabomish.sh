@@ -229,9 +229,39 @@ do_rollback() {
 }
 
 install_prefs() {
-    # dev 變體共用 stable 的 Prefs app（寫 stable suite）；
-    # dev 自己的偏好用 defaults write $IM_BUNDLE_ID 設定，不需 Prefs 副本。
-    [ "${YABOMISH_DEV:-0}" = "1" ] && { ok "dev 變體不裝 Prefs（用 defaults write $IM_BUNDLE_ID 設定）"; return 0; }
+    if [ "${YABOMISH_DEV:-0}" = "1" ]; then
+        # dev 變體：~/Applications 下產生自給自足的偏好設定 app——
+        # 內嵌本輪 build 的 Prefs binary 與資源，launch script 以
+        # -prefsSuite $IM_BUNDLE_ID 啟動（user-level 免 sudo，
+        # 不依賴 /Applications 的 stable 版本）。
+        [ ! -d "$PREFS_APP" ] && err "請先選 1 或 2 編譯"
+        local WAPP="$HOME/Applications/${IM_APP_NAME}Prefs.app"
+        rm -rf "$WAPP"
+        mkdir -p "$WAPP/Contents/MacOS" "$WAPP/Contents/Resources"
+        cp "$PREFS_APP/Contents/MacOS/YabomishPrefs" "$WAPP/Contents/MacOS/"
+        cp -R "$PREFS_APP/Contents/Resources" "$WAPP/Contents/" 2>/dev/null || true
+        cat > "$WAPP/Contents/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key><string>${IM_BUNDLE_ID}.prefs</string>
+	<key>CFBundleName</key><string>${IM_APP_NAME}Prefs</string>
+	<key>CFBundleDisplayName</key><string>${IM_APP_NAME} 偏好設定</string>
+	<key>CFBundleExecutable</key><string>launch</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+</dict>
+</plist>
+EOF
+        cat > "$WAPP/Contents/MacOS/launch" <<EOF
+#!/bin/bash
+cd "\$(dirname "\$0")" && exec ./YabomishPrefs -prefsSuite $IM_BUNDLE_ID
+EOF
+        chmod +x "$WAPP/Contents/MacOS/launch" "$WAPP/Contents/MacOS/YabomishPrefs"
+        ok "偏好設定 app -> ~/Applications/${IM_APP_NAME}Prefs.app（點開即 dev suite）"
+        return 0
+    fi
     [ ! -d "$PREFS_APP" ] && err "請先選 1 或 2 編譯"
     printf "${C}> 安裝偏好設定...${N}\n"
     sudo -v   # 預先快取 sudo 時間戳
@@ -261,6 +291,8 @@ do_uninstall() {
     if [ "${YABOMISH_DEV:-0}" != "1" ]; then
         $SUDO rm -rf "$HOME/Library/Input Methods/$IM_APP_NAME.app"   # all_platforms.sh 裝在使用者層級的副本
         $SUDO rm -rf /Applications/YabomishPrefs.app
+    else
+        rm -rf "$HOME/Applications/${IM_APP_NAME}Prefs.app"   # dev prefs wrapper
     fi
     defaults delete $IM_BUNDLE_ID 2>/dev/null || true
     local WIPE="n"

@@ -2,8 +2,13 @@ import Foundation
 
 /// Thin @Observable wrapper over the same UserDefaults keys used by YabomishPrefs (in the IM bundle).
 /// All reads/writes go directly through UserDefaults — no stored copies, no duplicated defaults.
+/// 啟動參數 `-prefsSuite <suite>` 可改指其他 suite（dev 變體用，例如
+/// `YabomishPrefs -prefsSuite com.yabomishim.inputmethod.YabomishIMDev`）；
+/// NSArgumentDomain 自動把 `-prefsSuite value` 收進 standard defaults。
 @Observable final class PrefsStore {
-    @ObservationIgnored private let ud = UserDefaults(suiteName: "com.yabomishim.inputmethod.YabomishIM") ?? .standard
+    @ObservationIgnored private let ud = UserDefaults(suiteName:
+        UserDefaults.standard.string(forKey: "prefsSuite")
+        ?? "com.yabomishim.inputmethod.YabomishIM") ?? .standard
 
     // MARK: - Suggestion
 
