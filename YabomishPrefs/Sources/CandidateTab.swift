@@ -37,6 +37,35 @@ struct CandidateTab: View {
                 .padding(.horizontal, 12).padding(.vertical, 8)
             }
 
+            SettingsSection(title: "候選字體",
+                            footnote: "字體、字色與描邊同時套用於候選窗與模式提示；反白列保留系統選取色。") {
+                SegmentedRow("字型", selection: $store.toastFontStyle,
+                             options: [("system", "系統"), ("rounded", "圓體"),
+                                       ("serif", "明體"), ("heiti", "黑體")])
+                InsetDivider()
+                HStack {
+                    Text("字色").font(Typo.body)
+                    Spacer()
+                    ColorPicker("", selection: $store.toastTextColor.asColor(), supportsOpacity: false)
+                        .labelsHidden()
+                }
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                InsetDivider()
+                HStack {
+                    Text("描邊").font(Typo.body)
+                    Spacer()
+                    if store.toastStroke {
+                        ColorPicker("", selection: $store.toastStrokeColor.asColor(), supportsOpacity: false)
+                            .labelsHidden()
+                    }
+                    Toggle("", isOn: $store.toastStroke)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 8)
+            }
+
             SettingsSection(title: "固定窗背景") {
                 VStack(spacing: 10) {
                     sliderRow(label: "透明度", value: $store.fixedAlpha, in: 0.3...1.0, step: 0.05, format: { "\(Int($0 * 100))%" })

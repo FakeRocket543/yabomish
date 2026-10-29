@@ -122,6 +122,10 @@ struct ContentView: View {
     @State private var selection: Int? = 0
     @State private var query = ""
 
+    /// .preferredColorScheme 解析後的實際深淺（auto 時跟隨系統），
+    /// 供側邊欄圖示等需要「實際模式」而非「偏好字串」的判斷用。
+    @Environment(\.colorScheme) private var resolvedScheme
+
     private var colorScheme: ColorScheme? {
         switch store.appearanceMode {
         case "light": return .light
@@ -209,16 +213,24 @@ struct ContentView: View {
         }
     }
 
-    /// 側邊欄項目：系統設定式彩色圓角圖示＋標題
+    /// 側邊欄項目：淺色＝系統設定式彩色圓角圖示；深色＝同色描邊圖示無底色
+    /// （深色下彩色底+白字小圖不易辨識，描邊圖示對比更高）。
     private func sidebarItem(_ item: NavItem) -> some View {
         Label {
             Text(item.title)
         } icon: {
-            Image(systemName: item.icon)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 22, height: 22)
-                .background(RoundedRectangle(cornerRadius: 5).fill(item.color))
+            if resolvedScheme == .dark {
+                Image(systemName: item.icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(item.color)
+                    .frame(width: 22, height: 22)
+            } else {
+                Image(systemName: item.icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 22, height: 22)
+                    .background(RoundedRectangle(cornerRadius: 5).fill(item.color))
+            }
         }
     }
 

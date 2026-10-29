@@ -351,5 +351,106 @@ do {
     YabomishPrefs.englishSuggest = true
 }
 
+// ─── E15: 候選窗個性化渲染（與 HUD 共用 toast* 偏好）───
+// 實體化 CandidatePanel 走公開 show API,由視圖層級檢驗字型/字色/描邊/背景層。
+do {
+    let panel = CandidatePanel.shared
+    // 存還原值——e2e binary 沒 bundle id,suite 落到 stable,必須全部復原
+    let d = YabomishPrefs.defaults
+    let savedColorObj = d.object(forKey: "toastTextColor")
+    let savedStyle = YabomishPrefs.toastFontStyle
+    let savedStroke = YabomishPrefs.toastStroke
+    let savedStrokeColor = YabomishPrefs.toastStrokeColor
+    let savedHC = YabomishPrefs.highContrast
+    let savedPos = YabomishPrefs.panelPosition
+    let savedAlpha = YabomishPrefs.fixedAlpha
+    let savedVE = YabomishPrefs.visualEffects
+
+    func e15Labels() -> [NSTextField] {
+        for v in panel.contentView?.subviews ?? [] {
+            if let sv = v as? NSStackView {
+                return sv.arrangedSubviews.compactMap { $0 as? NSTextField }
+            }
+        }
+        return []
+    }
+    func e15Backdrop() -> NSView? { panel.contentView?.subviews.first }
+
+    YabomishPrefs.panelPosition = "cursor"
+    YabomishPrefs.highContrast = false
+    YabomishPrefs.toastFontStyle = "serif"
+    YabomishPrefs.toastStroke = false
+    YabomishPrefs.toastTextColor = "#FF8800"
+
+    panel.show(candidates: ["蝦", "米", "蟹"], selKeys: ["1", "2", "3"], at: NSPoint(x: 100, y: 500))
+    var labs = e15Labels()
+    check(labs.count >= 3, "E15a0 游標模式產出標籤列")
+    if labs.count >= 3 {
+        // 明體解析命中 Songti TC（一般列；labs[0] 為反白列）
+        check((labs[1].font?.familyName ?? "").contains("Songti"), "E15a 明體→Songti TC 套用候選")
+        // 自訂字色 #FF8800 套用一般列（無描邊時走 textColor）
+        let g = labs[1].textColor?.usingColorSpace(.sRGB)?.greenComponent ?? -1
+        check(abs(g - 0.533) < 0.02, "E15b 自訂字色套用一般列")
+        // 反白列保留系統選取色，不吃自訂色
+        check(labs[0].drawsBackground == true, "E15c1 反白列保留底色")
+        let hg = labs[0].textColor?.usingColorSpace(.sRGB)?.greenComponent ?? -1
+        check(abs(hg - 0.533) >= 0.02, "E15c2 反白列不吃自訂字色")
+    }
+
+    // 描邊開啟→屬性字串帶負 strokeWidth＋描邊色
+    YabomishPrefs.toastStroke = true
+    panel.show(candidates: ["蝦", "米", "蟹"], selKeys: ["1", "2", "3"], at: NSPoint(x: 100, y: 500))
+    labs = e15Labels()
+    if labs.count >= 3 {
+        let attrs = labs[1].attributedStringValue.attributes(at: 0, effectiveRange: nil)
+        let sw = (attrs[.strokeWidth] as? NSNumber)?.doubleValue ?? 0
+        check(sw == -4.0 && attrs[.strokeColor] is NSColor, "E15d 描邊屬性（負 strokeWidth+描邊色）")
+    }
+
+    // 字色鍵未明確設定→走自適應 labelColor（不吃 HUD 白字預設）
+    d.removeObject(forKey: "toastTextColor")
+    YabomishPrefs.toastStroke = false
+    panel.show(candidates: ["蝦", "米", "蟹"], selKeys: ["1", "2", "3"], at: NSPoint(x: 100, y: 500))
+    labs = e15Labels()
+    if labs.count >= 3 {
+        let g = labs[1].textColor?.usingColorSpace(.sRGB)?.greenComponent ?? -1
+        check(abs(g - 0.533) >= 0.02, "E15e 未設字色→自適應 labelColor")
+    }
+    if let saved = savedColorObj { d.set(saved, forKey: "toastTextColor") }
+
+    // 固定模式：窗體不透明、fixedAlpha 只作用於背景層
+    YabomishPrefs.panelPosition = "fixed"
+    YabomishPrefs.fixedAlpha = 0.5
+    panel.show(candidates: ["蝦", "米", "蟹"], selKeys: ["1", "2", "3"], at: NSPoint(x: 100, y: 500))
+    let bgA = e15Backdrop()?.alphaValue ?? -1
+    check(abs(bgA - 0.5) < 0.01, "E15f 固定窗 fixedAlpha 只淡背景層")
+
+    // prefsChanged 即時刷新：不重 show 直接改視覺效果→背景層換型。
+    // observer 註冊在 .main queue——post 後要泵 runloop 才會執行。
+    func e15Pump() { RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1)) }
+    YabomishPrefs.visualEffects = "none"
+    DistributedNotificationCenter.default().postNotificationName(
+        .init("com.yabomish.prefsChanged"), object: nil, userInfo: nil, deliverImmediately: true)
+    e15Pump()
+    check(e15Backdrop() is FlatBackdropView, "E15g prefsChanged 即時刷新→純色背景層")
+
+    if #available(macOS 26.0, *) {
+        YabomishPrefs.visualEffects = "full"
+        DistributedNotificationCenter.default().postNotificationName(
+            .init("com.yabomish.prefsChanged"), object: nil, userInfo: nil, deliverImmediately: true)
+        e15Pump()
+        check(e15Backdrop() is NSGlassEffectView, "E15h full→NSGlassEffectView 背景層")
+    }
+
+    panel.hide()
+    YabomishPrefs.toastFontStyle = savedStyle
+    YabomishPrefs.toastStroke = savedStroke
+    YabomishPrefs.toastStrokeColor = savedStrokeColor
+    YabomishPrefs.highContrast = savedHC
+    YabomishPrefs.panelPosition = savedPos
+    YabomishPrefs.fixedAlpha = savedAlpha
+    YabomishPrefs.visualEffects = savedVE
+}
+
 print("\n=== \(passed) passed, \(failed) failed ===")
 exit(failed == 0 ? 0 : 1)

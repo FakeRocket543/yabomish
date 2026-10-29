@@ -12,6 +12,7 @@ final class CandidatePanel: NSPanel {
 
     private static var fontCache: [CGFloat: NSFont] = [:]
     private static var monoFontCache: [CGFloat: NSFont] = [:]
+    private static var styledFontCache: [String: NSFont] = [:]
 
     private static let hcShadow: NSShadow = {
         let s = NSShadow()
@@ -35,6 +36,22 @@ final class CandidatePanel: NSPanel {
         return f
     }
 
+    /// 個性化字體（toastFontStyle 驅動）——圓體/明體/黑體；style=="system" 不該走到這裡
+    private static func cachedStyledFont(style: String, size: CGFloat, weight: NSFont.Weight) -> NSFont {
+        let key = "\(style)|\(size)|\(weight.rawValue)"
+        if let f = styledFontCache[key] { return f }
+        let f = TextStyle.font(style: style, size: size, weight: weight)
+        styledFontCache[key] = f
+        return f
+    }
+
+    /// 使用者明確設過字色才回傳自訂色；否則 nil（走 .labelColor 深淺自適應）。
+    /// 預設值 "#FFFFFF" 是 HUD 深色底專用色，直接套用到候選窗會在淺色模式隱形。
+    private static func candidateTextColor() -> NSColor? {
+        guard YabomishPrefs.defaults.object(forKey: "toastTextColor") != nil else { return nil }
+        return TextStyle.color(YabomishPrefs.toastTextColor, fallback: .labelColor)
+    }
+
     private static let fullWidthDigitMap: [Character: String] = [
         "0": "０", "1": "１", "2": "２", "3": "３", "4": "４",
         "5": "５", "6": "６", "7": "７", "8": "８", "9": "９"
@@ -42,6 +59,7 @@ final class CandidatePanel: NSPanel {
 
     private var cachedFixedFont: NSFont?
     private var cachedHC: Bool?
+    private var cachedStyleSig: String?
     private var cachedNormalAttrs: [NSAttributedString.Key: Any]?
     private var cachedHighlightAttrs: [NSAttributedString.Key: Any]?
 
@@ -68,6 +86,9 @@ final class CandidatePanel: NSPanel {
 
     private var stackConstraints: [NSLayoutConstraint] = []
     private var fixedConstraints: [NSLayoutConstraint] = []
+
+    /// 視覺背景層：材質/玻璃/純色，壓在內容之下；透明度只作用於它，文字不透明。
+    private var backdrop: NSView?
 
     // MARK: - Fixed-mode views
 
@@ -108,34 +129,39 @@ final class CandidatePanel: NSPanel {
         self.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         self.appearance = YabomishPrefs.resolvedAppearance
 
-        // 外觀模式變更即時套用（偏好設定 app 廣播 prefsChanged）
+        // 偏好變更即時套用（偏好設定 app 廣播 prefsChanged）：
+        // 外觀之外，字體/字色/描邊/視覺效果/固定窗背景透明度也一併重畫——
+        // 固定窗常駐顯示，不能等下次組字才生效。
         prefsChangedToken = DistributedNotificationCenter.default().addObserver(
             forName: .init("com.yabomish.prefsChanged"), object: nil, queue: .main
         ) { [weak self] _ in
-            self?.appearance = YabomishPrefs.resolvedAppearance
+            guard let self else { return }
+            self.appearance = YabomishPrefs.resolvedAppearance
+            guard self.isVisible, !self.candidates.isEmpty else { return }
+            self.applySurface(fixed: self.isFixedMode)
+            self.rebuildCurrentMode()
         }
 
-        let contentVisual = NSVisualEffectView()
-        contentVisual.material = .popover
-        contentVisual.state = .active
-        contentVisual.wantsLayer = true
-        contentVisual.layer?.cornerRadius = 6
-        self.contentView = contentVisual
+        // 容器＋背景層疊構：內容（stackView/fixedLabel）直接釘在 contentView，
+        // 視覺背景是獨立 backdrop 子視圖壓在最底——
+        // 透明度只作用於背景層，文字永遠保持不透明。
+        self.contentView = NSView()
 
         // --- Cursor-mode setup (original) ---
         stackView.orientation = .vertical
         stackView.alignment = .leading
         stackView.spacing = 1
         stackView.edgeInsets = NSEdgeInsets(top: 4, left: 6, bottom: 4, right: 6)
-        contentVisual.addSubview(stackView)
+        contentView!.addSubview(stackView)
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackConstraints = [
-            stackView.topAnchor.constraint(equalTo: contentVisual.topAnchor),
-            stackView.leadingAnchor.constraint(equalTo: contentVisual.leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: contentVisual.trailingAnchor),
-            stackView.bottomAnchor.constraint(equalTo: contentVisual.bottomAnchor),
+            stackView.topAnchor.constraint(equalTo: contentView!.topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: contentView!.leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: contentView!.trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: contentView!.bottomAnchor),
         ]
         NSLayoutConstraint.activate(stackConstraints)
+        applySurface(fixed: false)
 
 
         for _ in 0..<pageSize {
@@ -167,14 +193,14 @@ final class CandidatePanel: NSPanel {
         fixedLabel.isEditable = false
         fixedLabel.translatesAutoresizingMaskIntoConstraints = false
         fixedLabel.isHidden = true
-        contentVisual.addSubview(fixedLabel)
+        contentView!.addSubview(fixedLabel)
         // 這組 constraint 只在固定模式時啟用 — 隱藏中的 fixedLabel 若保留
         // leading/trailing constraint，其殘留文字寬度會撐住視窗，
         // 讓游標模式的選字窗無法縮小
         fixedConstraints = [
-            fixedLabel.leadingAnchor.constraint(equalTo: contentVisual.leadingAnchor, constant: 12),
-            fixedLabel.trailingAnchor.constraint(equalTo: contentVisual.trailingAnchor, constant: -12),
-            fixedLabel.centerYAnchor.constraint(equalTo: contentVisual.centerYAnchor),
+            fixedLabel.leadingAnchor.constraint(equalTo: contentView!.leadingAnchor, constant: 12),
+            fixedLabel.trailingAnchor.constraint(equalTo: contentView!.trailingAnchor, constant: -12),
+            fixedLabel.centerYAnchor.constraint(equalTo: contentView!.centerYAnchor),
         ]
         NSLayoutConstraint.activate(fixedConstraints)
 
@@ -182,7 +208,7 @@ final class CandidatePanel: NSPanel {
         let tracking = NSTrackingArea(rect: .zero,
             options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
             owner: self, userInfo: nil)
-        contentVisual.addTrackingArea(tracking)
+        contentView!.addTrackingArea(tracking)
 
         // Screen change observer
         NotificationCenter.default.addObserver(
@@ -404,6 +430,41 @@ final class CandidatePanel: NSPanel {
         orderFront(nil)
     }
 
+    /// 依 (模式, visualEffects) 重建背景層：
+    /// none→純色不透明、full+macOS26→玻璃、其餘→原材質。
+    /// fixedAlpha 只套在背景層——窗體可幽靈化，文字永遠不透明。
+    private func applySurface(fixed: Bool) {
+        guard let host = contentView else { return }
+        backdrop?.removeFromSuperview()
+        let bg: NSView
+        if YabomishPrefs.visualEffects == "none" {
+            let v = FlatBackdropView()
+            v.radius = fixed ? 8 : 6
+            bg = v
+        } else if #available(macOS 26.0, *), YabomishPrefs.visualEffects == "full" {
+            let g = NSGlassEffectView()
+            g.cornerRadius = fixed ? 8 : 6
+            bg = g
+        } else {
+            let v = NSVisualEffectView()
+            v.material = fixed ? .hudWindow : .popover
+            v.state = .active
+            v.wantsLayer = true
+            v.layer?.cornerRadius = fixed ? 8 : 6
+            bg = v
+        }
+        bg.translatesAutoresizingMaskIntoConstraints = false
+        bg.alphaValue = fixed ? YabomishPrefs.fixedAlpha : 1.0
+        host.addSubview(bg, positioned: .below, relativeTo: nil)
+        NSLayoutConstraint.activate([
+            bg.topAnchor.constraint(equalTo: host.topAnchor),
+            bg.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+            bg.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            bg.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+        ])
+        backdrop = bg
+    }
+
     private func switchToCursorLayout() {
         stackView.isHidden = false
         fixedLabel.isHidden = true
@@ -414,8 +475,7 @@ final class CandidatePanel: NSPanel {
         NSLayoutConstraint.deactivate(fixedConstraints)
         NSLayoutConstraint.activate(stackConstraints)
         alphaValue = 1.0
-        (contentView as? NSVisualEffectView)?.material = .popover
-        (contentView as? NSVisualEffectView)?.layer?.cornerRadius = 6
+        applySurface(fixed: false)
     }
 
     private func rebuildLabels() {
@@ -424,27 +484,45 @@ final class CandidatePanel: NSPanel {
         let start = pageStart
         let end = min(start + pageSize, candidates.count)
         let horizontal = cursorIsHorizontal
+        // 個性化（toastFontStyle/toastTextColor/toastStroke 與 HUD 共用）：
+        // hc 維持粗體系統字；system 風格保留 mono 對齊；自訂色僅在明確設定時套用。
+        let fontStyle = YabomishPrefs.toastFontStyle
+        let customColor = Self.candidateTextColor()
+        let strokeOn = YabomishPrefs.toastStroke
 
         for i in 0..<pageSize {
             let label = labels[i]
-            label.font = hc
-                ? NSFont.boldSystemFont(ofSize: fontSize)
-                : Self.cachedMonoFont(size: fontSize)
+            label.font = fontStyle == "system"
+                ? (hc ? NSFont.boldSystemFont(ofSize: fontSize) : Self.cachedMonoFont(size: fontSize))
+                : Self.cachedStyledFont(style: fontStyle, size: fontSize, weight: hc ? .bold : .regular)
             label.shadow = hc ? Self.hcShadow : nil
             if start + i < end {
                 let candIdx = start + i
                 let keyChar = i < selKeys.count ? keyLabel(selKeys[i]) : " "
-                label.stringValue = "\(keyChar)\(candidates[candIdx])"
+                let text = "\(keyChar)\(candidates[candIdx])"
                 label.setAccessibilityLabel("第\(i + 1)，\(candidates[candIdx])")
                 label.isHidden = false
                 if candIdx == highlightIndex {
+                    // 反白列保留系統選取色——自訂色撞 accent 底會糊
+                    label.stringValue = text
                     label.drawsBackground = true
                     label.backgroundColor = NSColor.selectedContentBackgroundColor
                     label.textColor = .selectedMenuItemTextColor
                 } else {
                     label.drawsBackground = false
                     label.backgroundColor = .clear
-                    label.textColor = .labelColor
+                    if strokeOn {
+                        // 字幕式描邊（負 strokeWidth＝填色＋外框並存），同 HUD 手法
+                        label.attributedStringValue = NSAttributedString(string: text, attributes: [
+                            .font: label.font ?? NSFont.systemFont(ofSize: fontSize),
+                            .foregroundColor: customColor ?? .labelColor,
+                            .strokeColor: TextStyle.color(YabomishPrefs.toastStrokeColor, fallback: .black),
+                            .strokeWidth: -4.0,
+                        ])
+                    } else {
+                        label.stringValue = text
+                        label.textColor = customColor ?? .labelColor
+                    }
                 }
                 // Horizontal mode: add horizontal padding to each label
                 if horizontal {
@@ -479,7 +557,7 @@ final class CandidatePanel: NSPanel {
         }
         throttledA11yNotify()
 
-        if let elem = contentView as? NSVisualEffectView {
+        if let elem = backdrop ?? contentView {
             NSAccessibility.post(element: elem, notification: .valueChanged)
         }
     }
@@ -508,23 +586,25 @@ final class CandidatePanel: NSPanel {
         switchToFixedLayout()
         rebuildFixedLabel()
         repositionFixed()
+        // alpha 語意已分層：視窗固定 1.0（文字不透明），幽靈感由背景層的
+        // alphaValue=fixedAlpha 承擔。顯示動畫改淡整窗進場。
         if !wasVisible {
             if useReducedMotion {
-                alphaValue = YabomishPrefs.fixedAlpha
+                alphaValue = 1.0
                 orderFront(nil)
             } else {
                 alphaValue = 0
                 orderFront(nil)
                 NSAnimationContext.runAnimationGroup({ ctx in
                     ctx.duration = 0.12
-                    self.animator().alphaValue = YabomishPrefs.fixedAlpha
+                    self.animator().alphaValue = 1.0
                 })
             }
         } else {
             // 取消進行中的淡出動畫，確保 alpha 正確
             NSAnimationContext.beginGrouping()
             NSAnimationContext.current.duration = 0
-            animator().alphaValue = YabomishPrefs.fixedAlpha
+            animator().alphaValue = 1.0
             NSAnimationContext.endGrouping()
             orderFront(nil)
         }
@@ -535,8 +615,7 @@ final class CandidatePanel: NSPanel {
         NSLayoutConstraint.activate(fixedConstraints)
         stackView.isHidden = true
         fixedLabel.isHidden = false
-        (contentView as? NSVisualEffectView)?.material = .hudWindow
-        (contentView as? NSVisualEffectView)?.layer?.cornerRadius = 8
+        applySurface(fixed: true)
     }
 
     private func rebuildFixedLabel() {
@@ -544,16 +623,33 @@ final class CandidatePanel: NSPanel {
         let end = min(start + pageSize, candidates.count)
         let sep = "  "
         let fontSize = YabomishPrefs.fixedFontSize
-        let font = Self.cachedFont(size: fontSize)
+        // 個性化（與 HUD 共用 toast* 偏好）：system 保留原字體，自訂風格走共享解析
+        let fontStyle = YabomishPrefs.toastFontStyle
+        let font = fontStyle == "system"
+            ? Self.cachedFont(size: fontSize)
+            : Self.cachedStyledFont(style: fontStyle, size: fontSize, weight: .regular)
         fixedLabel.font = font
+        let customColor = Self.candidateTextColor()
+        let strokeOn = YabomishPrefs.toastStroke
+        let styleSig = "\(fontStyle)|\(customColor != nil ? YabomishPrefs.toastTextColor : "")|\(strokeOn)|\(YabomishPrefs.toastStrokeColor)"
 
-        if cachedFixedFont !== font || cachedHC != YabomishPrefs.highContrast {
+        if cachedFixedFont !== font || cachedHC != YabomishPrefs.highContrast || cachedStyleSig != styleSig {
             cachedFixedFont = font
             let hc = YabomishPrefs.highContrast
             cachedHC = hc
-            let boldFont = hc ? NSFont.boldSystemFont(ofSize: fontSize) : font
-            var normal: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: NSColor.labelColor]
+            cachedStyleSig = styleSig
+            let boldFont = hc
+                ? (fontStyle == "system"
+                    ? NSFont.boldSystemFont(ofSize: fontSize)
+                    : Self.cachedStyledFont(style: fontStyle, size: fontSize, weight: .bold))
+                : font
+            var normal: [NSAttributedString.Key: Any] = [.font: boldFont,
+                                                       .foregroundColor: customColor ?? NSColor.labelColor]
             if hc { normal[.shadow] = Self.hcShadow }
+            if strokeOn {
+                normal[.strokeColor] = TextStyle.color(YabomishPrefs.toastStrokeColor, fallback: .black)
+                normal[.strokeWidth] = -4.0
+            }
             cachedNormalAttrs = normal
             cachedHighlightAttrs = [
                 .font: boldFont,
@@ -817,7 +913,7 @@ final class CandidatePanel: NSPanel {
     @objc private func menuSetAlpha(_ sender: NSMenuItem) {
         let a = sender.representedObject as! CGFloat
         YabomishPrefs.fixedAlpha = a
-        alphaValue = a
+        backdrop?.alphaValue = a
     }
 
     @objc private func menuSetFontSize(_ sender: NSMenuItem) {

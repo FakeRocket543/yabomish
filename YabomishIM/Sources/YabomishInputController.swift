@@ -161,15 +161,6 @@ class YabomishInputController: IMKInputController {
         }
     }
 
-    /// 「無視覺效果」HUD 底：純色不透明圓角，顏色隨 win.appearance 深淺色解析
-    private final class SolidBackdrop: NSView {
-        var radius: CGFloat = 0
-        override func draw(_ dirtyRect: NSRect) {
-            NSColor.controlBackgroundColor.setFill()
-            NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
-        }
-    }
-
     /// 依偏好組合 toast 字體：system／rounded（SF Rounded）／serif（宋體系）／heiti（黑體系）
     private func toastLabelFont(size: CGFloat) -> NSFont {
         switch YabomishPrefs.toastFontStyle {
@@ -189,14 +180,9 @@ class YabomishInputController: IMKInputController {
         }
     }
 
-    /// #RRGGBB → NSColor（解析失敗回 fallback）
+    /// #RRGGBB → NSColor（解析失敗回 fallback）；實作與候選窗共用 TextStyle
     private static func hexColor(_ hex: String, fallback: NSColor) -> NSColor {
-        var s = hex.trimmingCharacters(in: .whitespaces)
-        if s.hasPrefix("#") { s.removeFirst() }
-        guard s.count == 6, let v = UInt64(s, radix: 16) else { return fallback }
-        return NSColor(srgbRed: CGFloat((v >> 16) & 0xFF) / 255,
-                       green: CGFloat((v >> 8) & 0xFF) / 255,
-                       blue: CGFloat(v & 0xFF) / 255, alpha: 1)
+        TextStyle.color(hex, fallback: fallback)
     }
 
     /// 建立並顯示 HUD 提示：先收起同槽位舊窗，淡出後僅在仍是同窗時清空槽位。
@@ -237,7 +223,7 @@ class YabomishInputController: IMKInputController {
         let effects = YabomishPrefs.visualEffects
         if effects == "none" {
             // 無視覺效果：純色不透明底，無材質無玻璃
-            let bg = SolidBackdrop(frame: NSRect(origin: .zero, size: rect.size))
+            let bg = FlatBackdropView(frame: NSRect(origin: .zero, size: rect.size))
             bg.radius = style.cornerRadius
             bg.addSubview(label)
             win.contentView = bg

@@ -16,6 +16,15 @@
 - **偏好設定程式第二輪原生化**：互斥選項從大卡片改為群組列＋右側勾選記號（`ChoiceRow`）或分段控制（`SegmentedRow`）；section 標題改純文字（`SettingsHeader`）、移除圖示與橫線，群組下方小字註腳（`SettingsFootnote`）；側邊欄項目改彩色圓角圖示；「打開 debug.log」按鈕依 suite 指向正確資料目錄（dev 開 YabomishDev/debug.log）
 - **視覺效果等級 `visualEffects`（完整／無，預設完整）**：介面頁新增二選一——「完整」在 macOS 26+ 啟用 Liquid Glass：HUD 中央提示改 `NSGlassEffectView`、語境膠囊與側邊欄搜尋欄套 `.glassEffect`；「無」全部改純色不透明底（HUD 用新 `SolidBackdrop`）；舊系統 `if #available` 自動回落原材質樣式，與深淺色/自動外觀獨立組合
 - **模式提示字體擴充**：明體修正為正確字體名 `Songti TC`（原 `Songti-TC` 不存在、一直靜默回退系統體），新增黑體選項（PingFang TC → Heiti TC → 系統體）；候選窗頁「游標模式」區塊改名「顯示」
+- **候選窗個性化（字體／字色／描邊）**：原「模式提示」頁的字體、字色、描邊、描邊色控制移至「候選窗」頁，語意擴為**候選窗與模式提示共用**（沿用 `toastFontStyle`/`toastTextColor`/`toastStroke`/`toastStrokeColor`，無遷移）；字體與顏色解析共用化為 `Shared/TextStyle`；字色鍵未明確設定時候選窗走 `.labelColor` 深淺自適應（不吃 HUD 的 `#FFFFFF` 白字預設）；反白列保留系統選取色；游標模式 `system` 風格保留等寬對齊、自訂風格走共享解析，高對比下自訂風格用對應粗體（兩模式一致）；模式提示頁僅留 HUD 專屬的字級／透明度
+- **候選窗背景透明度與文字分層**：面板重構為容器＋獨立 `backdrop` 背景層——`fixedAlpha` 只作用於背景層（右鍵選單調透明度即時生效），窗體與文字永遠不透明（原實作整窗淡出連文字一起淡）；游標模式維持不透明
+- **`visualEffects` 貫徹至候選窗**：「無」→新共用元件 `FlatBackdropView` 純色不透明底；「完整」+macOS 26→`NSGlassEffectView`；其餘回落原 `.popover`/`.hudWindow` 材質；HUD 的 `SolidBackdrop` 同步改用共用元件
+- **偏好變更即時刷新候選窗**：`prefsChanged` 廣播時若面板顯示中，立即重套背景層並重建候選文字——固定窗常駐時調字體/字色/描邊/視覺效果/透明度不必等下次組字
+- **側邊欄圖示深色自適應**：淺色維持彩色圓角底+白圖示；深色改為同色描邊圖示無底色（深色下小彩底辨識度差）；以視窗環境解析的 `colorScheme` 判定（自動模式跟隨系統）
+
+### 修正
+- a11y `valueChanged` 通知改投到 `backdrop`（原 cast 已移除的 `NSVisualEffectView` contentView 導致通知永不送達）
+- e2e 新增 E15 十項：實體化 `CandidatePanel` 由視圖層級驗證明體字體/自訂字色/反白保留系統色/描邊屬性/未設色自適應/`fixedAlpha` 只淡背景層/prefsChanged 即時換背景層/`full`→玻璃層
 
 ## [0.3.65] — 2026-09-23
 
