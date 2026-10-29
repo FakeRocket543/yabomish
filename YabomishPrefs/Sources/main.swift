@@ -27,6 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "結束 Yabomish 設定", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         let appItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        appItem.submenu = appMenu
         mainMenu.addItem(appItem)
         mainMenu.addItem(editItem)
         // View menu — Cmd+數字 切換側邊欄頁（經 NotificationCenter 轉給 ContentView.selection）
