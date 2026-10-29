@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <path d="M160 170 A 145 145 0 1 0 355 355" fill="none" stroke="#000" stroke-width="92" stroke-linecap="round"/>
+  <path d="M200 125 C 140 100, 92 70, 55 38 C 98 72, 142 105, 190 150 Z" fill="#000"/>
+  <g stroke="#000" stroke-width="8" stroke-linecap="round" fill="none">
+    <path d="M192 118 C 155 75, 110 48, 58 40"/>
+    <path d="M200 108 C 168 62, 128 30, 82 14"/>
+  </g>
+  <g fill="#000">
+    <path d="M356 348 Q 430 320 462 268 Q 400 292 368 330 Z"/>
+    <path d="M362 360 Q 452 360 492 380 Q 426 402 368 382 Z"/>
+    <path d="M350 364 Q 392 440 374 486 Q 344 424 336 378 Z"/>
+  </g>
+  <text x="430" y="468" font-family="Helvetica Neue" font-weight="900" font-size="165" fill="#000" stroke="#fff" stroke-width="14" text-anchor="middle">β</text>
+</svg>

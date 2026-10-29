@@ -416,7 +416,11 @@ do {
         let g = labs[1].textColor?.usingColorSpace(.sRGB)?.greenComponent ?? -1
         check(abs(g - 0.533) >= 0.02, "E15e 未設字色→自適應 labelColor")
     }
-    if let saved = savedColorObj { d.set(saved, forKey: "toastTextColor") }
+    if let saved = savedColorObj as? String {
+        YabomishPrefs.toastTextColor = saved  // 走 setter 保持 snapshot 一致
+    } else if let saved = savedColorObj {
+        d.set(saved, forKey: "toastTextColor")
+    }
 
     // 固定模式：窗體不透明、fixedAlpha 只作用於背景層
     YabomishPrefs.panelPosition = "fixed"
@@ -441,6 +445,18 @@ do {
         e15Pump()
         check(e15Backdrop() is NSGlassEffectView, "E15h full→NSGlassEffectView 背景層")
     }
+
+    // TextStyle 具名字體的 weight 路徑：bold 要求要真的帶 .bold trait
+    // （NSFont(name:) 只回常規體，需 symbolicTraits 補——高對比+明體/黑體用得到）
+    let serifBold = TextStyle.font(style: "serif", size: 18, weight: .bold)
+    check(serifBold.fontDescriptor.symbolicTraits.contains(.bold),
+          "E15i1 明體 bold → .bold trait")
+    let heitiBold = TextStyle.font(style: "heiti", size: 18, weight: .bold)
+    check(heitiBold.fontDescriptor.symbolicTraits.contains(.bold),
+          "E15i2 黑體 bold → .bold trait")
+    let serifReg = TextStyle.font(style: "serif", size: 18, weight: .regular)
+    check(!serifReg.fontDescriptor.symbolicTraits.contains(.bold),
+          "E15i3 明體 regular 不帶 .bold")
 
     panel.hide()
     YabomishPrefs.toastFontStyle = savedStyle

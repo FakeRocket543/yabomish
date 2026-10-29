@@ -9,11 +9,17 @@ enum TextStyle {
         case "rounded":
             if let desc = NSFont.systemFont(ofSize: size, weight: weight).fontDescriptor.withDesign(.rounded),
                let f = NSFont(descriptor: desc, size: size) { return f }
-        case "serif":
-            if let f = NSFont(name: "Songti TC", size: size) { return f }
-        case "heiti":
-            if let f = NSFont(name: "PingFang TC", size: size) { return f }
-            if let f = NSFont(name: "Heiti TC", size: size) { return f }
+        case "serif", "heiti":
+            let base = style == "serif"
+                ? NSFont(name: "Songti TC", size: size)
+                : (NSFont(name: "PingFang TC", size: size) ?? NSFont(name: "Heiti TC", size: size))
+            if let base {
+                // 具名字體的 weight 靠 symbolicTraits 套——NSFont(name:) 只回常規體
+                guard weight.rawValue >= NSFont.Weight.semibold.rawValue,
+                      let bold = NSFont(descriptor: base.fontDescriptor.withSymbolicTraits(.bold),
+                                        size: size) else { return base }
+                return bold
+            }
         default:
             break
         }
