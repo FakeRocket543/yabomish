@@ -25,6 +25,7 @@
 - **dev 剪影版 app icon**：YabomishDev 輸入法與 dev 偏好設定 app 的 Dock/Finder 圖示改為淺灰底黑剪影（`icon_dev.icns`/`AppIconDev.icns`），與 stable 彩色炸蝦一眼區分；build script 依 `YABOMISH_DEV` 自動換 `CFBundleIconFile`
 
 ### 修正
+- **候選窗右鍵選單無法切進固定模式**（v0.1.14 起的老 bug）：`rightMouseDown` 的 `guard isFixed` 讓選單只在已固定時出現——游標模式下右鍵候選窗無任何反應，而選單標題本就設計為雙向（切換到固定位置／切換到游標跟隨），等於永遠無法從面板切進固定模式；移除 guard 雙向可叫，並在 `menuSetAlignment`/`menuSetFontSize` 的 reposition 上加 `isFixed` 守衛避免游標模式下選項把浮動窗挪到螢幕底
 - **sharedDir 資料目錄誤指**（stable 快捷碼/自訂詞失效）：build script 將 `CFBundleName` 設為 app 名後，`hasPrefix("Yabomish")` 判斷讓 stable 誤用全新空目錄 `YabomishIM/`；改由 `bundleIdentifier` 末段推導（`…YabomishIM`→`Yabomish`、`…YabomishIMDev`→`YabomishDev`），顯示名與資料目錄脫鉤
 - **「圓體」中文實際未生效**：`.rounded` 設計僅將拉丁字換為 SF Rounded，中文仍落回 PingFang；改為 `Yuanti TC`（系統真 CJK 圓體），缺字體時才退 `.rounded`
 - **新增楷體字體選項**：`toastFontStyle` 增 `kaiti`（`Kaiti TC`→`STKaiti`），候選窗頁字型列五選

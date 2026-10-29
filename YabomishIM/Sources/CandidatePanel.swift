@@ -852,8 +852,8 @@ final class CandidatePanel: NSPanel {
     // MARK: - Fixed mode: right-click context menu
 
     override func rightMouseDown(with event: NSEvent) {
-        guard isFixed else { super.rightMouseDown(with: event); return }
-
+        // 雙向都能叫出選單：游標模式下右鍵是切進固定模式的唯一
+        // 面板內路徑（其餘選項本來就只影響固定模式偏好，無害）。
         let menu = NSMenu()
 
         // Alignment
@@ -907,7 +907,7 @@ final class CandidatePanel: NSPanel {
 
     @objc private func menuSetAlignment(_ sender: NSMenuItem) {
         YabomishPrefs.fixedAlignment = sender.representedObject as! String
-        repositionFixed()
+        if isFixed { repositionFixed() }
     }
 
     @objc private func menuSetAlpha(_ sender: NSMenuItem) {
@@ -919,7 +919,7 @@ final class CandidatePanel: NSPanel {
     @objc private func menuSetFontSize(_ sender: NSMenuItem) {
         YabomishPrefs.fixedFontSize = sender.representedObject as! CGFloat
         rebuildFixedLabel()
-        repositionFixed()
+        if isFixed { repositionFixed() }
     }
 
     @objc private func menuToggleMode() {
