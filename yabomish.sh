@@ -68,6 +68,9 @@ build_im() {
             /usr/libexec/PlistBuddy -c "Set :ComponentInputModeDict:tsInputModeListKey:$IM_BUNDLE_ID:$k icon_dev.tiff" "$IM_APP/Contents/Info.plist"
         done
         cp "$IM_RES/icon_dev.tiff" "$IM_APP/Contents/Resources/"
+        # dev app icon 用剪影版（β 角標），與 stable 彩色炸蝦在 Dock/Finder 區分
+        /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile icon_dev.icns" "$IM_APP/Contents/Info.plist"
+        cp "$IM_RES/icon_dev.icns" "$IM_APP/Contents/Resources/"
     fi
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
@@ -132,6 +135,11 @@ build_prefs() {
 
     cp "$PREFS_DIR/Resources/Info.plist" "$PREFS_APP/Contents/"
     cp "$PREFS_DIR/Resources/AppIcon.icns" "$PREFS_APP/Contents/Resources/"
+    if [ "${YABOMISH_DEV:-0}" = "1" ]; then
+        # dev 設定程式用剪影版圖示
+        /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AppIconDev" "$PREFS_APP/Contents/Info.plist"
+        cp "$PREFS_DIR/Resources/AppIconDev.icns" "$PREFS_APP/Contents/Resources/"
+    fi
     [ -f "$PREFS_DIR/Resources/help.md" ] && cp "$PREFS_DIR/Resources/help.md" "$PREFS_APP/Contents/Resources/"
 
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -259,6 +267,7 @@ install_prefs() {
 	<key>CFBundleDisplayName</key><string>${IM_APP_NAME} 偏好設定</string>
 	<key>CFBundleExecutable</key><string>launch</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleIconFile</key><string>AppIconDev</string>
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 </dict>
 </plist>

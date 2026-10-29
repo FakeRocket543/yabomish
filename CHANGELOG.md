@@ -22,6 +22,7 @@
 - **偏好變更即時刷新候選窗**：`prefsChanged` 廣播時若面板顯示中，立即重套背景層並重建候選文字——固定窗常駐時調字體/字色/描邊/視覺效果/透明度不必等下次組字
 - **側邊欄圖示深色自適應**：淺色維持彩色圓角底+白圖示；深色改為同色描邊圖示無底色（深色下小彩底辨識度差）；以視窗環境解析的 `colorScheme` 判定（自動模式跟隨系統）
 - **炸蝦 app icon（Twemoji 改作，CC-BY 4.0 署名）**：多輪自繪迭代與 50+ 開源 icon 比對後，採 Twemoji fried-shrimp 鏡像版——墨色漸層 squircle（深淺系統外觀通吃）用作 YabomishIM `icon.icns` 與 YabomishPrefs `AppIcon.icns`；menubar 用同形剪影＋尾身白色切口保持小尺寸可讀：中文 `icon.tiff`、dev `icon_dev.tiff`（蝦＋右下 β 角標）、英文 `icon_en.tiff`（蝦＋右下 A 角標），皆 16+32px 雙倍率 TIFF；署名見 `NOTICE` 與設定程式關於頁「圖示」區
+- **dev 剪影版 app icon**：YabomishDev 輸入法與 dev 偏好設定 app 的 Dock/Finder 圖示改為淺灰底黑剪影（`icon_dev.icns`/`AppIconDev.icns`），與 stable 彩色炸蝦一眼區分；build script 依 `YABOMISH_DEV` 自動換 `CFBundleIconFile`
 
 ### 修正
 - a11y `valueChanged` 通知改投到 `backdrop`（原 cast 已移除的 `NSVisualEffectView` contentView 導致通知永不送達）
