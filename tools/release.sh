@@ -69,7 +69,7 @@ build_im() {
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
 
     # Core resources
-    for f in icon.tiff icon_en.tiff icon.icns icon_right.tiff icon_left.tiff \
+    for f in icon.tiff icon_en.tiff icon.icns \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json \
              char_freq.json corpus_manifest.json; do
         [ -f "$ROOT/YabomishIM/Resources/$f" ] && cp "$ROOT/YabomishIM/Resources/$f" "$IM_APP/Contents/Resources/"

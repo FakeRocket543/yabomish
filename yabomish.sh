@@ -78,7 +78,7 @@ build_im() {
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
 
     # 核心資源（所有版本都包含：打字、查碼、繁簡轉換）
-    for f in icon.tiff icon_en.tiff icon.icns icon_right.tiff icon_left.tiff \
+    for f in icon.tiff icon_en.tiff icon.icns \
              zhuyin_data.json pinyin_data.json t2s.json s2t.json \
              char_freq.json corpus_manifest.json english_10k.txt; do
         [ -f "$IM_RES/$f" ] && cp "$IM_RES/$f" "$IM_APP/Contents/Resources/"
