@@ -27,12 +27,12 @@ order: 1
 
 ### 方式一：DMG 安裝包（推薦）
 
-從 [GitHub Releases](https://github.com/FakeRocket543/yabomish/releases) 下載安裝包（各約 2.8MB），雙擊打開：
+從 [GitHub Releases](https://github.com/FakeRocket543/yabomish/releases) 下載安裝包（各約 3.1MB），雙擊打開：
 
 | 安裝包 | 內容 | 首次下載語料 |
 |--------|------|------------|
-| **Yabomish-精簡.dmg** | 輸入法＋設定程式＋基礎聯想（萌典／維基／新聞、成語、兩岸用詞） | 約 15MB |
-| **Yabomish-全量.dmg** | 同上＋28 部專業詞典＋一般詞庫 | 約 100MB |
+| **Yabomish-0.4.3-lite.dmg** | 輸入法＋設定程式（聯想語料首次啟動自 GitHub 下載） | 約 15MB |
+| **Yabomish-0.4.3-full.dmg** | 同上＋全量語料與 28 部專業詞典 | 約 100MB |
 
 流程：雙擊「安裝 Yabomish.app」→ 管理員授權 → 自動安裝輸入法與設定程式、重啟輸入法，並**自動開啟系統設定的輸入方式列表**（直接按 + 加入 Yabomish）。安裝訊息依系統語言顯示繁中／簡中／英文。
 
