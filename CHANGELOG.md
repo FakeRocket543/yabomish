@@ -5,10 +5,8 @@
 
 ### 變更
 - **menu bar／fn 圖示改為自產徽章（蝦／A／β）**：棄用炸蝦剪影（填滿整個 canvas 無留白、16px 成一團），改回官方輸入法徽章規格——黑底 28% 圓角方塊＋字形 alpha 鏤空的 template TIFF（16+32px、LZW、無抗鋸齒硬邊）。中＝蝦、英＝A、dev＝β，三圖同為 `tools/make_icons.swift` 產生（已納入版控）；NOTICE 署名範圍更正為僅 app icns 使用 Twemoji，menubar tiff 改為自製
+- **修正 macOS 27 menubar／fn 圖示顯示白色佔位方塊**：根因是 `tiffutil -cathidpicheck` 產出的 TIFF 兩幀都是 72dpi，而 macOS 27 要求 Aqua 標準的 72+144 dpi 1x/@2x 配對才把檔案視為單一 16pt 圖示——配對不成直接回退佔位圖示（macOS ≤15 對 72/72 寬容，升級後才爆）。`make_icons.swift` 產出後將 @2x 幀 XRes/YRes 改寫為 144（比照 Apple 官方 TIFF 的 tag 佈局），dev 實測 β 徽章正確渲染。先前「系統不解碼第三方圖示」的判斷錯誤，並非平台回歸
 - 移除已廢 `icon_left.tiff`／`icon_right.tiff`（蝦頭方向功能於 9c8f035 移除後即無參照）
-
-### 已知問題
-- **macOS 27（Tahoe 後續）第三方輸入法圖示一律顯示佔位方塊**：系統端行為改變——file-based IM 的 `tsInputMethodIconFileKey` 資源不再被 `TextInputMenuAgent` 解碼（TIFF/PNG/icns、adhoc/Developer ID 簽名、`TISIconIsTemplate` 兩值、`lsregister`+`TISRegisterInputSource` 重註全部無效；塞入壞檔仍顯示同一佔位圖示，證明檔案根本未被讀取；log 可見 `CUICatalog initWithName:fromBundle:` 對 bundle 的解析錯誤）。輸入功能不受影響；根本修法為 `.appex` 遷移或等待系統更新
 
 ## [0.4.0] — 2026-10-29
 

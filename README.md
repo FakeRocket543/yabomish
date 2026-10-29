@@ -77,8 +77,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 
 ## 已知限制
 
-- **macOS 27（Tahoe 後續）menubar／fn 輸入法圖示顯示佔位方塊** — 系統端改變：file-based 第三方輸入法的 `tsInputMethodIconFileKey` 圖示不再被解碼（換檔／換格式／重簽／重註冊皆驗證無效，連塞壞檔也畫同一顆佔位圖示）。輸入功能不受影響。等待系統更新修復；追蹤中的根本修法是把輸入法遷移至 `.appex` 架構。
-
+- （無 — 原 macOS 27 menubar 佔位圖示問題已修：根因為 TIFF @2x 幀未標 144dpi，詳 CHANGELOG 0.4.1）
 
 ## 特色
 
@@ -88,7 +87,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 - **安全輸入偵測** — 密碼欄位自動停用（設定 → 切換 可放行；安全期間一律不寫 log、不學習字頻）
 - **模糊匹配** — 鄰鍵容錯，打錯一碼也能找到候選字
 - **中英切換鍵可配置** — Shift（預設）／Caps Lock／兩者皆可／關閉；選 ⇪ 時系統大寫鎖定自動壓回不殘留
-- **右上角圖示隨模式切換** — menu bar 中文（蝦徽章）／英文（A 徽章）即時反映，輸入法選單可直接點選「英文」mode（macOS 27 平台行為改變，目前系統一律顯示佔位圖示，見「已知限制」）
+- **右上角圖示隨模式切換** — menu bar 中文（蝦徽章）／英文（A 徽章）即時反映，輸入法選單可直接點選「英文」mode
 - **英文聯想輸入** — 英文模式下依英文字典即時補全候選（設定 → 英數 可關閉），個人詞庫隨使用學習
 
 ### 選字窗
