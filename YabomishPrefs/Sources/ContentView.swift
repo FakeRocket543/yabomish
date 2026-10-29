@@ -156,9 +156,12 @@ struct ContentView: View {
         }
     }
 
-    // 系統設定式格局：側邊欄分頁 + 頂部搜尋 + 右側置中限寬內容（SettingsPage）
+    // 系統設定式格局：側邊欄分頁 + 頂部搜尋 + 右側置中限寬內容（SettingsPage）。
+    // columnVisibility 綁定 .constant(.all)：側邊欄是主導覽不可收起——
+    // macOS 26 把切換鈕塞進 titlebar accessory，.toolbar(removing:) 攔不到；
+    // 常數綁定讓 NSV 根本不產生收起 affordance（按鈕連同材質一起消失）。
     private var mainView: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: .constant(.all)) {
             VStack(spacing: 0) {
                 // 固定不透明搜尋欄：佔欄頂版面，清單從其下方開始——
                 // 不用 .searchable(.sidebar)：它是浮層，滾動時項目鑽進半透明區域選不到。
@@ -205,10 +208,6 @@ struct ContentView: View {
         } detail: {
             detailView(for: selection ?? 0)
         }
-        // 側邊欄是主導覽不可收起：從 SwiftUI 層拔掉切換鈕——只在外層
-        // nil 掉 window.toolbar 會被 NavigationSplitView 延遲重建的
-        // toolbar 蓋過，留下半透明材質條擋住頁首。無項目時 toolbar
-        // 高度自動歸零，材質才會真的消失。
         .toolbar(removing: .sidebarToggle)
         .frame(minWidth: 920, minHeight: 600)
         .onAppear { clampSelection() }

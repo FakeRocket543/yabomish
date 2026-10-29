@@ -201,19 +201,23 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 - **介面** — 介面外觀三態（自動/淺色/深色）、視覺效果等級（Liquid Glass 完整／無）、高對比模式、Debug 模式
 - **說明／關於** — 使用方法、快捷鍵速查、語料來源與授權（含炸蝦圖示 Twemoji CC-BY 4.0 署名）、版本號
 
-| 輸入 | 聯想與詞庫 |
+| 輸入 | 聯想 |
 |:---:|:---:|
-| ![輸入](docs/images/prefs-input.webp) | ![聯想與詞庫](docs/images/prefs-suggest-top.webp) |
+| ![輸入](docs/images/prefs-input.webp) | ![聯想](docs/images/prefs-suggest-top.webp) |
 
-| 一般詞庫 + 專業詞典 | 專業詞典展開（28 本） |
+| 一般詞庫 | 專業詞庫（28 本） |
 |:---:|:---:|
-| ![詞庫](docs/images/prefs-suggest-bottom.webp) | ![專業詞典](docs/images/prefs-pro-domains.webp) |
+| ![一般詞庫](docs/images/prefs-suggest-bottom.webp) | ![專業詞庫](docs/images/prefs-pro-domains.webp) |
 
-| 快捷碼 | 外觀 | 關於 |
+| 快捷碼 | 候選窗 | 介面 |
 |:---:|:---:|:---:|
-| ![快捷碼](images/prefs-shortcuts.webp) | ![外觀](images/prefs-appearance.webp) | ![關於](images/prefs-about.webp) |
+| ![快捷碼](docs/images/prefs-shortcuts.webp) | ![候選窗](docs/images/prefs-candidate.webp) | ![介面](docs/images/prefs-appearance.webp) |
 
-首次開啟有三頁引導（匯入字表 → 加入輸入方式 → 常用快捷鍵）。
+| 關於 |
+|:---:|
+| ![關於](docs/images/prefs-about.webp) |
+
+首次開啟有四頁引導（匯入字表 → 登出再登入 → 加入輸入方式 → 常用快捷鍵）。
 
 ## YabomishDev 實驗變體（開發者）
 
@@ -288,6 +292,7 @@ cd yabomish && ./yabomish.sh
 - 感謝 **g0v 台灣零時政府社群**與萌典貢獻者，讓教育部辭典資料得以機器可讀的形式流通
 - 感謝 **國家教育研究院（樂詞網／新聞語料庫）** 與**教育部**各辭典計畫（閩南語、客語、成語典、學科術語）的開放資料
 - 感謝開源計畫 **OpenCC**、**vChewing／VanguardLexicon**、**Kengdic**、**chinese-xinhua**、**ckip-transformers** 的維護者
+- 感謝貢獻者 [@plateaukao](https://github.com/plateaukao)（Daniel Kao，游標選字窗寬度自動縮放）、[@jackyhuang72](https://github.com/jackyhuang72)（注音鍵位映射修正）
 - **商標與字表聲明**：「嘸蝦米輸入法」為行易有限公司之產品與商標；本專案**不散布任何嘸蝦米官方拆碼表**，使用者須自備合法取得之 `liu.cin` 字表檔
 
 ## 架構

@@ -1,6 +1,14 @@
 # Changelog
 
 
+## [0.4.4] — 2026-10-30
+
+### 修正
+- **設定程式側邊欄開關按鈕不再出現**：macOS 26 把 NavigationSplitView 的切換鈕塞進 titlebar accessory（`.toolbar(removing: .sidebarToggle)` 與 `window.toolbar = nil` 都攔不到）；改以 `columnVisibility: .constant(.all)` 常數綁定，從根源不產生收起 affordance，側邊欄恆顯示
+
+### 其他
+- README：設定程式截圖重截為 12 頁新介面、誌謝加入貢獻者（plateaukao、jackyhuang72）
+
 ## [0.4.3] — 2026-10-29
 
 ### 變更
