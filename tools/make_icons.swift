@@ -16,6 +16,9 @@ func badge(_ text: String, font: NSFont, size: Int) -> NSBitmapImageRep {
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
     let r = CGFloat(size) * 0.28
     NSColor.black.setFill()
+    // 無抗鋸齒的硬邊鏤空（Apple 官方 TIFF 的洞都是乾淨透明格點；
+    // AA 出的半透明邊在 16px 被模板反白吃掉，看不出字形）
+    NSGraphicsContext.current?.shouldAntialias = false
     NSBezierPath(roundedRect: NSRect(x: 0, y: 0, width: size, height: size), xRadius: r, yRadius: r).fill()
     // 鏤空：glyph 要畫成透明（TISIconIsTemplate 只讀 alpha，實心白字會變純黑方塊）
     NSGraphicsContext.current?.compositingOperation = .clear
