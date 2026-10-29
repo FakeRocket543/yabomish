@@ -180,7 +180,12 @@ install_im() {
     $SUDO chmod -R a+rX "$INSTALL_DIR/$IM_APP_NAME.app"
     # macOS 27 要求簽章 Identifier 與 Info.plist Bundle ID 一致，否則 IMK 拒絕 XPC endpoint（issue #16）：
     # 不帶 --identifier 時曾出現 Identifier=YabomishIM（與 Bundle ID 不一致），導致「看得到圖示、無法輸入」。
-    $SUDO codesign -s - --force --deep --identifier "$IM_BUNDLE_ID" "$INSTALL_DIR/$IM_APP_NAME.app" 2>/dev/null || true
+    # 簽署失敗只留 linker 預設 ad-hoc 簽名（Identifier=執行檔名）→ 不吞錯誤，
+    # 失敗時印出 stderr 方便定位（root shell / osascript 環境下曾整個失敗過）
+    if ! $SUDO codesign -s - --force --deep --identifier "$IM_BUNDLE_ID" "$INSTALL_DIR/$IM_APP_NAME.app" 2>&1; then
+        warn "codesign 失敗，改用無 sudo 重試"
+        codesign -s - --force --deep --identifier "$IM_BUNDLE_ID" "$INSTALL_DIR/$IM_APP_NAME.app" 2>&1 || true
+    fi
     local GOT_ID; GOT_ID=$(codesign -dv "$INSTALL_DIR/$IM_APP_NAME.app" 2>&1 | awk -F= '/^Identifier=/{print $2}')
     [ "$GOT_ID" = "$IM_BUNDLE_ID" ] || warn "簽章 Identifier 異常（$GOT_ID），macOS 27 可能無法輸入；見 issue #16"
 
