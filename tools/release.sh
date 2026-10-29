@@ -124,7 +124,10 @@ build_prefs() {
         -module-name YabomishPrefs \
         -sdk "$(xcrun --show-sdk-path)" -O \
         -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers \
-        "$PREFS_DIR"/Sources/*.swift
+        "$PREFS_DIR"/Sources/*.swift \
+        "$ROOT/YabomishIM/Sources/Shared/UserEnglishDict.swift"
+    # Shared/UserEnglishDict.swift 與 IM 共用（英數頁的自訂詞清單）——
+    # 與 yabomish.sh build_prefs 同步補入，單獨編 Prefs/Sources 會缺 type
     ok "YabomishPrefs.app"
 }
 
