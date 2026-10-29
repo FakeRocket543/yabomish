@@ -206,6 +206,11 @@ struct ContentView: View {
         } detail: {
             detailView(for: selection ?? 0)
         }
+        // 側邊欄是主導覽不可收起：從 SwiftUI 層拔掉切換鈕——只在外層
+        // nil 掉 window.toolbar 會被 NavigationSplitView 延遲重建的
+        // toolbar 蓋過，留下半透明材質條擋住頁首。無項目時 toolbar
+        // 高度自動歸零，材質才會真的消失。
+        .toolbar(removing: .sidebarToggle)
         .frame(minWidth: 920, minHeight: 600)
         .onAppear { clampSelection() }
         .onReceive(NotificationCenter.default.publisher(for: .selectPrefsTab)) { note in
