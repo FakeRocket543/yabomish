@@ -517,7 +517,7 @@ final class CandidatePanel: NSPanel {
                             .font: label.font ?? NSFont.systemFont(ofSize: fontSize),
                             .foregroundColor: customColor ?? .labelColor,
                             .strokeColor: TextStyle.color(YabomishPrefs.toastStrokeColor, fallback: .black),
-                            .strokeWidth: -4.0,
+                            .strokeWidth: TextStyle.strokePercent(px: YabomishPrefs.toastStrokeWidth, fontSize: fontSize),
                         ])
                     } else {
                         label.stringValue = text
@@ -631,7 +631,7 @@ final class CandidatePanel: NSPanel {
         fixedLabel.font = font
         let customColor = Self.candidateTextColor()
         let strokeOn = YabomishPrefs.toastStroke
-        let styleSig = "\(fontStyle)|\(customColor != nil ? YabomishPrefs.toastTextColor : "")|\(strokeOn)|\(YabomishPrefs.toastStrokeColor)"
+        let styleSig = "\(fontStyle)|\(customColor != nil ? YabomishPrefs.toastTextColor : "")|\(strokeOn)|\(YabomishPrefs.toastStrokeColor)|\(YabomishPrefs.toastStrokeWidth)"
 
         if cachedFixedFont !== font || cachedHC != YabomishPrefs.highContrast || cachedStyleSig != styleSig {
             cachedFixedFont = font
@@ -648,7 +648,7 @@ final class CandidatePanel: NSPanel {
             if hc { normal[.shadow] = Self.hcShadow }
             if strokeOn {
                 normal[.strokeColor] = TextStyle.color(YabomishPrefs.toastStrokeColor, fallback: .black)
-                normal[.strokeWidth] = -4.0
+                normal[.strokeWidth] = TextStyle.strokePercent(px: YabomishPrefs.toastStrokeWidth, fontSize: fontSize)
             }
             cachedNormalAttrs = normal
             cachedHighlightAttrs = [

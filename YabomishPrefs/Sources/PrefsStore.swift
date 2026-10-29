@@ -106,6 +106,11 @@ import Foundation
         get { access(keyPath: \.toastStrokeColor); return ud.string(forKey: "toastStrokeColor") ?? "#000000" }
         set { withMutation(keyPath: \.toastStrokeColor) { ud.set(newValue, forKey: "toastStrokeColor") }; postChange() }
     }
+    /// 描邊粗細（px，0.5–4.0）
+    var toastStrokeWidth: Double {
+        get { access(keyPath: \.toastStrokeWidth); return ud.object(forKey: "toastStrokeWidth") as? Double ?? 1.0 }
+        set { withMutation(keyPath: \.toastStrokeWidth) { ud.set(newValue, forKey: "toastStrokeWidth") }; postChange() }
+    }
 
     // MARK: - Panel
 

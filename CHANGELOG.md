@@ -26,6 +26,11 @@
 
 ### 修正
 - **sharedDir 資料目錄誤指**（stable 快捷碼/自訂詞失效）：build script 將 `CFBundleName` 設為 app 名後，`hasPrefix("Yabomish")` 判斷讓 stable 誤用全新空目錄 `YabomishIM/`；改由 `bundleIdentifier` 末段推導（`…YabomishIM`→`Yabomish`、`…YabomishIMDev`→`YabomishDev`），顯示名與資料目錄脫鉤
+- **「圓體」中文實際未生效**：`.rounded` 設計僅將拉丁字換為 SF Rounded，中文仍落回 PingFang；改為 `Yuanti TC`（系統真 CJK 圓體），缺字體時才退 `.rounded`
+- **新增楷體字體選項**：`toastFontStyle` 增 `kaiti`（`Kaiti TC`→`STKaiti`），候選窗頁字型列五選
+- **描邊粗細可調**：新偏好 `toastStrokeWidth`（0.5–4.0 px，預設 1.0），候選窗頁描邊開啟時出現滑桿；套用時換算為字號百分比（原硬編碼 -4.0%）
+- **設定程式 Cmd+Q 失效**：app menu 的 NSMenuItem 未掛 submenu，整個 app menu 不存在；補上 `appItem.submenu = appMenu`
+- **輸入法選單顯示名**：stable `CFBundleName`/`CFBundleDisplayName` 改為「Yabomish」（原「YabomishIM」）；「切換顯示」偏好實際僅控制切入提示文字，介面註腳改為誠實說明（選單名稱依 App 名稱、無法動態變更）
 - **設定程式頂部半透明條遮擋內容**：`NSWindow.toolbar = nil` 會被 `NavigationSplitView` 重建的 toolbar 覆蓋、殘留半透明材質條壓在頁首；改於 SwiftUI 層 `.toolbar(removing: .sidebarToggle)` 從源頭阻止
 - **menu bar 圖示空白方塊**：`sips` 產生的 TIFF 為無壓縮格式，TIS 無法讀取；改回 `tiffutil -lzw` + `-cathidpicheck` 原始管線（與舊版檔案逐欄一致）
 - a11y `valueChanged` 通知改投到 `backdrop`（原 cast 已移除的 `NSVisualEffectView` contentView 導致通知永不送達）

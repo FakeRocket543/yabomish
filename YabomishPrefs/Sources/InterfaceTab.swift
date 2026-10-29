@@ -20,7 +20,7 @@ struct InterfaceTab: View {
             }
 
             SettingsSection(title: "切換顯示",
-                            footnote: "切換輸入法時，輸入法選單與切入提示顯示的名稱。") {
+                            footnote: "切換輸入法時，中央切入提示顯示的名稱。（輸入法選單名稱依 App 名稱顯示，無法動態變更）") {
                 SegmentedRow("名稱", selection: $store.switchDisplay,
                              options: [("Yabo", "Yabo"), ("Yabomish", "Yabomish")])
             }

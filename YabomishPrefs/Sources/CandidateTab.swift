@@ -41,7 +41,8 @@ struct CandidateTab: View {
                             footnote: "字體、字色與描邊同時套用於候選窗與模式提示；反白列保留系統選取色。") {
                 SegmentedRow("字型", selection: $store.toastFontStyle,
                              options: [("system", "系統"), ("rounded", "圓體"),
-                                       ("serif", "明體"), ("heiti", "黑體")])
+                                       ("serif", "明體"), ("heiti", "黑體"),
+                                       ("kaiti", "楷體")])
                 InsetDivider()
                 HStack {
                     Text("字色").font(Typo.body)
@@ -64,6 +65,10 @@ struct CandidateTab: View {
                         .controlSize(.small)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 8)
+                if store.toastStroke {
+                    InsetDivider()
+                    sliderRow(label: "描邊粗細", value: $store.toastStrokeWidth, in: 0.5...4.0, step: 0.5, format: { "\($0) px" })
+                }
             }
 
             SettingsSection(title: "固定窗背景") {

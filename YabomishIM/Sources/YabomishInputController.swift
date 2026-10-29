@@ -198,7 +198,8 @@ class YabomishInputController: IMKInputController {
                 .font: style.font,
                 .foregroundColor: fill,
                 .strokeColor: Self.hexColor(YabomishPrefs.toastStrokeColor, fallback: .black),
-                .strokeWidth: -4.0,
+                .strokeWidth: TextStyle.strokePercent(px: YabomishPrefs.toastStrokeWidth,
+                                                      fontSize: style.font.pointSize),
             ])
         } else {
             label.textColor = fill

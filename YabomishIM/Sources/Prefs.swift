@@ -35,6 +35,7 @@ struct YabomishPrefs {
         var toastTextColor = "#FFFFFF"
         var toastStroke = false
         var toastStrokeColor = "#000000"
+        var toastStrokeWidth = 1.0
         var showActivateToast = true
         var switchDisplay = "Yabo"
         var appearanceMode = "auto"
@@ -97,6 +98,7 @@ struct YabomishPrefs {
         s.toastTextColor = defaults.string(forKey: "toastTextColor") ?? "#FFFFFF"
         s.toastStroke = defaults.object(forKey: "toastStroke") as? Bool ?? false
         s.toastStrokeColor = defaults.string(forKey: "toastStrokeColor") ?? "#000000"
+        s.toastStrokeWidth = defaults.object(forKey: "toastStrokeWidth") as? Double ?? 1.0
         s.showActivateToast = defaults.object(forKey: "showActivateToast") as? Bool ?? true
         s.switchDisplay = defaults.string(forKey: "switchDisplay") ?? "Yabo"
         // 舊值遷移：繁中／🦐 已移除，統一為 Yabo
@@ -342,6 +344,12 @@ struct YabomishPrefs {
         set { defaults.set(newValue, forKey: "toastStrokeColor"); refreshSnapshot() }
     }
 
+    /// 描邊粗細（px），套用到 strokeWidth 時換算為字號百分比
+    static var toastStrokeWidth: Double {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.toastStrokeWidth }
+        set { defaults.set(newValue, forKey: "toastStrokeWidth"); refreshSnapshot() }
+    }
+
     /// 切換進 Yabomish 時顯示模式 toast
     static var showActivateToast: Bool {
         get {
@@ -429,7 +437,7 @@ struct YabomishPrefs {
                 "autoCommit", "panelPosition", "fixedAlignment", "fixedAlpha", "fixedYOffset",
                 "fontSize", "fixedFontSize", "showCodeHint", "zhuyinReverseLookup",
                 "toastFontSize", "toastOpacity", "toastFontStyle", "toastTextColor",
-                "toastStroke", "toastStrokeColor", "showActivateToast", "menuBarLabel",
+                "toastStroke", "toastStrokeColor", "toastStrokeWidth", "showActivateToast", "menuBarLabel",
                 "appearanceMode",
                 "homophoneMultiReading", "homophoneAutoExit", "suggestEnabled", "useNewEngine",
                 "fuzzyMatch", "suggestStrategy", "wordCorpus", "regionVariant", "charSuggest",
