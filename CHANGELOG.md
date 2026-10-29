@@ -1,6 +1,15 @@
 # Changelog
 
 
+## [0.4.1] — 2026-10-29
+
+### 變更
+- **menu bar／fn 圖示改為自產徽章（蝦／A／β）**：棄用炸蝦剪影（填滿整個 canvas 無留白、16px 成一團），改回官方輸入法徽章規格——黑底 28% 圓角方塊＋字形 alpha 鏤空的 template TIFF（16+32px、LZW、無抗鋸齒硬邊）。中＝蝦、英＝A、dev＝β，三圖同為 `tools/make_icons.swift` 產生（已納入版控）；NOTICE 署名範圍更正為僅 app icns 使用 Twemoji，menubar tiff 改為自製
+- 移除已廢 `icon_left.tiff`／`icon_right.tiff`（蝦頭方向功能於 9c8f035 移除後即無參照）
+
+### 已知問題
+- **macOS 27（Tahoe 後續）第三方輸入法圖示一律顯示佔位方塊**：系統端行為改變——file-based IM 的 `tsInputMethodIconFileKey` 資源不再被 `TextInputMenuAgent` 解碼（TIFF/PNG/icns、adhoc/Developer ID 簽名、`TISIconIsTemplate` 兩值、`lsregister`+`TISRegisterInputSource` 重註全部無效；塞入壞檔仍顯示同一佔位圖示，證明檔案根本未被讀取；log 可見 `CUICatalog initWithName:fromBundle:` 對 bundle 的解析錯誤）。輸入功能不受影響；根本修法為 `.appex` 遷移或等待系統更新
+
 ## [0.4.0] — 2026-10-29
 
 ### 新增
@@ -8,7 +17,7 @@
 - **中英切換鍵可選 Shift／Caps Lock／兩者／全都不用（issue #18）**：新偏好 `englishToggleKey`（`shift` 預設／`capslock`／`both`／`none`），偏好設定「輸入」分頁提供四張選項卡。選 Caps Lock 時 ⇪ 變專用切換鍵：IOHID 強制把系統鎖定壓回 off（LED 不亮、`.capsLock` flag 不殘留大寫語意），IOHID 不可用時退回每次按壓切換＋遮罩保證不產生大寫；Shift 的暫時英文、萬用碼、符號等修飾鍵功能不受影響；選「全都不用」時英文僅從輸入法選單點選、`.capsLock` 恢復正常大寫語意。macOS 會丟棄過快的 ⇪ 輕點，UI 已註明「稍長按」
 - **密碼／安全欄位放行選項 `allowSecureInput`（預設關）**：macOS 安全輸入（密碼欄、Keychain 對話框等）啟用時，預設輸入法暫停、按鍵原樣送達；某些 app 會卡住安全輸入不放導致無法輸入，開啟後可強行使用。**無論是否開啟，安全期間 `debug.log` 與字頻學習一律靜音不落檔**；暫停發生時每行程顯示一次 toast「密碼欄位：輸入法暫停」
 - **YabomishDev 實驗變體與 rollback 安全網**：`YABOMISH_DEV=1 ./yabomish.sh build/install/uninstall` 產生獨立變體——專屬 bundle ID（`com.yabomishim.inputmethod.YabomishIMDev`）、app 名、XPC 連線名、`~/Library/Application Support/YabomishDev` 資料目錄與 UserDefaults suite（依 `Bundle.main.bundleIdentifier` 推導，dev/stable 偏好完全隔離），裝在 `~/Library/Input Methods` 免 sudo、不碰系統正式版；`YABOMISH_APP`/`YABOMISH_BID` 可再改名開多個測試變體。install 改保留上一版為 `.prev`，`./yabomish.sh rollback` 可雙向還原
-- **右上角圖示隨中英模式切換（issue #17）**：`Info.plist` 註冊 `ComponentInputModeDict` 兩個 input mode（中文 `com.yabomishim.inputmethod.YabomishIM` ／英文 `…YabomishIM.English`，各有圖示），`setValue(_:forTag:kTextServiceInputModePropertyTag)` 切換時 menu bar 圖示切換為黑底圓角「ABC」鏤空徽章（仿官方風格）；中文圖示同步改為「yabo」鏤空徽章；輸入法選單新增可點選的「英文」mode，選單點選與 Shift 狀態經 `setValue` override 雙向同步；英文狀態維持 per-app
+- **右上角圖示隨中英模式切換（issue #17）**：`Info.plist` 註冊 `ComponentInputModeDict` 兩個 input mode（中文 `com.yabomishim.inputmethod.YabomishIM` ／英文 `…YabomishIM.English`，各有圖示），`setValue(_:forTag:kTextServiceInputModePropertyTag)` 切換時 menu bar 圖示切換為黑底圓角「A」鏤空徽章（仿官方風格）；中文圖示為「蝦」鏤空徽章；輸入法選單新增可點選的「英文」mode，選單點選與 Shift 狀態經 `setValue` override 雙向同步；英文狀態維持 per-app
 - **模式提示透明度 `toastOpacity`（30–100%）**：既有中央 HUD 提示新增透明度偏好，搭配原有 `toastFontSize`（外觀分頁「模式提示」下方「提示透明度」滑桿）
 - **偏好設定程式改版為系統設定格局**：頂部 TabView 改 `NavigationSplitView` 側邊欄；內容經新元件 `SettingsPage` 置中限寬 720pt；開關型設定改 `SettingsGroupBox`+`ToggleRow` 群組列（與互斥選項卡語意分層）；卡片 desc 放寬至 3 行、選字窗 demo 加「預覽」標籤；多處 token／間距／a11y 一致性修正
 - **YabomishDev 專屬 β 圖示**：dev 中文 mode 改用黑底 β 徽章（`icon_dev.tiff`），與 stable 蝦字圖示在 menu bar 一眼區分；英文 mode 仍為 ABC
@@ -21,7 +30,7 @@
 - **`visualEffects` 貫徹至候選窗**：「無」→新共用元件 `FlatBackdropView` 純色不透明底；「完整」+macOS 26→`NSGlassEffectView`；其餘回落原 `.popover`/`.hudWindow` 材質；HUD 的 `SolidBackdrop` 同步改用共用元件
 - **偏好變更即時刷新候選窗**：`prefsChanged` 廣播時若面板顯示中，立即重套背景層並重建候選文字——固定窗常駐時調字體/字色/描邊/視覺效果/透明度不必等下次組字
 - **側邊欄圖示深色自適應**：淺色維持彩色圓角底+白圖示；深色改為同色描邊圖示無底色（深色下小彩底辨識度差）；以視窗環境解析的 `colorScheme` 判定（自動模式跟隨系統）
-- **炸蝦 app icon（Twemoji 改作，CC-BY 4.0 署名）**：多輪自繪迭代與 50+ 開源 icon 比對後，採 Twemoji fried-shrimp 鏡像版——墨色漸層 squircle（深淺系統外觀通吃）用作 YabomishIM `icon.icns` 與 YabomishPrefs `AppIcon.icns`；menubar 用同形剪影＋尾身白色切口保持小尺寸可讀：中文 `icon.tiff`、dev `icon_dev.tiff`（蝦＋右下 β 角標）、英文 `icon_en.tiff`（蝦＋右下 A 角標），皆 16+32px 雙倍率 TIFF；署名見 `NOTICE` 與設定程式關於頁「圖示」區
+- **炸蝦 app icon（Twemoji 改作，CC-BY 4.0 署名）**：多輪自繪迭代與 50+ 開源 icon 比對後，採 Twemoji fried-shrimp 鏡像版——墨色漸層 squircle（深淺系統外觀通吃）用作 YabomishIM `icon.icns` 與 YabomishPrefs `AppIcon.icns`；署名見 `NOTICE` 與設定程式關於頁「圖示」區
 - **dev 剪影版 app icon**：YabomishDev 輸入法與 dev 偏好設定 app 的 Dock/Finder 圖示改為淺灰底黑剪影（`icon_dev.icns`/`AppIconDev.icns`），與 stable 彩色炸蝦一眼區分；build script 依 `YABOMISH_DEV` 自動換 `CFBundleIconFile`
 
 ### 修正

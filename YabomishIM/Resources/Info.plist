@@ -19,9 +19,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.4.0</string>
+	<string>0.4.1</string>
 	<key>CFBundleVersion</key>
-	<string>0.4.0</string>
+	<string>0.4.1</string>
 	<key>ComponentInputModeDict</key>
 	<dict>
 		<key>tsInputModeListKey</key>
@@ -34,11 +34,11 @@
 				<string>zh-Hant</string>
 				<key>tsInputModeDefaultStateKey</key>
 				<true/>
+				<key>tsInputModeIconFileKey</key>
+				<string>icon.tiff</string>
 				<key>tsInputModeIsVisibleKey</key>
 				<true/>
 				<key>tsInputModeMenuIconFileKey</key>
-				<string>icon.tiff</string>
-				<key>tsInputModeIconFileKey</key>
 				<string>icon.tiff</string>
 				<key>tsInputModePaletteIconFileKey</key>
 				<string>icon.tiff</string>
@@ -55,11 +55,11 @@
 				<string>en</string>
 				<key>tsInputModeDefaultStateKey</key>
 				<false/>
+				<key>tsInputModeIconFileKey</key>
+				<string>icon_en.tiff</string>
 				<key>tsInputModeIsVisibleKey</key>
 				<true/>
 				<key>tsInputModeMenuIconFileKey</key>
-				<string>icon_en.tiff</string>
-				<key>tsInputModeIconFileKey</key>
 				<string>icon_en.tiff</string>
 				<key>tsInputModePaletteIconFileKey</key>
 				<string>icon_en.tiff</string>
@@ -87,10 +87,10 @@
 	<string>© 2025–2026 FakeRocket. Released under the MIT License.</string>
 	<key>NSPrincipalClass</key>
 	<string>YabomishIM.NSManualApplication</string>
-	<key>TISIntendedLanguage</key>
-	<string>zh-Hant</string>
 	<key>TISIconIsTemplate</key>
 	<true/>
+	<key>TISIntendedLanguage</key>
+	<string>zh-Hant</string>
 	<key>tsInputMethodCharacterRepertoireKey</key>
 	<array>
 		<string>zh-Hant</string>
