@@ -146,14 +146,6 @@ import Foundation
         get { access(keyPath: \.showActivateToast); return ud.object(forKey: "showActivateToast") as? Bool ?? true }
         set { withMutation(keyPath: \.showActivateToast) { ud.set(newValue, forKey: "showActivateToast") }; postChange() }
     }
-    var switchDisplay: String {
-        get {
-            access(keyPath: \.switchDisplay)
-            let v = ud.string(forKey: "switchDisplay") ?? "Yabo"
-            return (v == "Yabomish") ? v : "Yabo"   // 舊值（繁中／🦐）遷移為 Yabo
-        }
-        set { withMutation(keyPath: \.switchDisplay) { ud.set(newValue, forKey: "switchDisplay") }; postChange() }
-    }
     var debugMode: Bool {
         get { access(keyPath: \.debugMode); return ud.object(forKey: "debugMode") as? Bool ?? false }
         set { withMutation(keyPath: \.debugMode) { ud.set(newValue, forKey: "debugMode") }; postChange() }

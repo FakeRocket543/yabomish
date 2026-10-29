@@ -86,13 +86,18 @@ build_im() {
     [ -d "$IM_RES/tables" ] && cp -R "$IM_RES/tables" "$IM_APP/Contents/Resources/"
     [ -d "$IM_RES/Plugins" ] && cp -R "$IM_RES/Plugins" "$IM_APP/Contents/Resources/"
 
-    # mode 名稱本地化（輸入法選單名稱走 InfoPlist.loctable，非 .lproj）；
-    # dev 變體需把 key 裡的 bundle ID 一併改名
+    # mode 名稱本地化（輸入法選單名稱走 InfoPlist.loctable，非 .lproj）。
+    # stable：原樣複製（舊版誤把 value 改成執行檔名 YabomishIM，選單因此顯示錯名）；
+    # dev：key 的 bundle ID 改名、value 加註以便與 stable 區分
     if [ -f "$IM_RES/InfoPlist.loctable" ]; then
-        # key 的 bundle ID 跟 Info.plist 同步改名；value 的顯示名加 Dev 以便與 stable 區分
-        sed -e "s/com.yabomishim.inputmethod.YabomishIM/${IM_BUNDLE_ID}/g" \
-            -e "s/>Yabomish</>${IM_APP_NAME}</g" \
-            "$IM_RES/InfoPlist.loctable" > "$IM_APP/Contents/Resources/InfoPlist.loctable"
+        if [ "$IM_APP_NAME" != "YabomishIM" ]; then
+            sed -e "s/com.yabomishim.inputmethod.YabomishIM/${IM_BUNDLE_ID}/g" \
+                -e "s/>Yabomish</>${IM_APP_NAME}</g" \
+                -e "s/>Yabo</>Yabo β</g" \
+                "$IM_RES/InfoPlist.loctable" > "$IM_APP/Contents/Resources/InfoPlist.loctable"
+        else
+            cp "$IM_RES/InfoPlist.loctable" "$IM_APP/Contents/Resources/InfoPlist.loctable"
+        fi
     fi
 
     # 聯想／詞庫基礎語料（極簡版不含）

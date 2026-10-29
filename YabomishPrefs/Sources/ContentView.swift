@@ -109,7 +109,6 @@ private let settingIndex: [SettingHit] = [
     .init(title: "提示字色／描邊", page: "模式提示", keywords: "字色 描邊 stroke 字幕"),
     // 介面
     .init(title: "介面外觀",       page: "介面", keywords: "深色 淺色 自動 dark light appearance"),
-    .init(title: "切換顯示名稱",   page: "介面", keywords: "名稱 yabo 選單"),
     .init(title: "除錯記錄",       page: "介面", keywords: "debug log 記錄"),
     // 說明 / 關於
     .init(title: "使用方法",       page: "說明", keywords: "說明 教學 help"),

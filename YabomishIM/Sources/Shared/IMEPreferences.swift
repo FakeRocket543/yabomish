@@ -17,7 +17,6 @@ protocol IMEPreferences {
     func domainPriority(_ key: String) -> Int
     var punctuationPairing: Bool { get }
     var homophoneAutoExit: Bool { get }
-    var switchDisplay: String { get }
 }
 
 /// Bridges the static YabomishPrefs into an instance conforming to IMEPreferences.
@@ -37,5 +36,4 @@ final class DefaultPreferences: IMEPreferences {
     func domainPriority(_ key: String) -> Int { YabomishPrefs.domainPriority(key) }
     var punctuationPairing: Bool { YabomishPrefs.punctuationPairing }
     var homophoneAutoExit: Bool { YabomishPrefs.homophoneAutoExit }
-    var switchDisplay: String { YabomishPrefs.switchDisplay }
 }

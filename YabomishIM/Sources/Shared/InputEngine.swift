@@ -127,7 +127,7 @@ final class InputEngine {
 
     private func _modeLabel(for mode: InputMode) -> String {
         if _isEnglishMode { return "A" }
-        if mode == .t { return prefs.switchDisplay }
+        if mode == .t { return "Yabo" }  // 與輸入法註冊名（loctable）一致
         return Self.modeLabels[mode] ?? "繁中"
     }
 

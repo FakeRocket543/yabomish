@@ -37,7 +37,6 @@ struct YabomishPrefs {
         var toastStrokeColor = "#000000"
         var toastStrokeWidth = 1.0
         var showActivateToast = true
-        var switchDisplay = "Yabo"
         var appearanceMode = "auto"
         var homophoneMultiReading = false
         var homophoneAutoExit = false
@@ -100,9 +99,6 @@ struct YabomishPrefs {
         s.toastStrokeColor = defaults.string(forKey: "toastStrokeColor") ?? "#000000"
         s.toastStrokeWidth = defaults.object(forKey: "toastStrokeWidth") as? Double ?? 1.0
         s.showActivateToast = defaults.object(forKey: "showActivateToast") as? Bool ?? true
-        s.switchDisplay = defaults.string(forKey: "switchDisplay") ?? "Yabo"
-        // 舊值遷移：繁中／🦐 已移除，統一為 Yabo
-        if s.switchDisplay != "Yabo" && s.switchDisplay != "Yabomish" { s.switchDisplay = "Yabo" }
         s.appearanceMode = defaults.string(forKey: "appearanceMode") ?? "auto"
         s.homophoneMultiReading = defaults.object(forKey: "homophoneMultiReading") as? Bool ?? false
         s.homophoneAutoExit = defaults.object(forKey: "homophoneAutoExit") as? Bool ?? false
@@ -366,18 +362,6 @@ struct YabomishPrefs {
     static var englishSuggest: Bool {
         get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.englishSuggest }
         set { defaults.set(newValue, forKey: "englishSuggest"); refreshSnapshot() }
-    }
-
-    /// 切換顯示（切入提示 / 狀態列名稱）: "繁中" / "Yabomish" / "🦐"
-    static var switchDisplay: String {
-        get {
-            snapshotLock.lock(); defer { snapshotLock.unlock() }
-            return _snapshot.switchDisplay
-        }
-        set {
-            defaults.set(newValue, forKey: "switchDisplay")
-            refreshSnapshot()
-        }
     }
 
     // MARK: - Appearance

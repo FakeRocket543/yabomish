@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.4.3] — 2026-10-29
+
+### 變更
+- **輸入法名稱統一為「Yabo」並移除「切換顯示」設定**：fn 切換器／輸入法選單的名稱是 TIS 註冊資料（`InfoPlist.loctable`），靜態、偏好無法變更——「切換顯示」實際只影響 0.6 秒切入 toast，易誤解為失效。移除該設定（`switchDisplay` 偏好鍵、設定頁區塊、搜尋索引），toast 與註冊名一致顯示 Yabo；dev 變體顯示「Yabo β」
+- **修正 stable 輸入法選單誤顯示「YabomishIM」**：`yabomish.sh` 的 loctable sed 沒有 dev 守衛，stable 的顯示名也被改寫成執行檔名；改為 stable 原樣複製、僅 dev 套用改名。**更新需移除重加輸入法**才會刷新 TIS 註冊名
+
 ## [0.4.2] — 2026-10-29
 
 ### 變更

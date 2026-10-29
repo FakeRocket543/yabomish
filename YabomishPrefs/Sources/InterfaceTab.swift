@@ -19,12 +19,6 @@ struct InterfaceTab: View {
                              options: [("full", "完整"), ("none", "無")])
             }
 
-            SettingsSection(title: "切換顯示",
-                            footnote: "切換輸入法時，中央切入提示顯示的名稱。（輸入法選單名稱依 App 名稱顯示，無法動態變更）") {
-                SegmentedRow("名稱", selection: $store.switchDisplay,
-                             options: [("Yabo", "Yabo"), ("Yabomish", "Yabomish")])
-            }
-
             SettingsSection(title: "除錯",
                             footnote: "記錄輸入法操作日誌至 debug.log（安全輸入期間一律靜音）。") {
                 ToggleRow(label: "除錯記錄", icon: "ladybug",

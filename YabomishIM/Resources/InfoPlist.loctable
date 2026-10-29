@@ -9,7 +9,7 @@
 		<key>CFBundleName</key>
 		<string>Yabomish</string>
 		<key>com.yabomishim.inputmethod.YabomishIM</key>
-		<string>Yabomish</string>
+		<string>Yabo</string>
 		<key>com.yabomishim.inputmethod.YabomishIM.English</key>
 		<string>English</string>
 	</dict>
@@ -20,7 +20,7 @@
 		<key>CFBundleName</key>
 		<string>Yabomish</string>
 		<key>com.yabomishim.inputmethod.YabomishIM</key>
-		<string>Yabomish</string>
+		<string>Yabo</string>
 		<key>com.yabomishim.inputmethod.YabomishIM.English</key>
 		<string>英文</string>
 	</dict>
