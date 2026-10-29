@@ -62,7 +62,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | 萬用碼 | `*`（Shift+8） |
 | 候選中插符號/數字 | Shift+數字列（預設符號 `!@#$%`，可改數字） |
 | 頓號 | `vv` + 空白鍵 |
-| 中英切換 | 快按 Shift（composing 中會先清除字根） |
+| 中英切換 | 快按 Shift（composing 中會先清除字根）；切換鍵可改 Caps Lock／兩者皆可／關閉（設定 → 切換） |
 | 暫時英文 | 按住 Shift |
 | 全型空格 | Shift+Space |
 | 命令模式 | `,,` + 命令碼 + Space |
@@ -80,12 +80,17 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 ### 核心引擎
 - **硬體 keyCode 對應** — Dvorak、Colemak、AZERTY 等非 QWERTY 鍵盤正常運作
 - **CIN 字表裝置端編譯** — `.cin` 匯入後在裝置上編譯為 `.bin` 二進位格式（mmap zero-copy 載入）
-- **安全輸入偵測** — 密碼欄位自動停用
+- **安全輸入偵測** — 密碼欄位自動停用（設定 → 切換 可放行；安全期間一律不寫 log、不學習字頻）
 - **模糊匹配** — 鄰鍵容錯，打錯一碼也能找到候選字
+- **中英切換鍵可配置** — Shift（預設）／Caps Lock／兩者皆可／關閉；選 ⇪ 時系統大寫鎖定自動壓回不殘留
+- **右上角圖示隨模式切換** — menu bar 中文（蝦剪影）／英文（蝦+A）即時反映，輸入法選單可直接點選「英文」mode
+- **英文聯想輸入** — 英文模式下依英文字典即時補全候選（設定 → 英數 可關閉），個人詞庫隨使用學習
 
 ### 選字窗
 - **游標跟隨模式** — 毛玻璃垂直列表，跟隨輸入游標（可切換橫向排列）
-- **固定位置模式** — 水平列，可拖曳、右鍵調整對齊/透明度
+- **固定位置模式** — 水平列，可拖曳、右鍵調整對齊/透明度（只淡背景層，文字保持不透明）
+- **字體／字色／描邊自訂** — 候選窗與模式提示共用：系統／圓體／明體／黑體、文字色、字幕式描邊（設定 → 候選窗）
+- **視覺效果等級** — 「完整」在 macOS 26+ 啟用 Liquid Glass；「無」改純色不透明底（設定 → 介面）
 - **多螢幕支援** — 自動偵測所在螢幕，GPU 終端無效座標時 fallback 固定模式
 - **全螢幕 App 相容** — tmux/Ghostty 中正常顯示
 - **VoiceOver 無障礙** — 候選字窗支援螢幕朗讀
@@ -179,13 +184,18 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 
 ## 設定程式（YabomishPrefs.app）
 
-獨立 GUI 設定 App，五個分頁：
+獨立 GUI 設定 App，採 macOS 系統設定式側邊欄（支援搜尋設定項目）：
 
 - **輸入** — 選字窗模式（含 demo 預覽）、聯想輸入、聯想預先反白（預設關）、Shift＋數字鍵輸出、自動送字、拆碼提示、同音多讀、同音字自動退出、鄰鍵容錯、標點配對、固定同碼字排序、查字歷史（檢視／CSV 匯出／清除）
-- **聯想與詞庫** — 語境切換器、用詞習慣、層序拖拉（含第四張 Emoji 聯想卡，可關閉）、詞級語料來源切換、一般詞庫與專業詞典啟用／排序
+- **切換** — 中英切換鍵四選（Shift／Caps Lock／兩者／關閉）、密碼欄位放行選項
+- **英數** — 英文模式聯想輸入開關與行為
+- **聯想** — 語境切換器、用詞習慣、層序拖拉（含 Emoji 聯想卡，可關閉）、詞級語料來源切換
+- **一般詞庫／專業詞庫** — 詞庫啟用與排序、28 專業詞典分類管理
 - **快捷碼** — 空碼綁定自訂文字／指令，新增與匯入時自動驗證碼長度（2–4 碼）及字表衝突
-- **外觀** — 介面外觀三態（自動/淺色/深色）、切換顯示（繁中/Yabomish/🦐）、字體大小（滑桿+即時預覽）、透明度、高對比模式、Debug 模式
-- **關於** — 使用方法、快捷鍵速查、語料來源與授權、版本號（亦可在 menu「關於 Yabomish 設定」查看）
+- **候選窗** — 字體（系統／圓體／明體／黑體）、字色、描邊與描邊色（與模式提示共用）、游標模式顯示選項
+- **模式提示** — 中央 HUD 字級與透明度
+- **介面** — 介面外觀三態（自動/淺色/深色）、視覺效果等級（Liquid Glass 完整／無）、切換顯示、高對比模式、Debug 模式
+- **說明／關於** — 使用方法、快捷鍵速查、語料來源與授權（含炸蝦圖示 Twemoji CC-BY 4.0 署名）、版本號
 
 | 輸入 | 聯想與詞庫 |
 |:---:|:---:|
@@ -200,6 +210,23 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | ![快捷碼](images/prefs-shortcuts.webp) | ![外觀](images/prefs-appearance.webp) | ![關於](images/prefs-about.webp) |
 
 首次開啟有三頁引導（匯入字表 → 加入輸入方式 → 常用快捷鍵）。
+
+## YabomishDev 實驗變體（開發者）
+
+想試新功能又不影響日常使用的正式版：
+
+```bash
+YABOMISH_DEV=1 ./yabomish.sh build    # 建置 dev 變體
+YABOMISH_DEV=1 ./yabomish.sh install  # 安裝到 ~/Library/Input Methods（免 sudo）
+./yabomish.sh rollback                # stable 還原上一版
+YABOMISH_DEV=1 ./yabomish.sh rollback # dev 還原
+```
+
+- 獨立 bundle ID（`…YabomishIMDev`）、資料目錄（`~/Library/Application Support/YabomishDev`）、偏好 suite — 與 stable 完全隔離
+- Dock/Finder 圖示為黑剪影（stable 為彩色炸蝦），menu bar 中文圖示帶 β 角標
+- 偏好程式為 `~/Applications/YabomishDevPrefs.app`，自動指向 dev suite
+- 進階：`YABOMISH_APP`／`YABOMISH_BID` 可再派生更多測試變體
+- install 一律保留上一版為 `.prev`，`rollback` 雙向還原
 
 ## 移除
 
@@ -248,6 +275,7 @@ cd yabomish && ./yabomish.sh
 | 新聞詞頻 | 國家教育研究院 新聞語料庫 | 政府開放資料 |
 | 萌典字頻 | [萌典](https://www.moedict.tw/) | CC0 |
 | Emoji | [Unicode CLDR](https://cldr.unicode.org/) | Unicode License |
+| App／menu bar 圖示 | [Twemoji](https://twemoji.twitter.com/) fried-shrimp（鏡像・加深底改作） | CC-BY 4.0（署名見 `NOTICE`） |
 
 明碼語料及各自的授權、格式、build 指令詳見 [`yabomish_data/README.md`](yabomish_data/README.md)。
 

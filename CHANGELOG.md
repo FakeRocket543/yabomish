@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [Unreleased]
+## [0.4.0] — 2026-10-29
 
 ### 新增
 
@@ -25,6 +25,9 @@
 - **dev 剪影版 app icon**：YabomishDev 輸入法與 dev 偏好設定 app 的 Dock/Finder 圖示改為淺灰底黑剪影（`icon_dev.icns`/`AppIconDev.icns`），與 stable 彩色炸蝦一眼區分；build script 依 `YABOMISH_DEV` 自動換 `CFBundleIconFile`
 
 ### 修正
+- **sharedDir 資料目錄誤指**（stable 快捷碼/自訂詞失效）：build script 將 `CFBundleName` 設為 app 名後，`hasPrefix("Yabomish")` 判斷讓 stable 誤用全新空目錄 `YabomishIM/`；改由 `bundleIdentifier` 末段推導（`…YabomishIM`→`Yabomish`、`…YabomishIMDev`→`YabomishDev`），顯示名與資料目錄脫鉤
+- **設定程式頂部半透明條遮擋內容**：`NSWindow.toolbar = nil` 會被 `NavigationSplitView` 重建的 toolbar 覆蓋、殘留半透明材質條壓在頁首；改於 SwiftUI 層 `.toolbar(removing: .sidebarToggle)` 從源頭阻止
+- **menu bar 圖示空白方塊**：`sips` 產生的 TIFF 為無壓縮格式，TIS 無法讀取；改回 `tiffutil -lzw` + `-cathidpicheck` 原始管線（與舊版檔案逐欄一致）
 - a11y `valueChanged` 通知改投到 `backdrop`（原 cast 已移除的 `NSVisualEffectView` contentView 導致通知永不送達）
 - `TextStyle.font` 明體/黑體分支忽略 weight——具名字體改以 `withSymbolicTraits(.bold)` 補粗體（高對比＋自訂字體時真正生效）
 - e2e 新增 E15 十三項：實體化 `CandidatePanel` 由視圖層級驗證明體字體/自訂字色/反白保留系統色/描邊屬性/未設色自適應/`fixedAlpha` 只淡背景層/prefsChanged 即時換背景層/`full`→玻璃層/具名字體 bold trait
