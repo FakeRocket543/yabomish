@@ -1,0 +1,11 @@
+Yabomish asset attributions
+===========================
+
+App icon & menu-bar icons (icon.icns, AppIcon.icns, icon.tiff, icon_dev.tiff, icon_en.tiff)
+  Based on the Twemoji "fried shrimp" emoji (🍤), mirrored and adapted
+  (ink-tone background, silhouette separation cuts, corner badges).
+  Twemoji graphics: Copyright 2020 Twitter, Inc and other contributors.
+  License: CC-BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+  Source: https://github.com/twitter/twemoji
+
+Vector source files for these assets live in assets/.

@@ -21,7 +21,7 @@
 - **`visualEffects` 貫徹至候選窗**：「無」→新共用元件 `FlatBackdropView` 純色不透明底；「完整」+macOS 26→`NSGlassEffectView`；其餘回落原 `.popover`/`.hudWindow` 材質；HUD 的 `SolidBackdrop` 同步改用共用元件
 - **偏好變更即時刷新候選窗**：`prefsChanged` 廣播時若面板顯示中，立即重套背景層並重建候選文字——固定窗常駐時調字體/字色/描邊/視覺效果/透明度不必等下次組字
 - **側邊欄圖示深色自適應**：淺色維持彩色圓角底+白圖示；深色改為同色描邊圖示無底色（深色下小彩底辨識度差）；以視窗環境解析的 `colorScheme` 判定（自動模式跟隨系統）
-- **摺紙蝦向量 logo（SVG 手繪，`assets/hybrid.svg`）**：捲曲 C 形蝦身剪影（頭瓣＋上翹尖吻＋三叉尾扇）＋剪影內裁切的放射狀摺面稜線（clipPath），兼顧摺紙質感與小尺寸辨識——經多輪參考真實摺紙蝦（風琴摺、細長觸鬚、鱗片交疊）後取「剪影先行、摺面為質感」路線；橘漸層 squircle 白蝦版用作 YabomishIM `icon.icns` 與 YabomishPrefs `AppIcon.icns`；單色版用作 menubar 圖示：中文 `icon.tiff`（純蝦）、dev `icon_dev.tiff`（蝦＋右下 β 角標）、英文 `icon_en.tiff`（蝦＋右下 A 角標），皆 16+32px 雙倍率 TIFF
+- **炸蝦 app icon（Twemoji 改作，CC-BY 4.0 署名）**：多輪自繪迭代與 50+ 開源 icon 比對後，採 Twemoji fried-shrimp 鏡像版——墨色漸層 squircle（深淺系統外觀通吃）用作 YabomishIM `icon.icns` 與 YabomishPrefs `AppIcon.icns`；menubar 用同形剪影＋尾身白色切口保持小尺寸可讀：中文 `icon.tiff`、dev `icon_dev.tiff`（蝦＋右下 β 角標）、英文 `icon_en.tiff`（蝦＋右下 A 角標），皆 16+32px 雙倍率 TIFF；署名見 `NOTICE` 與設定程式關於頁「圖示」區
 
 ### 修正
 - a11y `valueChanged` 通知改投到 `backdrop`（原 cast 已移除的 `NSVisualEffectView` contentView 導致通知永不送達）

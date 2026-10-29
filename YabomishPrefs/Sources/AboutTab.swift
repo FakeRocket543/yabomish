@@ -61,6 +61,9 @@ struct AboutTab: View {
                 ("外國地名", "國家教育研究院 譯名", "政府開放資料"),
             ])
             #endif
+            creditSection("圖示", items: [
+                ("App 圖示・炸蝦", "Twemoji（鏡像・加深底改作）", "CC-BY 4.0"),
+            ])
 
             Text("本程式碼以 MIT 授權釋出。各語料依其原始授權條款使用。")
                 .font(Typo.caption).foregroundStyle(.secondary)
