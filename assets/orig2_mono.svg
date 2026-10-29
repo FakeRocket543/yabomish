@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <polygon points="129,260 176,211 189,295" fill="#000"/>
+  <polygon points="176,211 213,271 189,295" fill="#000" fill-opacity="0.42"/>
+  <polygon points="176,211 240,190 245,260" fill="#000"/>
+  <polygon points="176,211 245,260 213,271" fill="#000" fill-opacity="0.42"/>
+  <polygon points="240,190 307,202 245,260" fill="#000"/>
+  <polygon points="307,202 278,266 245,260" fill="#000" fill-opacity="0.42"/>
+  <polygon points="307,202 360,244 305,287" fill="#000"/>
+  <polygon points="307,202 305,287 278,266" fill="#000" fill-opacity="0.42"/>
+  <polygon points="360,244 353,312 305,287" fill="#000"/>
+  <polygon points="353,312 304,320 305,287" fill="#000" fill-opacity="0.42"/>
+  <polygon points="353,312 340,359 298,345" fill="#000"/>
+  <polygon points="353,312 298,345 304,320" fill="#000" fill-opacity="0.42"/>
+  <polygon points="131,262 189,295 160,325 110,300" fill="#000"/>
+  <polygon points="131,262 52,172 170,272" fill="#000" fill-opacity="0.42"/>
+  <polygon points="138,268 58,225 150,278" fill="#000"/>
+  <polygon points="145,280 78,335 158,290" fill="#000" fill-opacity="0.42"/>
+  <polygon points="340,359 298,345 430,305" fill="#000"/>
+  <polygon points="340,359 298,345 445,375" fill="#000" fill-opacity="0.42"/>
+  <polygon points="340,359 298,345 380,420" fill="#000"/>
+</svg>

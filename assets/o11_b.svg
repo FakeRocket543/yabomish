@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9A62"/><stop offset="1" stop-color="#E84F2A"/></linearGradient></defs><rect width="512" height="512" rx="114" fill="url(#bg)"/>
+<g transform="translate(30,55) scale(0.86)">
+<!-- long antennae sweeping up-back -->
+  <path fill="#FFFFFF" d="M 70 242 Q 46 158 26 82 L 33 79 Q 56 155 77 237 Z"/>
+  <path fill="#FFFFFF" fill-opacity="0.7" d="M 68 252 Q 40 215 10 172 L 17 168 Q 49 210 75 246 Z"/>
+  <!-- plates tail→head -->
+  <polygon points="452,468 485,502 455,505" fill="#FFFFFF" fill-opacity="0.45"/>
+  <polygon points="412,395 462,425 446,468 398,445" fill="#FFFFFF"/>
+  <polygon points="416,448 442,438 437,472" fill="#FFFFFF" fill-opacity="0.45"/>
+  <polygon points="370,332 438,358 430,415 366,395" fill="#FFFFFF"/>
+  <polygon points="372,392 402,378 398,418" fill="#FFFFFF" fill-opacity="0.45"/>
+  <polygon points="310,272 398,290 402,348 320,335" fill="#FFFFFF"/>
+  <polygon points="306,332 338,322 334,356" fill="#FFFFFF" fill-opacity="0.45"/>
+  <polygon points="200,235 320,228 338,300 220,318" fill="#FFFFFF"/>
+  <!-- head wedge + base plate fold -->
+  <polygon points="62,246 215,228 215,276" fill="#FFFFFF"/>
+  <polygon points="215,228 245,248 215,276" fill="#FFFFFF" fill-opacity="0.7"/>
+  <circle cx="150" cy="252" r="11" fill="#E84F2A"/></g>
+</svg>

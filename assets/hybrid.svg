@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <path id="sil" d="M 100 265 L 35 140 L 121 220
+      C 150 190 190 160 230 148 C 275 135 335 150 378 195
+      C 400 220 415 265 415 300 L 495 275 L 435 325 L 505 360
+      L 430 350 L 450 420 L 385 365
+      C 360 355 330 335 315 315 C 300 285 300 255 275 232
+      C 250 210 215 210 190 245 C 175 265 168 295 166 317
+      C 150 345 125 355 105 345 C 80 335 72 305 85 280
+      C 92 270 96 268 100 265 Z"/>
+    <clipPath id="clip"><use href="#sil"/></clipPath>
+  </defs>
+  <use href="#sil" fill="#F2613F"/>
+  <g clip-path="url(#clip)">
+    <polygon points="140,205 215,178 195,270" fill="#C94A30" fill-opacity="0.7"/>
+    <polygon points="215,178 300,175 250,280" fill="#C94A30" fill-opacity="0.45"/>
+    <polygon points="300,175 385,215 320,300" fill="#C94A30" fill-opacity="0.6"/>
+    <polygon points="100,250 195,270 150,330" fill="#C94A30" fill-opacity="0.55"/>
+    <circle cx="120" cy="295" r="12" fill="#8F3320"/>
+  </g>
+</svg>
