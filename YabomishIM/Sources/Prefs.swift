@@ -41,6 +41,7 @@ struct YabomishPrefs {
         var suggestPreselect = false
         var corpusVariant = "lite"
         var shiftDigitOutput = "symbol"
+        var modeSwitchKey = "shift"
         #if os(iOS)
         var punctuationPairing = true
         #else
@@ -96,6 +97,7 @@ struct YabomishPrefs {
         s.suggestPreselect = defaults.object(forKey: "suggestPreselect") as? Bool ?? false
         s.corpusVariant = defaults.string(forKey: "corpusVariant") ?? "lite"
         s.shiftDigitOutput = defaults.string(forKey: "shiftDigitOutput") ?? "symbol"
+        s.modeSwitchKey = defaults.string(forKey: "modeSwitchKey") == "capsLock" ? "capsLock" : "shift"
         #if os(iOS)
         s.punctuationPairing = defaults.object(forKey: "punctuationPairing") as? Bool ?? true
         #else
@@ -522,6 +524,18 @@ struct YabomishPrefs {
         }
         set {
             defaults.set(newValue, forKey: "shiftDigitOutput")
+            refreshSnapshot()
+        }
+    }
+
+    /// 中英文切換鍵："shift"（預設）或 "capsLock"。
+    static var modeSwitchKey: String {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.modeSwitchKey
+        }
+        set {
+            defaults.set(newValue, forKey: "modeSwitchKey")
             refreshSnapshot()
         }
     }

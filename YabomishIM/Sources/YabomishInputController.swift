@@ -85,6 +85,8 @@ class YabomishInputController: IMKInputController {
         }
     }()
 
+    private var modeSwitch = InputModeSwitch()
+
     private var panel: CandidatePanel { CandidatePanel.shared }
 
     // MARK: - Key Handling
@@ -265,6 +267,7 @@ class YabomishInputController: IMKInputController {
             let idx = self.candidateIndex(of: text)
             self.engine.selectCandidate(at: idx)
         }
+        modeSwitch.reset(flags: NSEvent.modifierFlags)
         // Reset engine state for new session
         engine.handleEscape()
         engine.clearCandidates()
@@ -283,7 +286,8 @@ class YabomishInputController: IMKInputController {
         if CINImportCoordinator.showFirstUseTip {
             CINImportCoordinator.showFirstUseTip = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-                self?.showModeToast("空白鍵送字 ｜ Shift 切英文 ｜ ,,H 說明")
+                let key = YabomishPrefs.modeSwitchKey == "capsLock" ? "Caps Lock" : "Shift"
+                self?.showModeToast("空白鍵送字 ｜ \(key) 切英文 ｜ ,,H 說明")
             }
         }
         #if !MINIMAL
@@ -312,6 +316,7 @@ class YabomishInputController: IMKInputController {
     private var isDeactivating = false
 
     override func deactivateServer(_ sender: Any!) {
+        modeSwitch.reset(flags: NSEvent.modifierFlags)
         isDeactivating = true
         defer { isDeactivating = false }
         guard Self.activeSession === self else {
@@ -393,21 +398,23 @@ extension YabomishInputController {
         let keyCode = event.keyCode
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
+        modeSwitch.keyDown()
         if flags.contains(.command) || flags.contains(.control) || flags.contains(.option) {
             return false
         }
 
         // English mode
         if engine.isEnglishMode {
-            if flags.contains(.shift) { newEngineShiftUsed = true }
-            let wantShift = flags.contains(.shift) != flags.contains(.capsLock)
-            if wantShift, let sh = keyCodeToShifted[keyCode] {
+            // Caps Lock is a mode key when selected, so English starts lowercase.
+            let caps = YabomishPrefs.modeSwitchKey != "capsLock" && flags.contains(.capsLock)
+            let wantUppercase = flags.contains(.shift) != caps
+            if flags.contains(.shift), let sh = keyCodeToShifted[keyCode] {
                 client.insertText(String(sh), replacementRange: notFoundRange)
                 return true
             }
             if let ch = keyCodeToChar[keyCode] ?? keyCodeToDigit[keyCode] {
                 var s = String(ch)
-                if wantShift { s = s.uppercased() }
+                if wantUppercase { s = s.uppercased() }
                 client.insertText(s, replacementRange: notFoundRange)
                 return true
             }
@@ -416,7 +423,6 @@ extension YabomishInputController {
 
         // Shift held: temporary English / wildcard / full-width space
         if flags.contains(.shift) && !flags.contains(.command) && !flags.contains(.control) && !flags.contains(.option) {
-            newEngineShiftUsed = true
             // 萬用碼先於數字分支：組字中 Shift+8 一律萬用碼（不受 shiftDigitOutput 偏好影響）。
             // 原本數字分支在前，會把 Shift+8 攔成「送出第一候選＋插入字面 8」，萬用碼幾乎不可達。
             if keyCode == 28 && !engine.composing.isEmpty {
@@ -444,7 +450,8 @@ extension YabomishInputController {
             }
             commitOrEscapeComposing()
             if let ch = keyCodeToChar[keyCode], ch.isLetter {
-                let s = flags.contains(.capsLock) ? String(ch).uppercased() : String(ch)
+                let caps = YabomishPrefs.modeSwitchKey != "capsLock" && flags.contains(.capsLock)
+                let s = caps ? String(ch).uppercased() : String(ch)
                 client.insertText(s, replacementRange: notFoundRange)
                 return true
             }
@@ -611,29 +618,11 @@ extension YabomishInputController {
         }
     }
 
-    private static var _shiftDownKey = 0
-    private var newEngineLastShiftDown: TimeInterval {
-        get { (objc_getAssociatedObject(self, &Self._shiftDownKey) as? NSNumber)?.doubleValue ?? 0 }
-        set { objc_setAssociatedObject(self, &Self._shiftDownKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
-    }
-
-    private static var _shiftUsedKey = 0
-    private var newEngineShiftUsed: Bool {
-        get { (objc_getAssociatedObject(self, &Self._shiftUsedKey) as? NSNumber)?.boolValue ?? false }
-        set { objc_setAssociatedObject(self, &Self._shiftUsedKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
-    }
-
     private func handleNewEngineFlagsChanged(_ event: NSEvent) -> Bool {
-        let shiftDown = event.modifierFlags.contains(.shift)
-        if shiftDown {
-            newEngineLastShiftDown = event.timestamp
-            newEngineShiftUsed = false
-        } else if newEngineLastShiftDown > 0 {
-            if event.timestamp - newEngineLastShiftDown < 0.3 && !newEngineShiftUsed {
-                if !engine.composing.isEmpty { engine.handleEscape() }
-                engine.toggleEnglishMode()
-            }
-            newEngineLastShiftDown = 0
+        if modeSwitch.flagsChanged(keyCode: event.keyCode, flags: event.modifierFlags,
+                                   timestamp: event.timestamp, selection: YabomishPrefs.modeSwitchKey) {
+            if !engine.composing.isEmpty { engine.handleEscape() }
+            engine.toggleEnglishMode()
         }
         return false
     }

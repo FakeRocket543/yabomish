@@ -130,6 +130,9 @@ struct InputTab: View {
                     }
                 }
 
+                SectionDivider()
+                ModeSwitchPicker(store: store)
+
                 // ── Shift+數字鍵輸出 ──
                 #if !MINIMAL
                 SectionDivider()
@@ -340,6 +343,24 @@ struct InputTab: View {
         case "fuzzyMatch":            return $store.fuzzyMatch
         case "punctuationPairing":    return $store.punctuationPairing
         default:                      return .constant(false)
+        }
+    }
+}
+
+/// Used by both preferences and first-run setup.
+struct ModeSwitchPicker: View {
+    @Bindable var store: PrefsStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("中英文切換鍵", systemImage: "globe").font(Typo.h2)
+            Picker("中英文切換鍵", selection: $store.modeSwitchKey) {
+                Text("Shift（預設）").tag("shift")
+                Text("Caps Lock").tag("capsLock")
+            }
+            .pickerStyle(.segmented)
+            Text("快按 Shift 或按 Caps Lock 切換中／英文，組字中會先清除字根。選擇 Caps Lock 時不作大寫鎖定；Shift 組合鍵仍可使用。")
+                .font(Typo.hint).foregroundStyle(.secondary)
         }
     }
 }

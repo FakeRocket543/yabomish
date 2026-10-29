@@ -22,7 +22,7 @@ struct ContentView: View {
             if store.hasSeenWelcome {
                 mainView
             } else {
-                WelcomeView { store.hasSeenWelcome = true }
+                WelcomeView(store: store) { store.hasSeenWelcome = true }
             }
         }
         .preferredColorScheme(colorScheme)

@@ -5,6 +5,12 @@ import Foundation
 @Observable final class PrefsStore {
     @ObservationIgnored private let ud = UserDefaults(suiteName: "com.yabomishim.inputmethod.YabomishIM") ?? .standard
 
+    /// Shared with the input method; unknown/missing values retain Shift behavior.
+    var modeSwitchKey: String {
+        get { access(keyPath: \.modeSwitchKey); return ud.string(forKey: "modeSwitchKey") == "capsLock" ? "capsLock" : "shift" }
+        set { withMutation(keyPath: \.modeSwitchKey) { ud.set(newValue, forKey: "modeSwitchKey") }; postChange() }
+    }
+
     // MARK: - Suggestion
 
     #if !MINIMAL

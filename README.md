@@ -62,7 +62,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | 萬用碼 | `*`（Shift+8） |
 | 候選中插符號/數字 | Shift+數字列（預設符號 `!@#$%`，可改數字） |
 | 頓號 | `vv` + 空白鍵 |
-| 中英切換 | 快按 Shift（composing 中會先清除字根） |
+| 中英切換 | 快按 Shift（預設）或 Caps Lock，可於偏好設定 → 輸入或首次設定精靈選擇；composing 中會先清除字根 |
 | 暫時英文 | 按住 Shift |
 | 全型空格 | Shift+Space |
 | 命令模式 | `,,` + 命令碼 + Space |

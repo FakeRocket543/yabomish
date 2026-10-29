@@ -83,7 +83,7 @@ struct HelpTab: View {
                 ])
 
                 guide("中英文切換", icon: "globe", steps: [
-                    "單擊 Shift → 切換中／英文",
+                    "單擊 Shift（預設）或 Caps Lock → 切換中／英文（於輸入設定選擇）",
                     "按住 Shift → 暫時英文，放開回中文",
                     "Shift + Space → 全形空白",
                     ",, + Space → 全形空白（另一種方式）",
@@ -132,7 +132,7 @@ struct HelpTab: View {
                 ])
 
                 section("切換", icon: "arrow.left.arrow.right", items: [
-                    ("Shift 單擊", "中／英文切換"),
+                    ("Shift 單擊 / Caps Lock", "中／英文切換（依輸入設定）"),
                     ("Shift 按住", "暫時英文模式"),
                     ("Shift + Space", "全形空白"),
                 ])

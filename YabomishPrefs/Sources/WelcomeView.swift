@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct WelcomeView: View {
+    @Bindable var store: PrefsStore
     @State private var page = 0
     @State private var cinExists = false
     var onDone: () -> Void
@@ -43,17 +44,20 @@ struct WelcomeView: View {
                         ]
                     )
                 } else {
-                    welcomePage(
-                        icon: "command",
-                        title: "常用快捷鍵",
-                        lines: [
-                            "Shift 單擊　　切換中／英文",
-                            ",,ZH　　　　　注音反查模式",
-                            "Shift+Space　全形空白",
-                            "Shift+*　　　萬用字元",
-                            "Tab / 方向鍵　翻頁選字",
-                        ]
-                    )
+                    VStack(spacing: 12) {
+                        ModeSwitchPicker(store: store).padding(.horizontal, 24)
+                        welcomePage(
+                            icon: "command",
+                            title: "常用快捷鍵",
+                            lines: [
+                                "\(store.modeSwitchKey == "capsLock" ? "Caps Lock" : "Shift 單擊")　　切換中／英文",
+                                ",,ZH　　　　　注音反查模式",
+                                "Shift+Space　全形空白",
+                                "Shift+*　　　萬用字元",
+                                "Tab / 方向鍵　翻頁選字",
+                            ]
+                        )
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -85,7 +89,7 @@ struct WelcomeView: View {
             }
             .padding(.horizontal, 24).padding(.vertical, 14)
         }
-        .frame(minWidth: 460, minHeight: 340)
+        .frame(minWidth: 460, minHeight: 480)
         .padding(12)
         .onAppear { detectCin() }
     }
