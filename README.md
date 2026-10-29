@@ -87,7 +87,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 - **安全輸入偵測** — 密碼欄位自動停用（設定 → 切換 可放行；安全期間一律不寫 log、不學習字頻）
 - **模糊匹配** — 鄰鍵容錯，打錯一碼也能找到候選字
 - **中英切換鍵可配置** — Shift（預設）／Caps Lock／兩者皆可／關閉；選 ⇪ 時系統大寫鎖定自動壓回不殘留
-- **右上角圖示隨模式切換** — menu bar 中文（蝦徽章）／英文（A 徽章）即時反映，輸入法選單可直接點選「英文」mode
+- **右上角圖示隨模式切換** — menu bar 中文（炸蝦，fn 切換器全彩）／英文（A 徽章）即時反映，輸入法選單可直接點選「英文」mode
 - **英文聯想輸入** — 英文模式下依英文字典即時補全候選（設定 → 英數 可關閉），個人詞庫隨使用學習
 
 ### 選字窗
@@ -227,7 +227,7 @@ YABOMISH_DEV=1 ./yabomish.sh rollback # dev 還原
 ```
 
 - 獨立 bundle ID（`…YabomishIMDev`）、資料目錄（`~/Library/Application Support/YabomishDev`）、偏好 suite — 與 stable 完全隔離
-- Dock/Finder 圖示為黑剪影（stable 為彩色炸蝦），menu bar 中文圖示為 β 徽章（stable 為蝦徽章）
+- Dock/Finder 圖示為黑剪影（stable 為彩色炸蝦），menu bar 中文圖示為 β 徽章（stable 為彩色炸蝦）
 - 偏好程式為 `~/Applications/YabomishDevPrefs.app`，自動指向 dev suite
 - 進階：`YABOMISH_APP`／`YABOMISH_BID` 可再派生更多測試變體
 - install 一律保留上一版為 `.prev`，`rollback` 雙向還原

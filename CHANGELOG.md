@@ -4,7 +4,7 @@
 ## [0.4.1] — 2026-10-29
 
 ### 變更
-- **menu bar／fn 圖示改為自產徽章（蝦／A／β）**：棄用炸蝦剪影（填滿整個 canvas 無留白、16px 成一團），改回官方輸入法徽章規格——黑底 28% 圓角方塊＋字形 alpha 鏤空的 template TIFF（16+32px、LZW、無抗鋸齒硬邊）。中＝蝦、英＝A、dev＝β，三圖同為 `tools/make_icons.swift` 產生（已納入版控）；NOTICE 署名範圍更正為僅 app icns 使用 Twemoji，menubar tiff 改為自製
+- **menu bar／fn 圖示重做（彩色版）**：中＝彩色炸蝦（Twemoji fried-shrimp 原色剪影，`assets/menubar-friedshrimp-color.svg`，修正原 `scale(14.22)` 填滿 canvas 無留白的問題，改 78% 置中）、英＝A、dev＝β 黑底白字徽章，皆為 16+32px LZW TIFF；`TISIconIsTemplate` 改 **false**——fn/Globe 切換 HUD 以全彩渲染（實測橘紅鮮明），menubar 系統會去飽和呈灰調剪影；`tools/make_icons.swift` 統一產生
 - **修正 macOS 27 menubar／fn 圖示顯示白色佔位方塊**：根因是 `tiffutil -cathidpicheck` 產出的 TIFF 兩幀都是 72dpi，而 macOS 27 要求 Aqua 標準的 72+144 dpi 1x/@2x 配對才把檔案視為單一 16pt 圖示——配對不成直接回退佔位圖示（macOS ≤15 對 72/72 寬容，升級後才爆）。`make_icons.swift` 產出後將 @2x 幀 XRes/YRes 改寫為 144（比照 Apple 官方 TIFF 的 tag 佈局），dev 實測 β 徽章正確渲染。先前「系統不解碼第三方圖示」的判斷錯誤，並非平台回歸
 - 移除已廢 `icon_left.tiff`／`icon_right.tiff`（蝦頭方向功能於 9c8f035 移除後即無參照）
 

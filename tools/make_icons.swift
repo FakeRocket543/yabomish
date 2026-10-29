@@ -15,18 +15,14 @@ func badge(_ text: String, font: NSFont, size: Int) -> NSBitmapImageRep {
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
     let r = CGFloat(size) * 0.28
+    // 彩色模式（TISIconIsTemplate=false）：黑底圓角＋白色實心字，
+    // RGB 直出（fn HUD 全彩、menubar 系統會去飽和但形狀清楚）
     NSColor.black.setFill()
-    // 無抗鋸齒的硬邊鏤空（Apple 官方 TIFF 的洞都是乾淨透明格點；
-    // AA 出的半透明邊在 16px 被模板反白吃掉，看不出字形）
-    NSGraphicsContext.current?.shouldAntialias = false
     NSBezierPath(roundedRect: NSRect(x: 0, y: 0, width: size, height: size), xRadius: r, yRadius: r).fill()
-    // 鏤空：glyph 要畫成透明（TISIconIsTemplate 只讀 alpha，實心白字會變純黑方塊）
-    NSGraphicsContext.current?.compositingOperation = .clear
-    let str = NSAttributedString(string: text, attributes: [.font: font])
+    let str = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: NSColor.white])
     let ts = str.size()
     str.draw(at: NSPoint(x: (CGFloat(size) - ts.width) / 2,
                          y: (CGFloat(size) - ts.height) / 2 - CGFloat(size) * 0.015))
-    NSGraphicsContext.current?.compositingOperation = .sourceOver
     NSGraphicsContext.restoreGraphicsState()
     return rep
 }
@@ -88,9 +84,24 @@ func pingfang(_ size: CGFloat) -> NSFont {
     NSFont(name: "PingFangTC-Semibold", size: size) ?? .systemFont(ofSize: size, weight: .semibold)
 }
 
-// zh：蝦（PingFang TC 中黑）
-writeTIFF(badge("蝦", font: pingfang(11), size: 16),
-          badge("蝦", font: pingfang(22), size: 32), to: "\(res)/icon.tiff")
+/// 炸蝦剪影 template mask：rsvg 直出像素 → 二值化（深色不透明、其餘全透明）。
+/// SVG 內的白色切口線是「畫上去的白」而非 alpha 洞——template 只讀 alpha，
+/// 直接用會變實心蝦；以亮度臨界把切口打成真透明。
+func shrimpMask(svgPath: String, px: Int) -> NSBitmapImageRep {
+    let png = "/tmp/shrimp_\(px).png"
+    let p = Process(); p.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/rsvg-convert")
+    p.arguments = ["-w", "\(px)", "-h", "\(px)", svgPath, "-o", png]
+    try! p.run(); p.waitUntilExit()
+    guard p.terminationStatus == 0,
+          let src = (NSBitmapImageRep.imageReps(withContentsOfFile: png) as? [NSBitmapImageRep])?.first
+    else { FileHandle.standardError.write("rsvg-convert failed for \(svgPath)\n".data(using: .utf8)!); exit(1) }
+    // 彩色版：RGB 原樣直出（Twemoji 原色），alpha 保真
+    return src
+}
+
+// zh：彩色炸蝦（Twemoji 原色；assets/menubar-friedshrimp-color.svg）
+writeTIFF(shrimpMask(svgPath: "assets/menubar-friedshrimp-color.svg", px: 16),
+          shrimpMask(svgPath: "assets/menubar-friedshrimp-color.svg", px: 32), to: "\(res)/icon.tiff")
 // en mode：A
 writeTIFF(badge("A", font: .systemFont(ofSize: 11, weight: .bold), size: 16),
           badge("A", font: .systemFont(ofSize: 22, weight: .bold), size: 32), to: "\(res)/icon_en.tiff")

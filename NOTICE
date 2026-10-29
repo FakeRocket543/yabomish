@@ -1,15 +1,15 @@
 Yabomish asset attributions
 ===========================
 
-App icons (icon.icns, AppIcon.icns, icon_dev.icns, AppIconDev.icns)
+App icons & menu-bar/input-source icons (icon.icns, AppIcon.icns, icon_dev.icns,
+AppIconDev.icns, icon.tiff, icon_dev.tiff, icon_en.tiff)
   Based on the Twemoji "fried shrimp" emoji (🍤), mirrored and adapted
   (ink-tone background, silhouette separation cuts, corner badges).
   Twemoji graphics: Copyright 2020 Twitter, Inc and other contributors.
   License: CC-BY 4.0 — https://creativecommons.org/licenses/by/4.0/
   Source: https://github.com/twitter/twemoji
 
-Menu-bar / input-source icons (icon.tiff, icon_dev.tiff, icon_en.tiff)
-  Generated at build time by tools/make_icons.swift (badge glyphs
-  蝦 / β / A). Original project artwork, no third-party assets.
+Badge glyphs (A / β) in icon_en.tiff, icon_dev.tiff are generated at build
+time by tools/make_icons.swift — original artwork, no third-party assets.
 
 Vector source files for these assets live in assets/.
