@@ -47,3 +47,6 @@ tools/select_im
 tools/e2e/e2e
 tools/e2e_live/e2e_live
 tools/e2e_live.app/
+
+# 使用者 WIP 設計文件（先ignore，之後要納入再移除本行）
+docs/design/
