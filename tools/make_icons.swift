@@ -17,10 +17,13 @@ func badge(_ text: String, font: NSFont, size: Int) -> NSBitmapImageRep {
     let r = CGFloat(size) * 0.28
     NSColor.black.setFill()
     NSBezierPath(roundedRect: NSRect(x: 0, y: 0, width: size, height: size), xRadius: r, yRadius: r).fill()
-    let str = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: NSColor.white])
+    // 鏤空：glyph 要畫成透明（TISIconIsTemplate 只讀 alpha，實心白字會變純黑方塊）
+    NSGraphicsContext.current?.compositingOperation = .clear
+    let str = NSAttributedString(string: text, attributes: [.font: font])
     let ts = str.size()
     str.draw(at: NSPoint(x: (CGFloat(size) - ts.width) / 2,
                          y: (CGFloat(size) - ts.height) / 2 - CGFloat(size) * 0.015))
+    NSGraphicsContext.current?.compositingOperation = .sourceOver
     NSGraphicsContext.restoreGraphicsState()
     return rep
 }
