@@ -1,10 +1,15 @@
 # Changelog
 
 
+## [0.4.2] — 2026-10-29
+
+### 變更
+- **圖示改彩色版**：中＝彩色炸蝦（Twemoji fried-shrimp 原色剪影，`assets/menubar-friedshrimp-color.svg`）、英＝A、dev＝β 黑底白字徽章，皆為 16+32px LZW TIFF；`TISIconIsTemplate` 改 **false**——fn/Globe 切換 HUD 以全彩渲染（實測橘紅鮮明），menubar 系統會去飽和呈灰橘混色、形狀清晰；`tools/make_icons.swift` 統一產生；NOTICE 署名同步（menubar 蝦形回歸 Twemoji CC-BY 4.0、A/β 徽章自製）
+
 ## [0.4.1] — 2026-10-29
 
 ### 變更
-- **menu bar／fn 圖示重做（彩色版）**：中＝彩色炸蝦（Twemoji fried-shrimp 原色剪影，`assets/menubar-friedshrimp-color.svg`，修正原 `scale(14.22)` 填滿 canvas 無留白的問題，改 78% 置中）、英＝A、dev＝β 黑底白字徽章，皆為 16+32px LZW TIFF；`TISIconIsTemplate` 改 **false**——fn/Globe 切換 HUD 以全彩渲染（實測橘紅鮮明），menubar 系統會去飽和呈灰調剪影；`tools/make_icons.swift` 統一產生
+- **menu bar／fn 圖示重做（單色版）**：棄用炸蝦剪影原檔（`scale(14.22)` 填滿整個 canvas 無留白，16px 成一團黑塊）——幾何修正為 78% 置中（`assets/menubar-friedshrimp.svg`）、白色切口線以亮度臨界打成真 alpha 洞，重產 16+32px template TIFF（LZW、無抗鋸齒硬邊）；en=A、dev=β 徽章；`tools/make_icons.swift` 產生器納入版控
 - **修正 macOS 27 menubar／fn 圖示顯示白色佔位方塊**：根因是 `tiffutil -cathidpicheck` 產出的 TIFF 兩幀都是 72dpi，而 macOS 27 要求 Aqua 標準的 72+144 dpi 1x/@2x 配對才把檔案視為單一 16pt 圖示——配對不成直接回退佔位圖示（macOS ≤15 對 72/72 寬容，升級後才爆）。`make_icons.swift` 產出後將 @2x 幀 XRes/YRes 改寫為 144（比照 Apple 官方 TIFF 的 tag 佈局），dev 實測 β 徽章正確渲染。先前「系統不解碼第三方圖示」的判斷錯誤，並非平台回歸
 - 移除已廢 `icon_left.tiff`／`icon_right.tiff`（蝦頭方向功能於 9c8f035 移除後即無參照）
 
