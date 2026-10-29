@@ -261,8 +261,9 @@ EOF
 
 create_dmg() {
     local variant="${1:-lite}"
-    local DMG_NAME="$ROOT/Yabomish-精簡.dmg"
-    [ "$variant" = "full" ] && DMG_NAME="$ROOT/Yabomish-全量.dmg"
+    # 檔名帶版號（v0.4.x 起），沿用 GH Release 資產命名慣例
+    local DMG_NAME="$ROOT/Yabomish-${VER}-lite.dmg"
+    [ "$variant" = "full" ] && DMG_NAME="$ROOT/Yabomish-${VER}-full.dmg"
     info "Creating $(basename "$DMG_NAME")..."
     rm -rf "$ROOT/build/dmg_staging"
     mkdir -p "$ROOT/build/dmg_staging"
@@ -311,8 +312,8 @@ EOF
 
 create_pkg() {
     local variant="${1:-lite}"
-    local PKG_OUT="$ROOT/Yabomish-精簡.pkg"
-    [ "$variant" = "full" ] && PKG_OUT="$ROOT/Yabomish-全量.pkg"
+    local PKG_OUT="$ROOT/Yabomish-${VER}-lite.pkg"
+    [ "$variant" = "full" ] && PKG_OUT="$ROOT/Yabomish-${VER}-full.pkg"
     make_one_pkg "$variant" "$PKG_OUT"
 }
 
@@ -456,10 +457,10 @@ PYINNER
 
 notarize() {
     local variant="${1:-lite}"
-    local DMG_NAME="$ROOT/Yabomish-精簡.dmg"
-    [ "$variant" = "full" ] && DMG_NAME="$ROOT/Yabomish-全量.dmg"
-    local PKG_OUT="$ROOT/Yabomish-精簡.pkg"
-    [ "$variant" = "full" ] && PKG_OUT="$ROOT/Yabomish-全量.pkg"
+    local DMG_NAME="$ROOT/Yabomish-${VER}-lite.dmg"
+    [ "$variant" = "full" ] && DMG_NAME="$ROOT/Yabomish-${VER}-full.dmg"
+    local PKG_OUT="$ROOT/Yabomish-${VER}-lite.pkg"
+    [ "$variant" = "full" ] && PKG_OUT="$ROOT/Yabomish-${VER}-full.pkg"
 
     local args=()
     if [ -n "$NOTARY_PROFILE" ]; then
