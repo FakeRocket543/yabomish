@@ -73,6 +73,27 @@ final class LLMPromptPanel: NSPanel, NSTextFieldDelegate {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
+    /// LSUIElement agent app 沒有 Edit menu — Cmd+C/V/X/A/Z 走
+    /// performKeyEquivalent 的 menu 搜尋全部失敗，所以鍵盤剪貼全無效。
+    /// 在 panel 攔截，轉送到 field editor（NSTextView）的標準 action。
+    /// 右鍵貼上本來就可以用（NSTextView 直接顯示 contextual menu），
+    /// 這裡只補鍵盤 shortcut。
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.modifierFlags.contains(.command),
+              let ch = event.charactersIgnoringModifiers?.lowercased() else {
+            return super.performKeyEquivalent(with: event)
+        }
+        let editor = (firstResponder as? NSTextView) ?? field.currentEditor()
+        guard let editor else { return super.performKeyEquivalent(with: event) }
+        switch ch {
+        case "c": editor.copy(nil);        return true
+        case "x": editor.cut(nil);         return true
+        case "v": editor.paste(nil);       return true
+        case "a": editor.selectAll(nil);   return true
+        default: return super.performKeyEquivalent(with: event)
+        }
+    }
+
     /// 顯示在滑鼠所在螢幕的上三分之一處（Spotlight 慣例）。
     /// onSubmit 只在 Enter 且有非空內容時觸發；Esc/失焦＝放棄不送。
     func show(onSubmit: @escaping (String) -> Void) {
