@@ -290,11 +290,17 @@ class YabomishInputController: IMKInputController {
     }
 
     @objc private func openPrefs() {
-        let appPath = "/Applications/YabomishPrefs.app"
+        // 依 bundle ID 選偏好程式：dev 變體開 ~/Applications/YabomishDevPrefs.app
+        //（寫 dev suite），stable 開 /Applications/YabomishPrefs.app。
+        // 寫錯 suite 的話 IM 的偏好快照永遠看不到（這就是「調了沒反應」）。
+        let isDev = (Bundle.main.bundleIdentifier ?? "").contains("Dev")
+        let appPath = isDev
+            ? NSHomeDirectory() + "/Applications/YabomishDevPrefs.app"
+            : "/Applications/YabomishPrefs.app"
         guard FileManager.default.fileExists(atPath: appPath) else {
             let a = NSAlert()
             a.messageText = "找不到設定程式"
-            a.informativeText = "請執行 yabomish.sh 安裝 YabomishPrefs.app 到 /Applications。"
+            a.informativeText = "請執行 yabomish.sh 安裝 \((appPath as NSString).lastPathComponent)。"
             a.runModal()
             return
         }

@@ -7,7 +7,8 @@ struct YabomishPrefs {
     /// input method and the preferences app read/write the same keys.
     /// Suite 名跟隨本 bundle 的 CFBundleIdentifier：stable=…YabomishIM，
     /// dev 變體（…YabomishIMDev）自動取得獨立 suite，實驗偏好不會漏進 stable。
-    /// YabomishPrefs app 仍固定寫 stable suite；dev 偏好用 defaults write 設。
+    /// 對應的 prefs app（YabomishPrefs.app／YabomishDevPrefs.app）以
+    /// `-prefsSuite` 參數指到同一個 suite；openPrefs 依 bundle ID 選對的 app。
     private static let _standard = UserDefaults.standard
     static let defaults = UserDefaults(suiteName:
         Bundle.main.bundleIdentifier ?? "com.yabomishim.inputmethod.YabomishIM") ?? _standard
