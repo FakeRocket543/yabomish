@@ -8,7 +8,9 @@ import Foundation
 ///   "ss":   { "type": "shell", "run": "~/.../yabomish_capture.sh screen" },
 ///   "saf":  { "type": "open",  "app": "Safari" },
 ///   "tg":   { "type": "open",  "bundle": "com.tdesktop.Telegram" },
-///   "ask":  { "type": "hermes", "send": "幫我總結這篇" }
+///   "ask":  { "type": "hermes", "send": "幫我總結這篇" },
+///   "tw":   { "type": "preset", "name": "社群文",
+///             "prompt": "把以下改寫成繁中 IG 貼文：\n{clip}\n要求：{input}" }
 /// }
 /// ```
 ///
@@ -17,6 +19,8 @@ import Foundation
 /// - `open`   → 開啟 app（僅 macOS）；`bundle`（open -b）優先於 `app`（open -a），
 ///              bundle ID 不受系統語系影響；非零退出時 toast stderr 首行
 /// - `hermes` → POST 明確觸發的字串到本機 Hermes agent，回覆插入游標處（僅 macOS）
+/// - `preset` → ,,PR 預設 prompt：`,,PR` 開選擇器、`,,PR〈碼〉` 直接啟用（僅 macOS）。
+///              樣板 {clip}=當下剪貼簿、{input}=碼後殘餘字；進浮動窗可再編輯
 enum CommaCommandRunner {
 
     struct Command: Decodable {
@@ -27,6 +31,10 @@ enum CommaCommandRunner {
         let text: String?
         let send: String?
         let url: String?
+        /// preset 型別專用：選單顯示名（預設用 dict key）與 prompt 樣板。
+        /// 樣板支援 {clip}（送當時的剪貼簿全文）與 {input}（使用者補打的內容）。
+        let name: String?
+        let prompt: String?
     }
     private(set) static var commands: [String: Command] = [:]
 
@@ -48,6 +56,26 @@ enum CommaCommandRunner {
     static func expandText(_ cmd: String) -> String? {
         guard let command = commands[cmd], command.type == "text" else { return nil }
         return command.text
+    }
+
+    /// type=="preset" 的指令集（供 ,,PR 使用）。dict key 即為快捷碼。
+    static var presets: [(key: String, name: String, prompt: String)] {
+        commands.compactMap { k, c in
+            guard c.type == "preset", let p = c.prompt else { return nil }
+            return (key: k, name: c.name ?? k, prompt: p)
+        }.sorted { $0.key < $1.key }
+    }
+
+    /// ,,PR<key> 直接解析：key 前綴比對（最長優先，例如 "tw" 吃 "tw發文"）。
+    /// 回傳該 preset 與殘餘文字（供 {input} 取代）；沒中回 nil。
+    static func resolvePreset(_ sub: String) -> (command: Command, key: String, rest: String)? {
+        let lower = sub.lowercased()
+        var best: (Command, String)? = nil
+        for (k, c) in commands where c.type == "preset" && lower.hasPrefix(k) {
+            if best == nil || k.count > best!.1.count { best = (c, k) }
+        }
+        guard let (c, k) = best, c.prompt != nil else { return nil }
+        return (command: c, key: k, rest: String(sub.dropFirst(k.count)))
     }
 
     /// Try to execute a platform command (shell/open/hermes, macOS-only).

@@ -18,13 +18,16 @@ protocol InputEngineDelegate: AnyObject {
     /// 預設實作為 no-op（iOS/Android 未支援時安全忽略）。
     func engineDidRequestLLM(_ prompt: String)
     /// `,,AI` 裸指令：請平台開獨立 prompt 輸入窗（inline 組字只能收 ASCII，
-    /// 中文 prompt 需要真正的 text field）。預設 no-op。
-    func engineDidOpenLLMPrompt()
+    /// 中文 prompt 需要真正的 text field）。`prefill` 為預填內容（preset 樣板；
+    /// 平台端負責 {clip} 剪貼簿取代）。預設 no-op。
+    func engineDidOpenLLMPrompt(prefill: String)
+    /// `,,PR` 裸指令：請平台開 preset 選擇器（非互動預設 no-op）。
+    func engineDidOpenPresetPicker(_ items: [(key: String, name: String, prompt: String)])
 }
-
 extension InputEngineDelegate {
     func engineDidRequestLLM(_ prompt: String) {}
-    func engineDidOpenLLMPrompt() {}
+    func engineDidOpenLLMPrompt(prefill: String) {}
+    func engineDidOpenPresetPicker(_ items: [(key: String, name: String, prompt: String)]) {}
 }
 
 final class InputEngine {
@@ -571,6 +574,23 @@ final class InputEngine {
         let cmd = raw.lowercased()
         _isInCommaCommand = false; _commaCommandBuffer = ""
         _resetComposing()
+        // ,,PR → preset prompt 選擇器；,,PR<key><input> 直接解析 preset。
+        // 注意要先於 ,,AI 判斷（"pr…" 不含 "ai" 前綴，但順序可讀性為重），
+        // 也先於 ,,P（cmd=="p" 是精確比對，不衝突）。
+        if cmd.hasPrefix("pr") {
+            let sub = String(raw.dropFirst(2))
+            if sub.isEmpty {
+                delegate?.engineDidOpenPresetPicker(CommaCommandRunner.presets)
+            } else if let hit = CommaCommandRunner.resolvePreset(sub),
+                      let template = hit.command.prompt {
+                let filled = template.replacingOccurrences(of: "{input}",
+                                                         with: hit.rest.trimmingCharacters(in: .whitespaces))
+                delegate?.engineDidOpenLLMPrompt(prefill: filled)
+            } else {
+                delegate?.engineDidShowToast("無此 preset：\(sub)")
+            }
+            return
+        }
         // ,,AI → 開獨立 prompt 浮動窗（可打中文，inline 組字只能收 ASCII）；
         // ,,AI<prompt> 保留直寫：有內容直接送、空內容開窗。
         if cmd.hasPrefix("ai") {
@@ -579,7 +599,7 @@ final class InputEngine {
                 delegate?.engineDidShowToast("AI 生成中…")
                 delegate?.engineDidRequestLLM(inline)
             } else {
-                delegate?.engineDidOpenLLMPrompt()
+                delegate?.engineDidOpenLLMPrompt(prefill: "")
             }
             return
         }
@@ -675,7 +695,11 @@ final class InputEngine {
         #endif
         if cmd == "p" {
             #if os(macOS)
-            let appPath = "/Applications/YabomishPrefs.app"
+            // dev 變體開自己的 prefs app（寫 dev suite）；bundle 內找不到才回退 stable。
+            let isDev = (Bundle.main.bundleIdentifier ?? "").contains("Dev")
+            let appPath = isDev
+                ? NSHomeDirectory() + "/Applications/YabomishDevPrefs.app"
+                : "/Applications/YabomishPrefs.app"
             if FileManager.default.fileExists(atPath: appPath) {
                 let proc = Process()
                 proc.launchPath = "/usr/bin/open"

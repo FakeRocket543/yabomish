@@ -95,10 +95,11 @@ final class LLMPromptPanel: NSPanel, NSTextFieldDelegate {
     }
 
     /// 顯示在滑鼠所在螢幕的上三分之一處（Spotlight 慣例）。
+    /// `prefill` 為 presets 樣板展開後的內容（含 {clip} 已由平台端代換）。
     /// onSubmit 只在 Enter 且有非空內容時觸發；Esc/失焦＝放棄不送。
-    func show(onSubmit: @escaping (String) -> Void) {
+    func show(prefill: String = "", onSubmit: @escaping (String) -> Void) {
         self.onSubmit = onSubmit
-        field.stringValue = ""
+        field.stringValue = prefill
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         if let vf = screen?.visibleFrame {
             let x = vf.midX - frame.width / 2

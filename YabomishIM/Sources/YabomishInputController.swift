@@ -1228,9 +1228,24 @@ extension YabomishInputController: InputEngineDelegate {
 
     /// `,,AI` 裸指令：開獨立浮動輸入窗（nonactivating，client 焦點不動），
     /// 可打中文/空白/任意輸入法內容；Enter 送出 → engineDidRequestLLM。
-    func engineDidOpenLLMPrompt() {
-        LLMPromptPanel.shared.show { [weak self] prompt in
+    /// prefill 為 preset 樣板展開結果；{clip} 在這裡代換成剪貼簿全文。
+    func engineDidOpenLLMPrompt(prefill: String) {
+        let filled = prefill.replacingOccurrences(of: "{clip}",
+                                                with: ClipboardProcessor.plainText() ?? "")
+        LLMPromptPanel.shared.show(prefill: filled) { [weak self] prompt in
             self?.engineDidRequestLLM(prompt)
+        }
+    }
+
+    /// `,,PR` 裸指令：開 preset 選擇器；選中後把樣板送進 LLM 輸入窗讓使用者修改。
+    func engineDidOpenPresetPicker(_ items: [(key: String, name: String, prompt: String)]) {
+        guard !items.isEmpty else {
+            DebugLog.log("engineDidOpenPresetPicker: empty")
+            engineDidShowToast("無 preset — 在 commands.json 加 type:preset")
+            return
+        }
+        PresetPickerPanel.shared.show(items: items) { [weak self] prompt in
+            self?.engineDidOpenLLMPrompt(prefill: prompt)
         }
     }
 
@@ -1284,10 +1299,15 @@ extension YabomishInputController: InputEngineDelegate {
     /// 同步執行 `aiCommand` 樣板（預設 `/usr/bin/fm respond {prompt}`），
     /// 回傳 stdout 或錯誤描述。在背景佇列呼叫。
     /// 樣板以空白切 argv：第一欄是可執行檔，{prompt} 佔位符整欄替換；
+    /// {clip} 佔位符同理（當下剪貼簿文字，CLI wrapper 可自行擺放 context）；
     /// 沒寫 {prompt} 時 prompt 追加為最後一欄。args 內不支援引號跳脫（MVP）。
     private static func runFM(prompt: String) -> FMResult {
         let tmpl = YabomishPrefs.aiCommand.trimmingCharacters(in: .whitespaces)
-        var argv = tmpl.split(separator: " ").map { $0.replacingOccurrences(of: "{prompt}", with: prompt) }
+        let clip = ClipboardProcessor.plainText() ?? ""
+        var argv = tmpl.split(separator: " ").map {
+            $0.replacingOccurrences(of: "{prompt}", with: prompt)
+              .replacingOccurrences(of: "{clip}", with: clip)
+        }
         if !tmpl.contains("{prompt}") { argv.append(prompt) }
         guard let exec = argv.first, !exec.isEmpty else {
             return .failure("aiCommand 為空")

@@ -2,6 +2,17 @@
 
 
 
+## [0.4.8] — 2026-10-30
+
+### 新增
+- **`,,PR` 預設 prompt 選擇器（commands.json preset 型別）**：commands.json 新增 `type:"preset"` 條目——`{"tw":{"type":"preset","name":"社群文","prompt":"…{clip}…{input}…"}}`。`,,PR` 開數字鍵浮動選單（↑↓/數字鍵選、Esc 取消），`,,PR〈碼〉` 直接啟用（前綴最長比對，碼後殘餘字代入 `{input}`）；樣板 `{clip}`=當下剪貼簿、`{input}`=補打內容，選中後進 `,,AI` 浮動窗可再編輯才送出。適用「貼上文章→` 社群文」「貼上程式碼→解說」等 skill-per-shortcut 流程
+- **`{clip}` 佔位符進 `aiCommand` 樣板**：argv 樣板除 `{prompt}` 外新增 `{clip}`（當下剪貼簿全文），CLI wrapper 可自排 context 位置（如 `pi -p "Ctx:{clip} {prompt}"`）
+
+### 修正
+- **`,,P` dev 變體開錯 prefs app**：engine 的 `,,P` 分支寫死 `/Applications/YabomishPrefs.app`，dev 用 `,,P` 調偏好寫進 stable suite 導致「調了沒反應」；改依 bundle ID 選 `~/Applications/YabomishDevPrefs.app`（選單「偏好設定⋯」已在 7c75658 修過，這次補 `,,P` 路徑）
+- **選單「偏好設定⋯」dev 變體同病**：`openPrefs` 亦寫死 stable app 路徑（0.4.7 後、0.4.8 前 commit）；現在一併依 bundle ID 選對 app
+- **`,,AI` prompt 窗鍵盤剪貼失效**：IM 是 `LSUIElement` agent 沒有 Edit menu，`NSTextField` 的 Cmd+C/V/X/A 走 menu 搜尋全失敗；`LLMPromptPanel` 攔 `performKeyEquivalent` 轉送 field editor，鍵盤剪貼恢復（右鍵貼上原本就可）
+
 ## [0.4.7] — 2026-10-30
 
 ### 變更

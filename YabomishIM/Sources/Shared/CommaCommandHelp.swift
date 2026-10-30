@@ -40,7 +40,8 @@ enum CommaCommandHelp {
         • ,,RS 重置字頻  ,,RL 重載字表
         • ,,LH 查字歷史  ,,RH 清除查字歷史
         • ,,PIN 固定同碼字排序  ,,UNPINx 解除
-        • ,,AI 開 AI 輸入窗（Enter 送出）／,,AI〈prompt〉直送
+        • ,,AI 開 AI 輸入窗(Enter 送出)/,,AI〈prompt〉直送
+        • ,,PR 預設 prompt 選擇器/,,PR〈碼〉直接啟用
         \(sgxHelp)\(appNavHelp)• ,,P 打開設定程式
         • ,,H 顯示本說明
 
