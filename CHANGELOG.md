@@ -27,7 +27,7 @@
 ## [0.4.5] — 2026-10-30
 
 ### 新增
-- **`,,LLM` 本機 LLM 生成上屏（Apple Intelligence `fm`）**：兩種用法——`,,LLM` 進第二層 prompt 輸入框（💬 前綴顯示、可含空白、Enter 送出、Esc 取消），`,,LLM〈prompt〉` 直寫即送；非同步呼叫 macOS 27+ 內建 `/usr/bin/fm respond`，30 秒 watchdog；完成時原 client 仍是當前 session 才 `insertText`，焦點已切走改放剪貼簿 + toast。`InputEngineDelegate` 新增 `engineDidRequestLLM`（協定 extension 預設 no-op，iOS/Android 不受影響）
+- **`,,LLM` 本機 LLM 生成送到游標處（Apple Intelligence `fm`）**：兩種用法——`,,LLM` 進第二層 prompt 輸入框（💬 前綴顯示、可含空白、Enter 送出、Esc 取消），`,,LLM〈prompt〉` 直寫即送；非同步呼叫 macOS 27+ 內建 `/usr/bin/fm respond`，30 秒 watchdog；完成時原 client 仍是當前 session 才 `insertText`，焦點已切走改放剪貼簿 + toast。`InputEngineDelegate` 新增 `engineDidRequestLLM`（協定 extension 預設 no-op，iOS/Android 不受影響）
 - **候選窗拇指提示 `spaceThumbHint`（預設關）**：組字時依最後一碼的 QWERTY 手別在候選窗角落顯示色點，提示用對側拇指按 Space——左手碼 → 右下青綠點、右手碼 → 左下橘黃點；僅 `composing` 非空時出現；設定程式「候選窗 → 拇指提示」可調透明度與點徑
 
 ### 修正

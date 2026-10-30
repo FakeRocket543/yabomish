@@ -1281,7 +1281,7 @@ extension YabomishInputController: InputEngineDelegate {
                 }
                 switch result {
                 case .success(let text):
-                    // 觸發時的 client 仍是當前 session 的 client 才直接上屏；
+                    // 觸發時的 client 仍是當前 session 的 client 才直接送到游標；
                     // 換欄位/換 app 後寫入舊 client 會插進錯的地方 → 改放剪貼簿。
                     if let client, self.engineClient === client {
                         let range = client.markedRange()
