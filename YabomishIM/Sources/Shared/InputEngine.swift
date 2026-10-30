@@ -23,11 +23,14 @@ protocol InputEngineDelegate: AnyObject {
     func engineDidOpenLLMPrompt(prefill: String)
     /// `,,PR` 裸指令：請平台開 preset 選擇器（非互動預設 no-op）。
     func engineDidOpenPresetPicker(_ items: [(key: String, name: String, prompt: String)])
+    /// `,,P`：請平台開自己的偏好設定 app（stable↔dev 由平台依 bundle ID 判斷）。
+    func engineDidOpenPrefs()
 }
 extension InputEngineDelegate {
     func engineDidRequestLLM(_ prompt: String) {}
     func engineDidOpenLLMPrompt(prefill: String) {}
     func engineDidOpenPresetPicker(_ items: [(key: String, name: String, prompt: String)]) {}
+    func engineDidOpenPrefs() {}
 }
 
 final class InputEngine {
@@ -694,22 +697,9 @@ final class InputEngine {
         }
         #endif
         if cmd == "p" {
-            #if os(macOS)
-            // dev 變體開自己的 prefs app（寫 dev suite）；bundle 內找不到才回退 stable。
-            let isDev = (Bundle.main.bundleIdentifier ?? "").contains("Dev")
-            let appPath = isDev
-                ? NSHomeDirectory() + "/Applications/YabomishDevPrefs.app"
-                : "/Applications/YabomishPrefs.app"
-            if FileManager.default.fileExists(atPath: appPath) {
-                let proc = Process()
-                proc.launchPath = "/usr/bin/open"
-                proc.arguments = [appPath]
-                try? proc.run()
-                delegate?.engineDidShowToast("打開設定")
-            } else {
-                delegate?.engineDidShowToast("找不到設定程式")
-            }
-            #endif
+            // 偏好程式路徑由平台解析（macOS: stable↔dev prefs app）；
+            // 集中走 delegate，跟選單「偏好設定⋯」共用同一條路。
+            delegate?.engineDidOpenPrefs()
             return
         }
         if cmd == "zh" {

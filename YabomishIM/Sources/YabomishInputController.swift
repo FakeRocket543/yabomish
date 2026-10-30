@@ -314,6 +314,9 @@ class YabomishInputController: IMKInputController {
         try? proc.run()
     }
 
+    /// engine `,,P` → 與選單「偏好設定⋯」共用 openPrefs() 的 dev/stable 判斷。
+    func engineDidOpenPrefs() { openPrefs() }
+
     /// InputModeID（同時是該 mode 的 TISInputSourceID），與
     /// Info.plist 的 ComponentInputModeDict/tsInputModeListKey 對應；
     /// 切換透過 kTextServiceInputModePropertyTag，menu bar 圖示隨之更新。
@@ -1268,8 +1271,9 @@ extension YabomishInputController: InputEngineDelegate {
         let client = engineClient   // weak 參考先取強引用快照
         DebugLog.log("engineDidRequestLLM: gen=\(gen) prompt=\(prompt.prefix(40))")
 
+        let clip = ClipboardProcessor.plainText() ?? ""   // NSPasteboard 要在 main thread 讀
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = Self.runFM(prompt: prompt)
+            let result = Self.runFM(prompt: prompt, clip: clip)
             DispatchQueue.main.async {
                 guard let self = self, self.llmGeneration == gen else {
                     DebugLog.log("engineDidRequestLLM: stale gen dropped")
@@ -1299,11 +1303,12 @@ extension YabomishInputController: InputEngineDelegate {
     /// 同步執行 `aiCommand` 樣板（預設 `/usr/bin/fm respond {prompt}`），
     /// 回傳 stdout 或錯誤描述。在背景佇列呼叫。
     /// 樣板以空白切 argv：第一欄是可執行檔，{prompt} 佔位符整欄替換；
-    /// {clip} 佔位符同理（當下剪貼簿文字，CLI wrapper 可自行擺放 context）；
-    /// 沒寫 {prompt} 時 prompt 追加為最後一欄。args 內不支援引號跳脫（MVP）。
-    private static func runFM(prompt: String) -> FMResult {
+    /// {clip} 佔位符同理（呼叫端已在 main thread 取好的剪貼簿快照——
+    /// NSPasteboard 在背景執行緒讀不保證安全）。沒寫 {prompt} 時 prompt 追加為最後一欄。
+    /// args 內不支援引號跳脫（MVP）。
+    /// ⚠️ 注意：{prompt}/{clip} 內容會進 argv — ps auxww 看得到，不適合放機密。
+    private static func runFM(prompt: String, clip: String) -> FMResult {
         let tmpl = YabomishPrefs.aiCommand.trimmingCharacters(in: .whitespaces)
-        let clip = ClipboardProcessor.plainText() ?? ""
         var argv = tmpl.split(separator: " ").map {
             $0.replacingOccurrences(of: "{prompt}", with: prompt)
               .replacingOccurrences(of: "{clip}", with: clip)
