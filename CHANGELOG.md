@@ -2,6 +2,13 @@
 
 
 
+## [0.4.10] — 2026-10-31
+
+### 修正
+- **`runAIHTTP` 的 `{clip}` 重複送入**：preset 樣板已把剪貼簿拼進 prompt 時，HTTP body 不再附加第二份（`prompt.contains(clip)` 檢查）
+- **ShortcutTab 移除舊「AI 指令」區塊**：設定只剩 AITab 單一入口
+- **min build 補 AI 分頁**：`,,AI`/preset 在 min 也編譯，設定程式側邊欄一併出現（非 min 也照用）
+
 ## [0.4.9] — 2026-10-30
 
 ### 新增
