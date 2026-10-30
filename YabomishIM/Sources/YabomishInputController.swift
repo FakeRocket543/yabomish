@@ -1220,7 +1220,7 @@ extension YabomishInputController: InputEngineDelegate {
         }
     }
 
-    /// `,,LLM` 裸指令：開獨立浮動輸入窗（nonactivating，client 焦點不動），
+    /// `,,AI` 裸指令：開獨立浮動輸入窗（nonactivating，client 焦點不動），
     /// 可打中文/空白/任意輸入法內容；Enter 送出 → engineDidRequestLLM。
     func engineDidOpenLLMPrompt() {
         LLMPromptPanel.shared.show { [weak self] prompt in
@@ -1229,7 +1229,7 @@ extension YabomishInputController: InputEngineDelegate {
     }
 
 
-    // MARK: - ,,LLM prompt mode
+    // MARK: - ,,AI prompt mode
 
     /// 產生中的 fm 工作代次：切 app / deactivate / 新 prompt 會讓舊結果作廢。
     private static var _llmGenerationKey = 0
@@ -1238,7 +1238,7 @@ extension YabomishInputController: InputEngineDelegate {
         set { objc_setAssociatedObject(self, &Self._llmGenerationKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
 
-    /// `,,LLM<prompt>`：非同步呼叫 macOS 27 內建 /usr/bin/fm respond。
+    /// `,,AI<prompt>`：非同步呼叫 `aiCommand` 樣板（預設 /usr/bin/fm respond）。
     /// 完成時若當初觸發的 client 仍有效且代次未過期 → commit 到游標；
     /// 否則寫入剪貼簿 + toast。逾時 30 秒由 Process timeout 控制。
     func engineDidRequestLLM(_ prompt: String) {
@@ -1275,16 +1275,16 @@ extension YabomishInputController: InputEngineDelegate {
 
     private enum FMResult { case success(String), failure(String) }
 
-    /// 同步執行 `llmCommand` 樣板（預設 `/usr/bin/fm respond {prompt}`），
+    /// 同步執行 `aiCommand` 樣板（預設 `/usr/bin/fm respond {prompt}`），
     /// 回傳 stdout 或錯誤描述。在背景佇列呼叫。
     /// 樣板以空白切 argv：第一欄是可執行檔，{prompt} 佔位符整欄替換；
     /// 沒寫 {prompt} 時 prompt 追加為最後一欄。args 內不支援引號跳脫（MVP）。
     private static func runFM(prompt: String) -> FMResult {
-        let tmpl = YabomishPrefs.llmCommand.trimmingCharacters(in: .whitespaces)
+        let tmpl = YabomishPrefs.aiCommand.trimmingCharacters(in: .whitespaces)
         var argv = tmpl.split(separator: " ").map { $0.replacingOccurrences(of: "{prompt}", with: prompt) }
         if !tmpl.contains("{prompt}") { argv.append(prompt) }
         guard let exec = argv.first, !exec.isEmpty else {
-            return .failure("llmCommand 為空")
+            return .failure("aiCommand 為空")
         }
         let execURL: URL
         if exec.contains("/") {

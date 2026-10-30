@@ -1,7 +1,7 @@
 import Cocoa
 import InputMethodKit
 
-/// ,,LLM 獨立 prompt 輸入窗。
+/// ,,AI 獨立 prompt 輸入窗。
 ///
 /// 為什麼是浮動窗而不是 inline 組字：inline 只能收 ASCII（CIN 碼會被引擎拆碼），
 /// 使用者需要打中文 prompt；獨立 NSTextField 走 AppKit 正常事件路徑，
@@ -14,8 +14,8 @@ final class LLMPromptPanel: NSPanel, NSTextFieldDelegate {
     static let shared = LLMPromptPanel()
 
     private let field = NSTextField(frame: .zero)
-    private let titleLabel = NSTextField(labelWithString: "💬 LLM")
     private let hintLabel = NSTextField(labelWithString: "Enter 送出 · Esc 取消")
+    private let titleLabel = NSTextField(labelWithString: "💬 AI")
     private var onSubmit: ((String) -> Void)?
 
     private init() {

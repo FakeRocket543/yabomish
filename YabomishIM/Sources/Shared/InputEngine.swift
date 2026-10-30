@@ -13,11 +13,11 @@ protocol InputEngineDelegate: AnyObject {
     func engineDidDeleteBack()
     func engineDidSuggest(_ suggestions: [String])
     func engineDidPasteText(_ text: String)
-    /// `,,LLM <prompt>`：請平台非同步呼叫本機 LLM（macOS: /usr/bin/fm respond）。
+    /// `,,AI <prompt>`：請平台非同步呼叫本機 LLM（macOS: /usr/bin/fm respond）。
     /// engine 不等待；完成後平台自行 commit 或 fallback 到剪貼簿。
     /// 預設實作為 no-op（iOS/Android 未支援時安全忽略）。
     func engineDidRequestLLM(_ prompt: String)
-    /// `,,LLM` 裸指令：請平台開獨立 prompt 輸入窗（inline 組字只能收 ASCII，
+    /// `,,AI` 裸指令：請平台開獨立 prompt 輸入窗（inline 組字只能收 ASCII，
     /// 中文 prompt 需要真正的 text field）。預設 no-op。
     func engineDidOpenLLMPrompt()
 }
@@ -571,12 +571,12 @@ final class InputEngine {
         let cmd = raw.lowercased()
         _isInCommaCommand = false; _commaCommandBuffer = ""
         _resetComposing()
-        // ,,LLM → 開獨立 prompt 浮動窗（可打中文，inline 組字只能收 ASCII）；
-        // ,,LLM<prompt> 保留直寫：有內容直接送、空內容開窗。
-        if cmd.hasPrefix("llm") {
-            let inline = String(raw.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+        // ,,AI → 開獨立 prompt 浮動窗（可打中文，inline 組字只能收 ASCII）；
+        // ,,AI<prompt> 保留直寫：有內容直接送、空內容開窗。
+        if cmd.hasPrefix("ai") {
+            let inline = String(raw.dropFirst(2)).trimmingCharacters(in: .whitespaces)
             if !inline.isEmpty {
-                delegate?.engineDidShowToast("LLM 生成中…")
+                delegate?.engineDidShowToast("AI 生成中…")
                 delegate?.engineDidRequestLLM(inline)
             } else {
                 delegate?.engineDidOpenLLMPrompt()

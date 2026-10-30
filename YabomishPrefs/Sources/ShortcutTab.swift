@@ -79,13 +79,13 @@ struct ShortcutTab: View {
                 SettingsHeader("已建立")
                 listSection
 
-                // ── ,,LLM 指令 ──
+                // ── ,,AI 指令 ──
                 SectionDivider()
-                SettingsHeader("LLM 指令")
+                SettingsHeader("AI 指令")
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(",,LLM 的 argv 樣板：{prompt} 為佔位符（沒寫就把 prompt 加在最後）；第一欄是執行檔。")
+                    Text(",,AI 的 argv 樣板：{prompt} 為佔位符（沒寫就把 prompt 加在最後）；第一欄是執行檔。")
                         .font(Typo.hint)
-                    TextField("LLM 指令樣板", text: $store.llmCommand)
+                    TextField("AI 指令樣板", text: $store.aiCommand)
                         .textFieldStyle(.roundedBorder)
                     Text("預設 /usr/bin/fm respond {prompt}（macOS 27+ Apple Intelligence）。可換 ollama、llama.cpp、claude 等 CLI。")
                         .font(Typo.caption).foregroundStyle(.secondary)

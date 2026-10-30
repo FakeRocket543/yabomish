@@ -151,9 +151,9 @@ import Foundation
         get { access(keyPath: \.spaceThumbHintSize); return ud.object(forKey: "spaceThumbHintSize") as? Double ?? 8.0 }
         set { withMutation(keyPath: \.spaceThumbHintSize) { ud.set(newValue, forKey: "spaceThumbHintSize") }; postChange() }
     }
-    var llmCommand: String {
-        get { access(keyPath: \.llmCommand); return ud.string(forKey: "llmCommand") ?? "/usr/bin/fm respond {prompt}" }
-        set { withMutation(keyPath: \.llmCommand) { ud.set(newValue, forKey: "llmCommand") }; postChange() }
+    var aiCommand: String {
+        get { access(keyPath: \.aiCommand); return ud.string(forKey: "aiCommand") ?? "/usr/bin/fm respond {prompt}" }
+        set { withMutation(keyPath: \.aiCommand) { ud.set(newValue, forKey: "aiCommand") }; postChange() }
     }
 
     // MARK: - Toggles
