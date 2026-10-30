@@ -1300,6 +1300,65 @@ extension YabomishInputController: InputEngineDelegate {
 
     private enum FMResult { case success(String), failure(String) }
 
+    /// 依 aiMode 分流：cli = spawn aiCommand；http = POST aiBaseURL（OpenAI 相容）。
+    private static func runFM(prompt: String, clip: String) -> FMResult {
+        if YabomishPrefs.aiMode == "http" { return runAIHTTP(prompt: prompt, clip: clip) }
+        return runAICLI(prompt: prompt, clip: clip)
+    }
+
+    /// POST OpenAI Chat Completions：{base_url}/chat/completions，
+    /// body {model, messages:[{role:user, content: prompt}]}，回 choices[0].message.content。
+    /// {clip} 預先拼進 prompt 尾段（置頂易把文章當指令）；api_key 有值才帶 Bearer。
+    /// 目前只實作 chat_completions——codex_responses/anthropic_messages 第二期。
+    private static func runAIHTTP(prompt: String, clip: String) -> FMResult {
+        guard let base = URL(string: YabomishPrefs.aiBaseURL
+                                   .trimmingCharacters(in: .whitespaces)
+                                   .trimmingCharacters(in: CharacterSet(charactersIn: "/"))),
+              var comp = URLComponents(url: base, resolvingAgainstBaseURL: false)
+        else { return .failure("aiBaseURL 不是合法 URL") }
+        comp.path = base.path + "/chat/completions"
+        guard let url = comp.url else { return .failure("aiBaseURL 組合失敗") }
+
+        let content = clip.isEmpty ? prompt : "\(prompt)\n\n---\n\(clip)"
+        var body: [String: Any] = [
+            "messages": [["role": "user", "content": content]],
+        ]
+        if !YabomishPrefs.aiModel.isEmpty { body["model"] = YabomishPrefs.aiModel }
+        guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+            return .failure("request body 編碼失敗")
+        }
+
+        var req = URLRequest(url: url, timeoutInterval: 60)
+        req.httpMethod = "POST"
+        req.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        if !YabomishPrefs.aiAPIKey.isEmpty {
+            req.setValue("Bearer \(YabomishPrefs.aiAPIKey)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = bodyData
+
+        let sem = DispatchSemaphore(value: 0)
+        var result: FMResult = .failure("無回應")
+        URLSession.shared.dataTask(with: req) { data, resp, error in
+            defer { sem.signal() }
+            if let error { result = .failure("HTTP 失敗：\(error.localizedDescription)"); return }
+            guard let http = resp as? HTTPURLResponse else { result = .failure("非 HTTP 回應"); return }
+            guard http.statusCode == 200, let data else {
+                let msg = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                result = .failure("HTTP \(http.statusCode)：\(msg.prefix(120))")
+                return
+            }
+            // OpenAI chat completions: choices[0].message.content
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]],
+                  let msg = choices.first?["message"] as? [String: Any],
+                  let text = msg["content"] as? String, !text.isEmpty
+            else { result = .failure("回應格式非 chat.completions"); return }
+            result = .success(text)
+        }.resume()
+        _ = sem.wait(timeout: .now() + 60)
+        return result
+    }
+
     /// 同步執行 `aiCommand` 樣板（預設 `/usr/bin/fm respond {prompt}`），
     /// 回傳 stdout 或錯誤描述。在背景佇列呼叫。
     /// 樣板以空白切 argv：第一欄是可執行檔，{prompt} 佔位符整欄替換；
@@ -1307,7 +1366,7 @@ extension YabomishInputController: InputEngineDelegate {
     /// NSPasteboard 在背景執行緒讀不保證安全）。沒寫 {prompt} 時 prompt 追加為最後一欄。
     /// args 內不支援引號跳脫（MVP）。
     /// ⚠️ 注意：{prompt}/{clip} 內容會進 argv — ps auxww 看得到，不適合放機密。
-    private static func runFM(prompt: String, clip: String) -> FMResult {
+    private static func runAICLI(prompt: String, clip: String) -> FMResult {
         let tmpl = YabomishPrefs.aiCommand.trimmingCharacters(in: .whitespaces)
         var argv = tmpl.split(separator: " ").map {
             $0.replacingOccurrences(of: "{prompt}", with: prompt)

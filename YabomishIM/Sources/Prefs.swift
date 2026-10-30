@@ -30,6 +30,11 @@ struct YabomishPrefs {
         var spaceThumbHintOpacity: CGFloat = 0.35
         var spaceThumbHintSize: CGFloat = 8.0
         var aiCommand = "/usr/bin/fm respond {prompt}"
+        var aiMode = "cli"                    // cli = spawn aiCommand；http = POST aiBaseURL
+        var aiBaseURL = "http://127.0.0.1:11434/v1"
+        var aiModel = ""
+        var aiAPIMode = "chat_completions"    // chat_completions（OpenAI 相容）；anthropic/responses 未實作
+        var aiAPIKey = ""                     // 存 suite plist（本機帳號檔案），GUI 遮蔽顯示
         var fontSize: CGFloat = 16.0
         var fixedFontSize: CGFloat = 18.0
         var showCodeHint = false
@@ -96,6 +101,11 @@ struct YabomishPrefs {
         s.spaceThumbHintOpacity = CGFloat(defaults.object(forKey: "spaceThumbHintOpacity") as? Double ?? 0.35)
         s.spaceThumbHintSize = CGFloat(defaults.object(forKey: "spaceThumbHintSize") as? Double ?? 8.0)
         s.aiCommand = defaults.string(forKey: "aiCommand") ?? "/usr/bin/fm respond {prompt}"
+        s.aiMode = defaults.string(forKey: "aiMode") ?? "cli"
+        s.aiBaseURL = defaults.string(forKey: "aiBaseURL") ?? "http://127.0.0.1:11434/v1"
+        s.aiModel = defaults.string(forKey: "aiModel") ?? ""
+        s.aiAPIMode = defaults.string(forKey: "aiAPIMode") ?? "chat_completions"
+        s.aiAPIKey = defaults.string(forKey: "aiAPIKey") ?? ""
         s.fontSize = CGFloat(defaults.object(forKey: "fontSize") as? Double ?? 16.0)
         s.fixedFontSize = CGFloat(defaults.object(forKey: "fixedFontSize") as? Double ?? 18.0)
         s.showCodeHint = defaults.object(forKey: "showCodeHint") as? Bool ?? false
@@ -290,6 +300,30 @@ struct YabomishPrefs {
             defaults.set(newValue, forKey: "aiCommand")
             refreshSnapshot()
         }
+    }
+
+    /// aiMode: "cli" spawn aiCommand；"http" POST 到 aiBaseURL（OpenAI 相容）。
+    static var aiMode: String {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.aiMode }
+        set { defaults.set(newValue, forKey: "aiMode"); refreshSnapshot() }
+    }
+    static var aiBaseURL: String {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.aiBaseURL }
+        set { defaults.set(newValue, forKey: "aiBaseURL"); refreshSnapshot() }
+    }
+    static var aiModel: String {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.aiModel }
+        set { defaults.set(newValue, forKey: "aiModel"); refreshSnapshot() }
+    }
+    static var aiAPIMode: String {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.aiAPIMode }
+        set { defaults.set(newValue, forKey: "aiAPIMode"); refreshSnapshot() }
+    }
+    /// API key 存 suite plist 明文（與其他 pref 同等級的本機檔案保護）；
+    /// 要更高隔離可日後搬 Keychain——launchd 行程兩者都讀得到。
+    static var aiAPIKey: String {
+        get { snapshotLock.lock(); defer { snapshotLock.unlock() }; return _snapshot.aiAPIKey }
+        set { defaults.set(newValue, forKey: "aiAPIKey"); refreshSnapshot() }
     }
 
     /// Y offset above Dock (points)

@@ -41,7 +41,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ) { _ in
             // 去抖 0.5s：連續 prefsChanged（如拖曳字級）只重載一次網域詞庫
             Self.reloadDomainsWork?.cancel()
-            let work = DispatchWorkItem { WikiCorpus.shared.reloadDomains() }
+            let work = DispatchWorkItem {
+                WikiCorpus.shared.reloadDomains()
+                CommaCommandRunner.reload()   // commands.json（含 preset）也跟著重讀
+            }
             Self.reloadDomainsWork = work
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
         }

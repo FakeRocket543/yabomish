@@ -39,8 +39,8 @@ private let navItems: [NavItem] = [
     .init(tag: 7,  title: "候選窗",   icon: "list.bullet.rectangle",  color: .orange),
     .init(tag: 8,  title: "模式提示", icon: "bell.badge",      color: .pink),
     .init(tag: 9,  title: "介面",     icon: "circle.lefthalf.filled",             color: .red),
+    .init(tag: 12, title: "AI",       icon: "sparkles",                color: .mint),
     .init(tag: 10, title: "說明",     icon: "book",                   color: .green),
-    .init(tag: 11, title: "關於",     icon: "info.circle",            color: .gray),
 ]
 #else
 private let navItems: [NavItem] = [
@@ -107,7 +107,10 @@ private let settingIndex: [SettingHit] = [
     .init(title: "提示字體／字級", page: "模式提示", keywords: "字體 圓體 明體 字級"),
     .init(title: "提示透明度",     page: "模式提示", keywords: "透明度 opacity"),
     .init(title: "提示字色／描邊", page: "模式提示", keywords: "字色 描邊 stroke 字幕"),
-    // 介面
+    // AI
+    .init(title: "AI 模式／指令",   page: "AI", keywords: "ai llm fm cli command 指令"),
+    .init(title: "AI Provider",    page: "AI", keywords: "ai provider base url model api key openai ollama opencode"),
+    .init(title: "AI Preset",      page: "AI", keywords: "preset 預設 prompt ig th shortcut"),
     .init(title: "介面外觀",       page: "介面", keywords: "深色 淺色 自動 dark light appearance"),
     .init(title: "除錯記錄",       page: "介面", keywords: "debug log 記錄"),
     // 說明 / 關於
@@ -252,7 +255,8 @@ struct ContentView: View {
         case 8:  ToastTab(store: store)
         case 9:  InterfaceTab(store: store)
         case 10: HelpTab()
-        default: AboutTab()
+        case 12: AITab(store: store)
+        default: AboutTab(store: store)
         }
         #else
         switch tag {
@@ -264,7 +268,7 @@ struct ContentView: View {
         case 5: ToastTab(store: store)
         case 6: InterfaceTab(store: store)
         case 7: HelpTab()
-        default: AboutTab()
+        default: AboutTab(store: store)
         }
         #endif
     }

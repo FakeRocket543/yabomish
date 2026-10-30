@@ -2,6 +2,19 @@
 
 
 
+## [0.4.9] — 2026-10-30
+
+### 新增
+- **AI 分頁（設定程式新頁面）**：管理 `,,AI`/`preset` 的後端——
+  - **CLI 指令樣板**（`aiCommand`）：預設 `/usr/bin/fm respond {prompt}`（macOS 27+ Apple Intelligence）；可換 ollama/llama.cpp/claude 等任何「接 prompt、吐 stdout」的 CLI
+  - **HTTP Provider**：OpenAI Chat Completions 相容端點——`aiBaseURL`/`aiModel`/`aiAPIKey`（存本機 plist、GUI 遮蔽顯示）。Provider 下拉從 **models.dev catalog** 自動帶 base URL + 模型清單（~233 個 provider，含 OpenAI/Anthropic/Google/OpenRouter/opencode-go/ollama-cloud…），自訂端點直接填（如 `fm serve` → `http://127.0.0.1:11434/v1`）
+  - **Preset 編輯器**：commands.json `type:"preset"` 條目的 GUI——key=指令碼、name=顯示名、prompt 樣板（`{clip}`/`{input}` 佔位符）；儲存即時生效（prefsChanged → IM debounce 重讀 commands.json）
+- **同步資料夾 GUI**（關於 → 同步資料夾）：`syncFolder` 改為可選目錄（NSOpenPanel）——字頻/查字歷史同步到 iCloud Drive 或 Dropbox 等多機共用，留空不同步
+
+### 修正
+- **prefsChanged 連帶重讀 commands.json**：preset/自訂指令在 GUI 編輯後不用 `,,RL` 或重開機也生效（0.5s debounce 與詞庫重載共用）
+- **preset 前綴比對順序**：移到 expandText/tryExecute 之後——自訂指令完整名永遠優先（preset `s` 不會吃掉 text `ss`）
+
 ## [0.4.8] — 2026-10-30
 
 ### 新增

@@ -1,7 +1,10 @@
 import SwiftUI
+import AppKit
 
 /// 關於：版本、回報、語料來源與授權、原始碼連結。
 struct AboutTab: View {
+    @Bindable var store: PrefsStore
+
     private var versionLine: String {
         let info = Bundle.main.infoDictionary
         return "\(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))"
@@ -65,6 +68,22 @@ struct AboutTab: View {
                 ("App 圖示・炸蝦", "Twemoji（鏡像・加深底改作）", "CC-BY 4.0"),
             ])
 
+            // ── 資料同步 ──
+            SettingsSection(title: "同步資料夾",
+                            footnote: "留空＝不同步。選了資料夾後，字頻/查字歷史會同步進去（放 iCloud Drive/Dropbox 內就多機共用）。") {
+                HStack(spacing: 8) {
+                    Text(store.syncFolder ?? "未設定（本機 Application Support）")
+                        .font(Typo.caption).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.middle)
+                    Spacer()
+                    Button("選擇…") { pickSyncFolder() }
+                    if store.syncFolder != nil {
+                        Button("清除") { store.syncFolder = nil }.foregroundStyle(Typo.warning)
+                    }
+                }
+                .padding(.horizontal, 12).padding(.vertical, 8)
+            }
+
             Text("本程式碼以 MIT 授權釋出。各語料依其原始授權條款使用。")
                 .font(Typo.caption).foregroundStyle(.secondary)
 
@@ -74,6 +93,17 @@ struct AboutTab: View {
                      destination: URL(string: "https://github.com/FakeRocket543/yabomish")!)
                     .font(Typo.caption)
             }
+        }
+    }
+
+    private func pickSyncFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "選擇同步資料夾"
+        if panel.runModal() == .OK, let url = panel.url {
+            store.syncFolder = url.path
         }
     }
 

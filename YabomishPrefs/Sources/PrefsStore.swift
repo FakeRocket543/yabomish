@@ -155,6 +155,26 @@ import Foundation
         get { access(keyPath: \.aiCommand); return ud.string(forKey: "aiCommand") ?? "/usr/bin/fm respond {prompt}" }
         set { withMutation(keyPath: \.aiCommand) { ud.set(newValue, forKey: "aiCommand") }; postChange() }
     }
+    var aiMode: String {
+        get { access(keyPath: \.aiMode); return ud.string(forKey: "aiMode") ?? "cli" }
+        set { withMutation(keyPath: \.aiMode) { ud.set(newValue, forKey: "aiMode") }; postChange() }
+    }
+    var aiBaseURL: String {
+        get { access(keyPath: \.aiBaseURL); return ud.string(forKey: "aiBaseURL") ?? "http://127.0.0.1:11434/v1" }
+        set { withMutation(keyPath: \.aiBaseURL) { ud.set(newValue, forKey: "aiBaseURL") }; postChange() }
+    }
+    var aiModel: String {
+        get { access(keyPath: \.aiModel); return ud.string(forKey: "aiModel") ?? "" }
+        set { withMutation(keyPath: \.aiModel) { ud.set(newValue, forKey: "aiModel") }; postChange() }
+    }
+    var aiAPIMode: String {
+        get { access(keyPath: \.aiAPIMode); return ud.string(forKey: "aiAPIMode") ?? "chat_completions" }
+        set { withMutation(keyPath: \.aiAPIMode) { ud.set(newValue, forKey: "aiAPIMode") }; postChange() }
+    }
+    var aiAPIKey: String {
+        get { access(keyPath: \.aiAPIKey); return ud.string(forKey: "aiAPIKey") ?? "" }
+        set { withMutation(keyPath: \.aiAPIKey) { ud.set(newValue, forKey: "aiAPIKey") }; postChange() }
+    }
 
     // MARK: - Toggles
 
