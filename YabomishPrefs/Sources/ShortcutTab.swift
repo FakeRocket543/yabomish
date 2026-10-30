@@ -15,6 +15,7 @@ private extension Data {
 }
 
 struct ShortcutTab: View {
+    @Bindable var store: PrefsStore
     @State private var code = ""
     @State private var content = ""
     @State private var shortcuts: [(code: String, content: String)] = []
@@ -77,6 +78,18 @@ struct ShortcutTab: View {
                 SectionDivider()
                 SettingsHeader("已建立")
                 listSection
+
+                // ── ,,LLM 指令 ──
+                SectionDivider()
+                SettingsHeader("LLM 指令")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(",,LLM 的 argv 樣板：{prompt} 為佔位符（沒寫就把 prompt 加在最後）；第一欄是執行檔。")
+                        .font(Typo.hint)
+                    TextField("LLM 指令樣板", text: $store.llmCommand)
+                        .textFieldStyle(.roundedBorder)
+                    Text("預設 /usr/bin/fm respond {prompt}（macOS 27+ Apple Intelligence）。可換 ollama、llama.cpp、claude 等 CLI。")
+                        .font(Typo.caption).foregroundStyle(.secondary)
+                }
 
                 Text("檔案路徑：~/Library/Application Support/Yabomish/tables/user_shortcuts.txt\n# 開頭為註解，可用來分類。修改後輸入 ,,RL + 空白鍵 即時重載。")
                     .font(Typo.caption).foregroundStyle(.secondary)

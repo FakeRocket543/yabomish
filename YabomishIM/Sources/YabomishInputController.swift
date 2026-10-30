@@ -664,22 +664,6 @@ extension YabomishInputController {
         if keyCode == 121 && panel.isVisible_ { panel.pageDown(); return true }
         if keyCode == 116 && panel.isVisible_ { panel.pageUp(); return true }
 
-        // LLM prompt mode：第二層輸入框——可打字字元（字母/數字/標點，
-        // 含 Shift+letter 大寫與 Shift+符號）全部進 prompt buffer，
-        // 不跑 VRSF/選字/標點直通。Enter/Backspace/Escape/Space 已在前面分流。
-        if engine.isLLMPromptMode {
-            if let ch = keyCodeToChar[keyCode] {
-                // Shift+letter = 大寫；其餘字母/標點原樣
-                engine.handleLetter(flags.contains(.shift) && ch.isLetter
-                    ? String(ch).uppercased() : String(ch))
-            } else if let sh = keyCodeToShifted[keyCode], flags.contains(.shift) {
-                engine.handleLetter(String(sh))
-            } else if let digit = keyCodeToDigit[keyCode] {
-                engine.handleLetter(String(digit))
-            }
-            return true
-        }
-
 
         // VRSF quick-select
         if let ch = keyCodeToChar[keyCode], engine.handleVRSF(String(ch)) {
@@ -1236,6 +1220,15 @@ extension YabomishInputController: InputEngineDelegate {
         }
     }
 
+    /// `,,LLM` 裸指令：開獨立浮動輸入窗（nonactivating，client 焦點不動），
+    /// 可打中文/空白/任意輸入法內容；Enter 送出 → engineDidRequestLLM。
+    func engineDidOpenLLMPrompt() {
+        LLMPromptPanel.shared.show { [weak self] prompt in
+            self?.engineDidRequestLLM(prompt)
+        }
+    }
+
+
     // MARK: - ,,LLM prompt mode
 
     /// 產生中的 fm 工作代次：切 app / deactivate / 新 prompt 會讓舊結果作廢。
@@ -1282,14 +1275,30 @@ extension YabomishInputController: InputEngineDelegate {
 
     private enum FMResult { case success(String), failure(String) }
 
-    /// 同步執行 /usr/bin/fm respond，回傳 stdout 或錯誤描述。在背景佇列呼叫。
+    /// 同步執行 `llmCommand` 樣板（預設 `/usr/bin/fm respond {prompt}`），
+    /// 回傳 stdout 或錯誤描述。在背景佇列呼叫。
+    /// 樣板以空白切 argv：第一欄是可執行檔，{prompt} 佔位符整欄替換；
+    /// 沒寫 {prompt} 時 prompt 追加為最後一欄。args 內不支援引號跳脫（MVP）。
     private static func runFM(prompt: String) -> FMResult {
-        guard FileManager.default.isExecutableFile(atPath: "/usr/bin/fm") else {
-            return .failure("/usr/bin/fm 不存在（需 macOS 27+）")
+        let tmpl = YabomishPrefs.llmCommand.trimmingCharacters(in: .whitespaces)
+        var argv = tmpl.split(separator: " ").map { $0.replacingOccurrences(of: "{prompt}", with: prompt) }
+        if !tmpl.contains("{prompt}") { argv.append(prompt) }
+        guard let exec = argv.first, !exec.isEmpty else {
+            return .failure("llmCommand 為空")
+        }
+        let execURL: URL
+        if exec.contains("/") {
+            execURL = URL(fileURLWithPath: exec)
+        } else {
+            // 無路徑 → 走 PATH：/usr/bin/env 做 lookup，與使用者在 shell 打的行為一致
+            execURL = URL(fileURLWithPath: "/usr/bin/env")
+        }
+        if exec.contains("/"), !FileManager.default.isExecutableFile(atPath: exec) {
+            return .failure("\(exec) 不存在或不可執行")
         }
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/fm")
-        p.arguments = ["respond", prompt]
+        p.executableURL = execURL
+        p.arguments = exec.contains("/") ? Array(argv.dropFirst()) : argv
         let out = Pipe(); let err = Pipe()
         p.standardOutput = out; p.standardError = err
         do { try p.run() } catch {

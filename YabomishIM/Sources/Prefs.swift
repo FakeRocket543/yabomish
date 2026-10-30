@@ -28,6 +28,7 @@ struct YabomishPrefs {
         var spaceThumbHint = false
         var spaceThumbHintOpacity: CGFloat = 0.35
         var spaceThumbHintSize: CGFloat = 8.0
+        var llmCommand = "/usr/bin/fm respond {prompt}"
         var fontSize: CGFloat = 16.0
         var fixedFontSize: CGFloat = 18.0
         var showCodeHint = false
@@ -93,6 +94,7 @@ struct YabomishPrefs {
         s.spaceThumbHint = defaults.object(forKey: "spaceThumbHint") as? Bool ?? false
         s.spaceThumbHintOpacity = CGFloat(defaults.object(forKey: "spaceThumbHintOpacity") as? Double ?? 0.35)
         s.spaceThumbHintSize = CGFloat(defaults.object(forKey: "spaceThumbHintSize") as? Double ?? 8.0)
+        s.llmCommand = defaults.string(forKey: "llmCommand") ?? "/usr/bin/fm respond {prompt}"
         s.fontSize = CGFloat(defaults.object(forKey: "fontSize") as? Double ?? 16.0)
         s.fixedFontSize = CGFloat(defaults.object(forKey: "fixedFontSize") as? Double ?? 18.0)
         s.showCodeHint = defaults.object(forKey: "showCodeHint") as? Bool ?? false
@@ -272,6 +274,19 @@ struct YabomishPrefs {
         }
         set {
             defaults.set(Double(newValue), forKey: "spaceThumbHintSize")
+            refreshSnapshot()
+        }
+    }
+
+    /// ,,LLM 指令樣板：{prompt} 為佔位符，以空白切 argv。
+    /// 預設 macOS 27+ 內建 fm；可換 ollama/llama.cpp/claude 等 CLI。
+    static var llmCommand: String {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.llmCommand
+        }
+        set {
+            defaults.set(newValue, forKey: "llmCommand")
             refreshSnapshot()
         }
     }

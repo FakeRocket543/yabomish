@@ -2,6 +2,12 @@
 
 
 
+## [0.4.6] — 2026-10-30
+
+### 變更
+- **`,,LLM` 改為獨立浮動輸入窗**：0.4.5 的 inline 💬 組字框只能收 ASCII——中文 prompt 打不出來；改為 key-capable `.nonactivatingPanel`（不搶 client 焦點，打字仍在原 app 的輸入法 session），內嵌 `NSTextField` 可用任何輸入法打字、含空白與標點，Enter 送出、Esc/失焦取消。`,,LLM〈prompt〉` 直寫保留
+- **`,,LLM` 指令可配置 `llmCommand`**：argv 樣板（`{prompt}` 佔位符，第一欄可執行檔；沒寫 `{prompt}` 時 prompt 追加最後一欄），預設 `/usr/bin/fm respond {prompt}`，可換 ollama/llama.cpp/claude 等 CLI；無路徑執行檔走 `/usr/bin/env` PATH lookup。設定程式「快捷碼 → LLM 指令」可編輯
+
 ## [0.4.5] — 2026-10-30
 
 ### 新增
