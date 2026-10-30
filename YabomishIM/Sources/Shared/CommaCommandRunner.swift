@@ -9,7 +9,7 @@ import Foundation
 ///   "saf":  { "type": "open",  "app": "Safari" },
 ///   "tg":   { "type": "open",  "bundle": "com.tdesktop.Telegram" },
 ///   "ask":  { "type": "hermes", "send": "幫我總結這篇" },
-///   "tw":   { "type": "preset", "name": "社群文",
+///   "ig":   { "type": "preset", "name": "IG 貼文",
 ///             "prompt": "把以下改寫成繁中 IG 貼文：\n{clip}\n要求：{input}" }
 /// }
 /// ```
@@ -19,7 +19,9 @@ import Foundation
 /// - `open`   → 開啟 app（僅 macOS）；`bundle`（open -b）優先於 `app`（open -a），
 ///              bundle ID 不受系統語系影響；非零退出時 toast stderr 首行
 /// - `hermes` → POST 明確觸發的字串到本機 Hermes agent，回覆插入游標處（僅 macOS）
-/// - `preset` → ,,PR 預設 prompt：`,,PR` 開選擇器、`,,PR〈碼〉` 直接啟用（僅 macOS）。
+/// - `preset` → 預設 prompt：`,,IG` 或 `,,IG〈補打〉` 直接命中（最長 key 前綴比對，
+///              內建指令優先——preset 命名 ai/pr/p/v/c/to… 會被內建吃掉）；
+///              `,,PR` 開選擇器、`,,PR〈碼〉` 亦可前綴比對啟用（僅 macOS）。
 ///              樣板 {clip}=當下剪貼簿、{input}=碼後殘餘字；進浮動窗可再編輯
 enum CommaCommandRunner {
 

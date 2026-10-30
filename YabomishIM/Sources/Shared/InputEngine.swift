@@ -754,6 +754,16 @@ final class InputEngine {
             return
         }
         // ── 外部指令 commands.json ──
+        // preset 型別：,,IG 或 ,,IG〈補打〉 直接命中——最長 key 前綴比對、
+        // 殘餘代入 {input}。內建指令優先（已在上方 return）：
+        // preset 命名 ai/pr/p/v/c/to… 開頭的會被內建吃掉，名稱建議避開。
+        if let hit = CommaCommandRunner.resolvePreset(cmd),
+           let template = hit.command.prompt {
+            let filled = template.replacingOccurrences(
+                of: "{input}", with: hit.rest.trimmingCharacters(in: .whitespaces))
+            delegate?.engineDidOpenLLMPrompt(prefill: filled)
+            return
+        }
         // text 型別：展開文字直接送出（三平台同步契約）
         if let expanded = CommaCommandRunner.expandText(cmd) {
             delegate?.engineDidCommit(expanded)

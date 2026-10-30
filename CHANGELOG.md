@@ -5,7 +5,7 @@
 ## [0.4.8] — 2026-10-30
 
 ### 新增
-- **`,,PR` 預設 prompt 選擇器（commands.json preset 型別）**：commands.json 新增 `type:"preset"` 條目——`{"tw":{"type":"preset","name":"社群文","prompt":"…{clip}…{input}…"}}`。`,,PR` 開數字鍵浮動選單（↑↓/數字鍵選、Esc 取消），`,,PR〈碼〉` 直接啟用（前綴最長比對，碼後殘餘字代入 `{input}`）；樣板 `{clip}`=當下剪貼簿、`{input}`=補打內容，選中後進 `,,AI` 浮動窗可再編輯才送出。適用「貼上文章→` 社群文」「貼上程式碼→解說」等 skill-per-shortcut 流程
+- **preset 指令（commands.json `type:"preset"`）**：commands.json 新增 `type:"preset"` 條目——`{"ig":{"type":"preset","name":"IG 貼文","prompt":"…{clip}…{input}…"}}`。preset key 本身就是指令——`,,IG` 或 `,,IG〈補打〉` 直接命中（最長前綴比對、殘餘代入 `{input}`）；`,,PR` 開數字鍵浮動選單瀏覽全部 preset（↑↓/數字鍵選、Esc 取消），`,,PR〈碼〉` 亦可前綴啟用。樣板 `{clip}`=當下剪貼簿、`{input}`=補打內容，選中後進 `,,AI` 浮動窗可再編輯才送出。適用「貼上文章→社群文」「貼上程式碼→解說」等 skill-per-shortcut 流程。**內建指令優先**：preset 命名 `ai`/`pr`/`p`/`v`/`c`/`to`/`zh`/`pys`… 開頭的會被內建吃掉（例如 `zh` 永遠是注音切換），key 建議避開內建名
 - **`{clip}` 佔位符進 `aiCommand` 樣板**：argv 樣板除 `{prompt}` 外新增 `{clip}`（當下剪貼簿全文），CLI wrapper 可自排 context 位置（如 `pi -p "Ctx:{clip} {prompt}"`）
 
 ### 修正
