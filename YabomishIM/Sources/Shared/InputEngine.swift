@@ -754,9 +754,20 @@ final class InputEngine {
             return
         }
         // ── 外部指令 commands.json ──
-        // preset 型別：,,IG 或 ,,IG〈補打〉 直接命中——最長 key 前綴比對、
-        // 殘餘代入 {input}。內建指令優先（已在上方 return）：
-        // preset 命名 ai/pr/p/v/c/to… 開頭的會被內建吃掉，名稱建議避開。
+        // text 型別：展開文字直接送出（三平台同步契約）
+        if let expanded = CommaCommandRunner.expandText(cmd) {
+            delegate?.engineDidCommit(expanded)
+            return
+        }
+        if CommaCommandRunner.tryExecute(cmd, toast: { [weak self] msg in
+            DispatchQueue.main.async { self?.delegate?.engineDidShowToast(msg) }
+        }, deliver: { [weak self] text in
+            DispatchQueue.main.async { self?.delegate?.engineDidPasteText(text) }
+        }) { return }
+        // preset 型別：,,IG 或 ,,IG〈補打〉 —— 最長 key 前綴比對、殘餘代入 {input}。
+        // 排在 expandText/tryExecute 之後：精確比對的自訂指令優先，
+        // preset 只吃「不是任何完整指令名」的 token（否則 preset "s" 會吃掉 text "ss"）。
+        // 內建指令更前面就 return，preset 撞內建前綴（ai/pr/zh/to…）一樣被吃掉。
         if let hit = CommaCommandRunner.resolvePreset(cmd),
            let template = hit.command.prompt {
             let filled = template.replacingOccurrences(
