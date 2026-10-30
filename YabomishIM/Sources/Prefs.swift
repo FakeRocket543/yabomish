@@ -25,6 +25,9 @@ struct YabomishPrefs {
         var fixedAlignment = "center"
         var fixedAlpha: CGFloat = 0.85
         var fixedYOffset: CGFloat = 8.0
+        var spaceThumbHint = false
+        var spaceThumbHintOpacity: CGFloat = 0.35
+        var spaceThumbHintSize: CGFloat = 8.0
         var fontSize: CGFloat = 16.0
         var fixedFontSize: CGFloat = 18.0
         var showCodeHint = false
@@ -87,6 +90,9 @@ struct YabomishPrefs {
         s.fixedAlignment = defaults.string(forKey: "fixedAlignment") ?? "center"
         s.fixedAlpha = CGFloat(defaults.object(forKey: "fixedAlpha") as? Double ?? 0.85)
         s.fixedYOffset = CGFloat(defaults.object(forKey: "fixedYOffset") as? Double ?? 8.0)
+        s.spaceThumbHint = defaults.object(forKey: "spaceThumbHint") as? Bool ?? false
+        s.spaceThumbHintOpacity = CGFloat(defaults.object(forKey: "spaceThumbHintOpacity") as? Double ?? 0.35)
+        s.spaceThumbHintSize = CGFloat(defaults.object(forKey: "spaceThumbHintSize") as? Double ?? 8.0)
         s.fontSize = CGFloat(defaults.object(forKey: "fontSize") as? Double ?? 16.0)
         s.fixedFontSize = CGFloat(defaults.object(forKey: "fixedFontSize") as? Double ?? 18.0)
         s.showCodeHint = defaults.object(forKey: "showCodeHint") as? Bool ?? false
@@ -228,6 +234,44 @@ struct YabomishPrefs {
         }
         set {
             defaults.set(Double(newValue), forKey: "fixedAlpha")
+            refreshSnapshot()
+        }
+    }
+
+    // MARK: - Space thumb hint
+
+    /// 拇指提示：顯示對側拇指該按 Space 的角落色點（預設關）
+    static var spaceThumbHint: Bool {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.spaceThumbHint
+        }
+        set {
+            defaults.set(newValue, forKey: "spaceThumbHint")
+            refreshSnapshot()
+        }
+    }
+
+    /// 拇指提示透明度 0.1–1.0（預設 0.35）
+    static var spaceThumbHintOpacity: CGFloat {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.spaceThumbHintOpacity
+        }
+        set {
+            defaults.set(Double(newValue), forKey: "spaceThumbHintOpacity")
+            refreshSnapshot()
+        }
+    }
+
+    /// 拇指提示色點直徑（pt，預設 8）
+    static var spaceThumbHintSize: CGFloat {
+        get {
+            snapshotLock.lock(); defer { snapshotLock.unlock() }
+            return _snapshot.spaceThumbHintSize
+        }
+        set {
+            defaults.set(Double(newValue), forKey: "spaceThumbHintSize")
             refreshSnapshot()
         }
     }

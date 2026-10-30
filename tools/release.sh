@@ -120,10 +120,17 @@ build_prefs() {
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$PREFS_APP/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$PREFS_APP/Contents/Info.plist"
 
+    # Xcode 27.2 起 SwiftUI macro plugin 搬到 MacOSX.platform 下（同 yabomish.sh）
+    local DEV_DIR SWUI_PLUGIN
+    DEV_DIR=$(xcode-select -p 2>/dev/null || echo "/Applications/Xcode.app/Contents/Developer")
+    SWUI_PLUGIN="$DEV_DIR/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftUIMacros.dylib"
+    local PLUGIN_FLAGS=()
+    [ -f "$SWUI_PLUGIN" ] && PLUGIN_FLAGS=(-load-plugin-library "$SWUI_PLUGIN")
     swiftc_universal "$PREFS_APP/Contents/MacOS/YabomishPrefs" \
         -module-name YabomishPrefs \
         -sdk "$(xcrun --show-sdk-path)" -O \
         -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers \
+        "${PLUGIN_FLAGS[@]}" \
         "$PREFS_DIR"/Sources/*.swift \
         "$ROOT/YabomishIM/Sources/Shared/UserEnglishDict.swift"
     # Shared/UserEnglishDict.swift 與 IM 共用（英數頁的自訂詞清單）——

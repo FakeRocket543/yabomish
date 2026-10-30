@@ -40,8 +40,8 @@ enum CommaCommandHelp {
         • ,,RS 重置字頻  ,,RL 重載字表
         • ,,LH 查字歷史  ,,RH 清除查字歷史
         • ,,PIN 固定同碼字排序  ,,UNPINx 解除
+        • ,,LLM 進 LLM 輸入框（💬 Enter 送出）／,,LLM〈prompt〉直送
         \(sgxHelp)\(appNavHelp)• ,,P 打開設定程式
-        • ,,C 顯示目前模式
         • ,,H 顯示本說明
 
         ▎剪貼簿處理

@@ -130,6 +130,7 @@ git clone https://github.com/FakeRocket543/yabomish.git && cd yabomish && ./yabo
 | `,,XS` | 儲存當前語境 |
 | `,,XI` | 顯示當前語境 |
 | `,,XRS` | 重置語境（= ,,XDF） |
+| `,,LLM` | LLM prompt 輸入框（💬 Enter 送出）／`,,LLM〈prompt〉` 直送上屏（macOS 27+ `fm`） |
 | `,,H` | 命令說明 |
 | `,,V` | 貼上純文字（去格式）——0.55 秒後自動還原剪貼簿 |
 | `,,VT` | 貼上簡→繁（同樣自動還原） |

@@ -74,8 +74,16 @@ build_im() {
     fi
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
-    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$IM_APP/Contents/Info.plist"
-    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
+    # dev 變體版號要永遠大於 stable（同一排 plist/系統比較不吃 -dev 字串，
+    # 直接把 patch 跳一版：stable 0.4.5 → dev 0.4.6-dev）
+    local SHOW_VER="$VER"
+    if [ "$IM_APP_NAME" != "YabomishIM" ]; then
+        local MAJ MIN PAT
+        IFS='.' read -r MAJ MIN PAT <<< "$VER"
+        SHOW_VER="${MAJ}.${MIN}.$((PAT + 1))-dev"
+    fi
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SHOW_VER" "$IM_APP/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${SHOW_VER}.${STAMP}.${HASH}" "$IM_APP/Contents/Info.plist"
 
     # 核心資源（所有版本都包含：打字、查碼、繁簡轉換）
     for f in icon.tiff icon_en.tiff icon.icns \
@@ -149,17 +157,31 @@ build_prefs() {
 
     local HASH; HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     local STAMP; STAMP=$(date +%Y%m%d.%H%M)
-    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VER" "$PREFS_APP/Contents/Info.plist"
-    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VER}.${STAMP}.${HASH}" "$PREFS_APP/Contents/Info.plist"
+    # 同 build_im：dev 偏好設定版號也要跳一版（YabomishDevPrefs 關於頁顯示用）
+    local SHOW_VER="$VER"
+    if [ "$IM_APP_NAME" != "YabomishIM" ]; then
+        local MAJ MIN PAT
+        IFS='.' read -r MAJ MIN PAT <<< "$VER"
+        SHOW_VER="${MAJ}.${MIN}.$((PAT + 1))-dev"
+    fi
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SHOW_VER" "$PREFS_APP/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${SHOW_VER}.${STAMP}.${HASH}" "$PREFS_APP/Contents/Info.plist"
     local FLAGS=""
     if [ "$MODE" = "min" ]; then FLAGS="-DMINIMAL"; fi
 
     # Shared/UserEnglishDict.swift 與 IM 共用（英數頁的自訂詞清單）——
     # 該檔 init 帶目錄、不依賴 AppConstants，兩個 target 都能編。
+    # Xcode 27.2 起 @State/@Observable 等 SwiftUI macro plugin 搬到
+    # MacOSX.platform 下，工具鏈預設 plugins 目錄找不到 → 顯式載入。
+    local DEV_DIR; DEV_DIR=$(xcode-select -p 2>/dev/null || echo "/Applications/Xcode.app/Contents/Developer")
+    local SWUI_PLUGIN="$DEV_DIR/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftUIMacros.dylib"
+    local PLUGIN_FLAGS=()
+    [ -f "$SWUI_PLUGIN" ] && PLUGIN_FLAGS=(-load-plugin-library "$SWUI_PLUGIN")
     swiftc -module-name YabomishPrefs \
         -target "$ARCH-apple-macos14.0" \
         -sdk "$(xcrun --show-sdk-path)" -O $FLAGS \
         -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers \
+        "${PLUGIN_FLAGS[@]}" \
         -o "$PREFS_APP/Contents/MacOS/YabomishPrefs" \
         "$PREFS_DIR"/Sources/*.swift \
         "$IM_SRC/Shared/UserEnglishDict.swift"

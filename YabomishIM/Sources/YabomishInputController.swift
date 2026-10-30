@@ -44,6 +44,11 @@ private let keyCodeToZhuyin: [UInt16: String] = [
     46: "ㄩ", 43: "ㄝ", 47: "ㄡ", 44: "ㄥ",
 ]
 
+/// 拇指提示手別分類（QWERTY 硬體 keyCode，不依賴 layout）：
+/// 左手 qwert/asdfg/zxcvb → 右手拇指按 Space；右手 yuiop/hjkl/nm → 左手拇指按 Space。
+private let leftHandKeyCodes: Set<UInt16> = [12, 13, 14, 15, 17, 0, 1, 2, 3, 5, 6, 7, 8, 9, 11]
+private let rightHandKeyCodes: Set<UInt16> = [16, 32, 34, 31, 35, 4, 38, 40, 45, 46, 37]
+
 /// Tone keyCodes: 3→ˇ, 4→ˋ, 6→ˊ, 7→˙  (space = tone 1)
 private let keyCodeToTone: [UInt16: String] = [
     22: "ˊ", 20: "ˇ", 21: "ˋ", 26: "˙",
@@ -449,6 +454,7 @@ class YabomishInputController: IMKInputController {
                                      replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             }
         }
+        llmGeneration += 1   // 切 app → 丟棄進行中的 LLM 結果
         resetEnglishSuggestState()
         panel.hide()
         Self.freqTracker.flushAll()
@@ -491,6 +497,18 @@ extension YabomishInputController {
         e.loadTable()
         objc_setAssociatedObject(self, &Self._engineKey, e, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         return e
+    }
+
+    /// 最後一碼的左右手別（拇指提示用）；非字母鍵或 pref 關閉時為 nil。
+    /// 候選窗 show 時才把 side 餵給 CandidatePanel.thumbHintSide。
+    private static var _lastKeyHandKey = 0
+    private var lastKeyHand: CandidatePanel.ThumbSide? {
+        get { (objc_getAssociatedObject(self, &Self._lastKeyHandKey) as? AssocThumbSide)?.v }
+        set { objc_setAssociatedObject(self, &Self._lastKeyHandKey, newValue.map { AssocThumbSide($0) }, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+    }
+    private final class AssocThumbSide {
+        let v: CandidatePanel.ThumbSide
+        init(_ v: CandidatePanel.ThumbSide) { self.v = v }
     }
 
     func handleWithNewEngine(_ event: NSEvent, client: NSObjectProtocol & IMKTextInput) -> Bool {
@@ -646,6 +664,23 @@ extension YabomishInputController {
         if keyCode == 121 && panel.isVisible_ { panel.pageDown(); return true }
         if keyCode == 116 && panel.isVisible_ { panel.pageUp(); return true }
 
+        // LLM prompt mode：第二層輸入框——可打字字元（字母/數字/標點，
+        // 含 Shift+letter 大寫與 Shift+符號）全部進 prompt buffer，
+        // 不跑 VRSF/選字/標點直通。Enter/Backspace/Escape/Space 已在前面分流。
+        if engine.isLLMPromptMode {
+            if let ch = keyCodeToChar[keyCode] {
+                // Shift+letter = 大寫；其餘字母/標點原樣
+                engine.handleLetter(flags.contains(.shift) && ch.isLetter
+                    ? String(ch).uppercased() : String(ch))
+            } else if let sh = keyCodeToShifted[keyCode], flags.contains(.shift) {
+                engine.handleLetter(String(sh))
+            } else if let digit = keyCodeToDigit[keyCode] {
+                engine.handleLetter(String(digit))
+            }
+            return true
+        }
+
+
         // VRSF quick-select
         if let ch = keyCodeToChar[keyCode], engine.handleVRSF(String(ch)) {
             return true
@@ -674,6 +709,8 @@ extension YabomishInputController {
 
         // Letter/punctuation keys
         if let ch = keyCodeToChar[keyCode] {
+            lastKeyHand = leftHandKeyCodes.contains(keyCode) ? .right
+                        : rightHandKeyCodes.contains(keyCode) ? .left : nil
             engine.handleLetter(String(ch))
             return true
         }
@@ -867,6 +904,7 @@ extension YabomishInputController {
             panel.fallbackFixed = true; origin = .zero
         }
         panel.modeTag = engine.currentModeLabel
+        panel.thumbHintSide = nil   // 英文聯想非組字碼，不顯示拇指提示
         panel.show(candidates: engCandidates, selKeys: Self.englishSelKeys,
                    at: origin, composing: engPrefix, preselectFirst: false)
     }
@@ -1198,6 +1236,96 @@ extension YabomishInputController: InputEngineDelegate {
         }
     }
 
+    // MARK: - ,,LLM prompt mode
+
+    /// 產生中的 fm 工作代次：切 app / deactivate / 新 prompt 會讓舊結果作廢。
+    private static var _llmGenerationKey = 0
+    private var llmGeneration: Int {
+        get { (objc_getAssociatedObject(self, &Self._llmGenerationKey) as? Int) ?? 0 }
+        set { objc_setAssociatedObject(self, &Self._llmGenerationKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+    }
+
+    /// `,,LLM<prompt>`：非同步呼叫 macOS 27 內建 /usr/bin/fm respond。
+    /// 完成時若當初觸發的 client 仍有效且代次未過期 → commit 到游標；
+    /// 否則寫入剪貼簿 + toast。逾時 30 秒由 Process timeout 控制。
+    func engineDidRequestLLM(_ prompt: String) {
+        llmGeneration += 1
+        let gen = llmGeneration
+        let client = engineClient   // weak 參考先取強引用快照
+        DebugLog.log("engineDidRequestLLM: gen=\(gen) prompt=\(prompt.prefix(40))")
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = Self.runFM(prompt: prompt)
+            DispatchQueue.main.async {
+                guard let self = self, self.llmGeneration == gen else {
+                    DebugLog.log("engineDidRequestLLM: stale gen dropped")
+                    return
+                }
+                switch result {
+                case .success(let text):
+                    // 觸發時的 client 仍是當前 session 的 client 才直接上屏；
+                    // 換欄位/換 app 後寫入舊 client 會插進錯的地方 → 改放剪貼簿。
+                    if let client, self.engineClient === client {
+                        let range = client.markedRange()
+                        client.insertText(text, replacementRange: range)
+                    } else {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(text, forType: .string)
+                        self.showModeToast("焦點已切換：LLM 結果已放入剪貼簿")
+                    }
+                case .failure(let msg):
+                    self.showModeToast("LLM 失敗：\(msg)")
+                }
+            }
+        }
+    }
+
+    private enum FMResult { case success(String), failure(String) }
+
+    /// 同步執行 /usr/bin/fm respond，回傳 stdout 或錯誤描述。在背景佇列呼叫。
+    private static func runFM(prompt: String) -> FMResult {
+        guard FileManager.default.isExecutableFile(atPath: "/usr/bin/fm") else {
+            return .failure("/usr/bin/fm 不存在（需 macOS 27+）")
+        }
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/fm")
+        p.arguments = ["respond", prompt]
+        let out = Pipe(); let err = Pipe()
+        p.standardOutput = out; p.standardError = err
+        do { try p.run() } catch {
+            return .failure("fm 啟動失敗：\(error.localizedDescription)")
+        }
+        // Watchdog：30 秒未完成即終止。fm 內部也有等待上限，雙保險。
+        DispatchQueue.global().asyncAfter(deadline: .now() + 30) { p.terminate() }
+        // 兩條 pipe 各開一條 drain 執行緒：先 waitUntilExit 再讀會在
+        // 輸出 >64KB（pipe buffer）時 deadlock——child 卡在 write 永不 exit。
+        var outData = Data(); var errData = Data()
+        let drain = DispatchGroup()
+        drain.enter()
+        DispatchQueue.global().async {
+            outData = out.fileHandleForReading.readDataToEndOfFile(); drain.leave()
+        }
+        drain.enter()
+        DispatchQueue.global().async {
+            errData = err.fileHandleForReading.readDataToEndOfFile(); drain.leave()
+        }
+        p.waitUntilExit()
+        drain.wait()
+        let stdout = String(data: outData, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let stderr = String(data: errData, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        // 被 watchdog terminate → uncaughtSignal（SIGTERM）；視為逾時。
+        if p.terminationReason == .uncaughtSignal { return .failure("逾時（30s）") }
+        guard p.terminationStatus == 0 else {
+            // fm 常見錯誤：license 未同意、模型未就緒、裝置不支援 → 把 stderr 給使用者
+            let detail = stderr.isEmpty ? "exit \(p.terminationStatus)" : stderr
+            return .failure(detail.count > 60 ? String(detail.prefix(60)) + "…" : detail)
+        }
+        guard !stdout.isEmpty else { return .failure("fm 無輸出") }
+        return .success(stdout)
+    }
+
     func engineDidSuggest(_ suggestions: [String]) {
         guard let client = engineClient else { return }
         DebugLog.log("engineDidSuggest: \(suggestions.count) suggestions")
@@ -1235,6 +1363,9 @@ extension YabomishInputController: InputEngineDelegate {
         }
 
         panel.modeTag = engine.currentModeLabel
+        // 拇指提示：左手碼 → .right（右下點）、右手碼 → .left（左下點）；
+        // 僅組字中顯示，pref 關時 CandidatePanel 內部自己攔下。
+        panel.thumbHintSide = lastKeyHand
         // 純聯想顯示（組字已空）依偏好決定是否預先反白第一個候選；
         // 組字候選一律反白第一個
         let preselect = !engine.composing.isEmpty || YabomishPrefs.suggestPreselect

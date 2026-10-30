@@ -13,6 +13,14 @@ protocol InputEngineDelegate: AnyObject {
     func engineDidDeleteBack()
     func engineDidSuggest(_ suggestions: [String])
     func engineDidPasteText(_ text: String)
+    /// `,,LLM <prompt>`：請平台非同步呼叫本機 LLM（macOS: /usr/bin/fm respond）。
+    /// engine 不等待；完成後平台自行 commit 或 fallback 到剪貼簿。
+    /// 預設實作為 no-op（iOS/Android 未支援時安全忽略）。
+    func engineDidRequestLLM(_ prompt: String)
+}
+
+extension InputEngineDelegate {
+    func engineDidRequestLLM(_ prompt: String) {}
 }
 
 final class InputEngine {
@@ -85,6 +93,11 @@ final class InputEngine {
     private var _commaCommandBuffer = ""
     private var _isInCommaCommand = false
 
+    // ,,LLM prompt mode：第二層輸入框，收到 Enter/Space 才送給 delegate。
+    // _composing 以 "💬 " 前綴顯示，使用者看得到自己打的 prompt。
+    private var _isLLMPromptMode = false
+    private var _llmPromptBuffer = ""
+
     // Input mode
     enum InputMode: String { case t, s, sp, sl, ts, st, j }
     private var _inputMode: InputMode = .t
@@ -100,8 +113,8 @@ final class InputEngine {
     var isEnglishMode: Bool { sync { _isEnglishMode } }
     var isZhuyinMode: Bool { sync { _isZhuyinMode } }
     var isPinyinMode: Bool { sync { _isPinyinMode } }
-    var isSameSoundMode: Bool { sync { _isSameSoundMode } }
-    var isInSpecialMode: Bool { sync { _isZhuyinMode || _isPinyinMode || _isSameSoundMode } }
+    var isLLMPromptMode: Bool { sync { _isLLMPromptMode } }
+    var isInSpecialMode: Bool { sync { _isZhuyinMode || _isPinyinMode || _isSameSoundMode || _isLLMPromptMode } }
     var inputMode: InputMode { sync { _inputMode } }
     var selKeys: [Character] { cinTable.selKeys }
     var currentModeLabel: String { sync { _modeLabel(for: _inputMode) } }
@@ -141,6 +154,12 @@ final class InputEngine {
 
     func handleLetter(_ char: String) { sync {
         _lastWasEmptySpace = false
+
+        // LLM prompt mode：所有可打字字元（含數字）直接進 prompt buffer。
+        if _isLLMPromptMode {
+            _llmPromptBuffer += char; _composing = "💬 " + _llmPromptBuffer
+            _notifyComposing(); return
+        }
 
         // Pin mode: letters build the code to pin
         if _isPinMode {
@@ -223,6 +242,11 @@ final class InputEngine {
     private var _lastWasEmptySpace = false
 
     func handleSpace() { sync {
+        // LLM prompt mode：空白是輸入字元（prompt 需要空格），送出走 Enter。
+        if _isLLMPromptMode {
+            _llmPromptBuffer += " "; _composing = "💬 " + _llmPromptBuffer
+            _notifyComposing(); return
+        }
         if _composing.isEmpty { return }
         // Pin mode: space confirms the pinned order
         if _isPinMode {
@@ -279,6 +303,17 @@ final class InputEngine {
             }
             return
         }
+        if _isLLMPromptMode {
+            if _llmPromptBuffer.isEmpty {
+                // 空 buffer 再退格 = 退出 prompt mode
+                _isLLMPromptMode = false; _resetComposing()
+                delegate?.engineDidClearComposing()
+            } else {
+                _llmPromptBuffer = String(_llmPromptBuffer.dropLast())
+                _composing = "💬 " + _llmPromptBuffer; _notifyComposing()
+            }
+            return
+        }
         if _isInCommaCommand {
             if _commaCommandBuffer.isEmpty {
                 _isInCommaCommand = false; _composing = ","
@@ -315,6 +350,7 @@ final class InputEngine {
     } }
 
     func handleEnter() { sync {
+        if _isLLMPromptMode { _submitLLMPrompt(); return }
         if _isInCommaCommand { _dispatchCommaCommand(); return }
         if _isSameSoundMode && !_sameSoundBase.isEmpty {
             // Same-sound: Enter dismisses homophone candidates, stay in mode
@@ -333,9 +369,10 @@ final class InputEngine {
     } }
 
     func handleEscape() { sync {
-        let wasSpecial = _isZhuyinMode || _isPinyinMode || _isSameSoundMode
+        let wasSpecial = _isZhuyinMode || _isPinyinMode || _isSameSoundMode || _isLLMPromptMode
         if _isPinMode { _isPinMode = false; _pinCode = ""; _pinPicked = [] }
         if _isInCommaCommand { _isInCommaCommand = false; _commaCommandBuffer = "" }
+        if _isLLMPromptMode { _isLLMPromptMode = false; _llmPromptBuffer = "" }
         if _isZhuyinMode { _isZhuyinMode = false; _clearZhuyinSlots() }
         if _isPinyinMode { _isPinyinMode = false; _pinyinBuffer = "" }
         _isSameSoundMode = false
@@ -556,9 +593,24 @@ final class InputEngine {
     // MARK: - ,, Command
 
     private func _dispatchCommaCommand() {
-        let cmd = _commaCommandBuffer.lowercased()
+        let raw = _commaCommandBuffer
+        let cmd = raw.lowercased()
         _isInCommaCommand = false; _commaCommandBuffer = ""
         _resetComposing()
+        // ,,LLM → 進入第二層 prompt 輸入框（💬 前綴顯示，Enter/空白送出、Esc 取消）；
+        // ,,LLM<prompt> 也保留直寫：有內容直接送、空內容進輸入模式。
+        if cmd.hasPrefix("llm") {
+            let inline = String(raw.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+            if !inline.isEmpty {
+                delegate?.engineDidShowToast("LLM 生成中…")
+                delegate?.engineDidRequestLLM(inline)
+            } else {
+                _isLLMPromptMode = true; _llmPromptBuffer = ""
+                _composing = "💬 "; _notifyComposing()
+                delegate?.engineDidShowToast("輸入 prompt（可含空白），Enter 送出、Esc 取消")
+            }
+            return
+        }
         let modeMap = CommaCommandHelp.modeMap
         if cmd == "rs" { freqTracker.reset(); delegate?.engineDidShowToast("字頻已重置"); return }
         if cmd == "lh" {
@@ -742,6 +794,20 @@ final class InputEngine {
         _currentCandidates = []; _notifyCandidates()
         _inputMode = mode
         delegate?.engineDidShowToast(_modeLabel(for: mode))
+    }
+
+    /// 💬 prompt mode 送出：空內容提示用法、非空交給 delegate 跑 LLM。
+    /// 只有 Enter 會到這裡——空白是 prompt 內的輸入字元。
+    private func _submitLLMPrompt() {
+        let prompt = _llmPromptBuffer
+        _isLLMPromptMode = false; _llmPromptBuffer = ""
+        _resetComposing()
+        if prompt.isEmpty {
+            delegate?.engineDidShowToast(",,LLM 用法：,,LLM 進入輸入框，打字後 Enter/空白送出")
+        } else {
+            delegate?.engineDidShowToast("LLM 生成中…")
+            delegate?.engineDidRequestLLM(prompt)
+        }
     }
 
     /// Switch to a named mode (used by space-swipe cycle). Returns the display label.

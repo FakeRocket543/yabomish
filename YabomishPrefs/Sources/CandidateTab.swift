@@ -103,6 +103,21 @@ struct CandidateTab: View {
                           desc: "候選字加粗＋陰影",
                           on: $store.highContrast)
             }
+
+            SettingsSection(title: "拇指提示",
+                            footnote: "組字時候選窗角落顯示色點，提示用對側拇指按 Space。顏色：左下＝橘黃（左手碼）、右下＝青綠（右手碼）；僅組字中且候選窗顯示時出現。") {
+                ToggleRow(label: "顯示拇指提示", icon: "hand.thumbsup",
+                          desc: "對側拇指按 Space 的角落色點",
+                          on: $store.spaceThumbHint)
+                if store.spaceThumbHint {
+                    InsetDivider()
+                    VStack(spacing: 10) {
+                        sliderRow(label: "透明度", value: $store.spaceThumbHintOpacity, in: 0.1...1.0, step: 0.05, format: { "\(Int($0 * 100))%" })
+                        sliderRow(label: "大小", value: $store.spaceThumbHintSize, in: 4...16, step: 1, format: { "\(Int($0)) pt" })
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                }
+            }
         }
     }
 

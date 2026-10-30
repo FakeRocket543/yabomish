@@ -8,6 +8,14 @@ import QuartzCore
 final class CandidatePanel: NSPanel {
     static let shared = CandidatePanel()
 
+    /// 拇指提示：依「最後輸入碼的手別」顯示對側角落色點，提醒用對側拇指按 Space。
+    /// 僅組字中（composing 非空）且候選窗顯示時才出現；nil 表示停用/無手別。
+    enum ThumbSide { case left, right }
+    var thumbHintSide: ThumbSide? = nil {
+        didSet { updateThumbHintDot() }
+    }
+    private var thumbHintDot: NSView?
+
     // MARK: - Font & attribute caches
 
     private static var fontCache: [CGFloat: NSFont] = [:]
@@ -285,6 +293,7 @@ final class CandidatePanel: NSPanel {
             self.selKeys = selKeys
             self.highlightIndex = preselectFirst ? 0 : nil
             self.composingText = composing
+            self.updateThumbHintDot()
 
             if self.isFixed || self.fallbackFixed {
                 self.showFixed()
@@ -335,9 +344,43 @@ final class CandidatePanel: NSPanel {
             }
             self.candidates = []
             self.composingText = ""
+            self.updateThumbHintDot()
             self.fixedTextLayout = nil
             self.fixedHitRects = []
         }
+    }
+
+    /// 角落拇指色點：左手碼 → 右下青綠點（右手拇指按 Space）、
+    /// 右手碼 → 左下橘黃點。pref 關／無手別／非組字狀態時移除。
+    private func updateThumbHintDot() {
+        guard let host = contentView else { return }
+        thumbHintDot?.removeFromSuperview()
+        thumbHintDot = nil
+        guard YabomishPrefs.spaceThumbHint,
+              let side = thumbHintSide,
+              !composingText.isEmpty else { return }
+
+        let d = YabomishPrefs.spaceThumbHintSize
+        let dot = NSView()
+        dot.wantsLayer = true
+        dot.layer?.cornerRadius = d / 2
+        // 該用右手拇指（左手打完）→ 右下青綠；該用左手拇指 → 左下橘黃
+        dot.layer?.backgroundColor = (side == .right
+            ? NSColor.systemTeal.cgColor
+            : NSColor.systemOrange.cgColor)
+        dot.alphaValue = YabomishPrefs.spaceThumbHintOpacity
+        dot.translatesAutoresizingMaskIntoConstraints = false
+        host.addSubview(dot)
+        let pad: CGFloat = 6
+        NSLayoutConstraint.activate([
+            dot.widthAnchor.constraint(equalToConstant: d),
+            dot.heightAnchor.constraint(equalToConstant: d),
+            dot.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -pad),
+            side == .right
+                ? dot.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -pad)
+                : dot.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: pad),
+        ])
+        thumbHintDot = dot
     }
 
     func selectByKey(_ c: Character) -> String? {

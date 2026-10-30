@@ -27,6 +27,22 @@ func badge(_ text: String, font: NSFont, size: Int) -> NSBitmapImageRep {
     return rep
 }
 
+/// 純字形 alpha：透明底＋不透明字。menubar/輸入源選單把圖示當 template
+/// 遮罩（只看 alpha）——黑底徽章會整塊塗平、字形不可見；透明底字形才正常顯示。
+func glyphMask(_ text: String, font: NSFont, size: Int) -> NSBitmapImageRep {
+    let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size,
+        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+    let str = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: NSColor.black])
+    let ts = str.size()
+    str.draw(at: NSPoint(x: (CGFloat(size) - ts.width) / 2,
+                         y: (CGFloat(size) - ts.height) / 2 - CGFloat(size) * 0.015))
+    NSGraphicsContext.restoreGraphicsState()
+    return rep
+}
+
 func writeTIFF(_ lo: NSBitmapImageRep, _ hi: NSBitmapImageRep, to out: String) {
     let dir = NSTemporaryDirectory() + UUID().uuidString
     try! FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
@@ -102,9 +118,9 @@ func shrimpMask(svgPath: String, px: Int) -> NSBitmapImageRep {
 // zh：彩色炸蝦（Twemoji 原色；assets/menubar-friedshrimp-color.svg）
 writeTIFF(shrimpMask(svgPath: "assets/menubar-friedshrimp-color.svg", px: 16),
           shrimpMask(svgPath: "assets/menubar-friedshrimp-color.svg", px: 32), to: "\(res)/icon.tiff")
-// en mode：A
-writeTIFF(badge("A", font: .systemFont(ofSize: 11, weight: .bold), size: 16),
-          badge("A", font: .systemFont(ofSize: 22, weight: .bold), size: 32), to: "\(res)/icon_en.tiff")
-// dev 變體：β
-writeTIFF(badge("β", font: .systemFont(ofSize: 13, weight: .bold), size: 16),
-          badge("β", font: .systemFont(ofSize: 26, weight: .bold), size: 32), to: "\(res)/icon_dev.tiff")
+// en mode：A（同 dev——透明底字形，template 遮罩下字形清楚）
+writeTIFF(glyphMask("A", font: .systemFont(ofSize: 11, weight: .bold), size: 16),
+          glyphMask("A", font: .systemFont(ofSize: 22, weight: .bold), size: 32), to: "\(res)/icon_en.tiff")
+// dev 變體：β（透明底純字形——template 遮罩下才看得見字）
+writeTIFF(glyphMask("β", font: .systemFont(ofSize: 13, weight: .bold), size: 16),
+          glyphMask("β", font: .systemFont(ofSize: 26, weight: .bold), size: 32), to: "\(res)/icon_dev.tiff")

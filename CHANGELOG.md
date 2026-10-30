@@ -1,6 +1,17 @@
 # Changelog
 
 
+
+## [0.4.5] — 2026-10-30
+
+### 新增
+- **`,,LLM` 本機 LLM 生成上屏（Apple Intelligence `fm`）**：兩種用法——`,,LLM` 進第二層 prompt 輸入框（💬 前綴顯示、可含空白、Enter 送出、Esc 取消），`,,LLM〈prompt〉` 直寫即送；非同步呼叫 macOS 27+ 內建 `/usr/bin/fm respond`，30 秒 watchdog；完成時原 client 仍是當前 session 才 `insertText`，焦點已切走改放剪貼簿 + toast。`InputEngineDelegate` 新增 `engineDidRequestLLM`（協定 extension 預設 no-op，iOS/Android 不受影響）
+- **候選窗拇指提示 `spaceThumbHint`（預設關）**：組字時依最後一碼的 QWERTY 手別在候選窗角落顯示色點，提示用對側拇指按 Space——左手碼 → 右下青綠點、右手碼 → 左下橘黃點；僅 `composing` 非空時出現；設定程式「候選窗 → 拇指提示」可調透明度與點徑
+
+### 修正
+- **menubar/輸入源圖示空白方塊**：`icon_dev.tiff`/`icon_en.tiff` 原是黑底徽章，輸入源選單把圖示當 template 遮罩整塊塗平、字形不可見；改產透明底純字形（β／A），英文模式圖示同時修好
+- **dev 偏好設定寫錯 suite**：dev 設定程式 wrapper 因 Xcode 27.2 搬走 `libSwiftUIMacros.dylib` 而 build 失敗、二進位被清掉，使用者改開 stable 設定程式把設定寫進 stable suite；`yabomish.sh`/`release.sh` 補 `-load-plugin-library`（存在才下旗標），並讓 dev 版號帶 `-dev` 後綴與 stable 區分
+
 ## [0.4.4] — 2026-10-30
 
 ### 修正

@@ -139,6 +139,18 @@ import Foundation
         get { access(keyPath: \.fixedYOffset); return ud.object(forKey: "fixedYOffset") as? Double ?? 8.0 }
         set { withMutation(keyPath: \.fixedYOffset) { ud.set(newValue, forKey: "fixedYOffset") }; postChange() }
     }
+    var spaceThumbHint: Bool {
+        get { access(keyPath: \.spaceThumbHint); return ud.object(forKey: "spaceThumbHint") as? Bool ?? false }
+        set { withMutation(keyPath: \.spaceThumbHint) { ud.set(newValue, forKey: "spaceThumbHint") }; postChange() }
+    }
+    var spaceThumbHintOpacity: Double {
+        get { access(keyPath: \.spaceThumbHintOpacity); return ud.object(forKey: "spaceThumbHintOpacity") as? Double ?? 0.35 }
+        set { withMutation(keyPath: \.spaceThumbHintOpacity) { ud.set(newValue, forKey: "spaceThumbHintOpacity") }; postChange() }
+    }
+    var spaceThumbHintSize: Double {
+        get { access(keyPath: \.spaceThumbHintSize); return ud.object(forKey: "spaceThumbHintSize") as? Double ?? 8.0 }
+        set { withMutation(keyPath: \.spaceThumbHintSize) { ud.set(newValue, forKey: "spaceThumbHintSize") }; postChange() }
+    }
 
     // MARK: - Toggles
 
