@@ -1319,7 +1319,9 @@ extension YabomishInputController: InputEngineDelegate {
         comp.path = base.path + "/chat/completions"
         guard let url = comp.url else { return .failure("aiBaseURL 組合失敗") }
 
-        let content = clip.isEmpty ? prompt : "\(prompt)\n\n---\n\(clip)"
+        // {clip} 若已被 preset 樣板拼進 prompt（使用者看過、編輯過）就不要再附加——
+        // 否則同一篇文章會在 body 裡出現兩次。
+        let content = clip.isEmpty || prompt.contains(clip) ? prompt : "\(prompt)\n\n---\n\(clip)"
         var body: [String: Any] = [
             "messages": [["role": "user", "content": content]],
         ]

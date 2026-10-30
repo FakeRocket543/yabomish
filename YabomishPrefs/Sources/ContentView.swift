@@ -51,6 +51,7 @@ private let navItems: [NavItem] = [
     .init(tag: 4, title: "候選窗",   icon: "list.bullet.rectangle",  color: .orange),
     .init(tag: 5, title: "模式提示", icon: "bell.badge",      color: .pink),
     .init(tag: 6, title: "介面",     icon: "circle.lefthalf.filled",             color: .red),
+    .init(tag: 9, title: "AI",       icon: "sparkles",                color: .mint),
     .init(tag: 7, title: "說明",     icon: "book",                   color: .green),
     .init(tag: 8, title: "關於",     icon: "info.circle",            color: .gray),
 ]
@@ -268,6 +269,7 @@ struct ContentView: View {
         case 5: ToastTab(store: store)
         case 6: InterfaceTab(store: store)
         case 7: HelpTab()
+        case 9: AITab(store: store)
         default: AboutTab(store: store)
         }
         #endif
