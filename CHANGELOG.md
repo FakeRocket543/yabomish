@@ -2,6 +2,23 @@
 
 
 
+## [0.4.11] — 2026-10-31
+
+### 修正
+- **inline `,,AI〈prompt〉` 打進 no-op**：為 `engineDidRequestLLM` 加預設參數的版本不滿足 `InputEngineDelegate` protocol 見證，engine 內 inline 分支走到空實作；還原 protocol 簽名，補打內容改經私有 `requestLLM(_:embeddedClip:)` 傳遞
+- **`,,AI` stale 結果靜默丟棄**：送出後切 app／換 client，回傳結果原被吞掉——現在一律寫剪貼簿＋toast；`llmGeneration` 改 static，多 controller 實例共享代次，新請求真正作廢舊的
+- **`{clip}` 剪貼簿重複／誤附**：改傳 `embeddedClip` 快照參數（取代 `contains(clip)` 字串比對——使用者編輯過文章也不再誤判）；`runAIHTTP` 不再自動附剪貼簿——`{clip}` 是唯一的剪貼簿入口
+- **`aiAPIMode` 非 `chat_completions` 靜默 4xx**：HTTP 送出前先檢查 api_mode，回「尚未支援」明確錯誤
+- **`install` 的 `.prev` 幻影註冊**：rollback 備份放 `Input Methods` 內會被 TIS 掃成同 bundle ID 的第二個輸入法來源（輸入法選單長出兩個 β）；`.prev`／`.rollback-tmp` 移進 `~/Library/Application Support/Yabomish`，rollback 新舊位置都認
+- **`PresetPickerPanel` 0 鍵失效**：數字鍵只到 9，0 鍵現在對應第 10 列（1-9 直選慣例延伸）
+- **`InputEngine` 778-787 死碼**：`,,AI` 相鄰的重複 block 移除
+- **`,,AI` 雙「生成中」toast**：inline 路徑與浮動窗各自噴 toast，去重
+- **`,,PR〈未知碼〉` 無後續動作**：toast 提示後自動開 preset 選單
+- **送出時補「AI/fm 生成中…」toast**：與「下載聯想語料中…」同 0.6s 慣例
+- **`AITab` provider picker 回選**：依 `aiBaseURL` 自動選回對應 provider 選項
+- **`install` 的 `.prev` 提示永不顯示／uninstall 遺留備份**：安裝成功訊息仍檢查舊位置，改查 `USER_DIR`；uninstall 一併移除 `USER_DIR` 內 `.prev`/`.rollback-tmp`
+- **測試套件編譯失敗**：`isSameSoundMode` accessor 在 90230bc refactor 被移除但測試仍在用——恢復唯讀 accessor
+
 ## [0.4.10] — 2026-10-31
 
 ### 修正
