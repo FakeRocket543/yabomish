@@ -1233,10 +1233,11 @@ extension YabomishInputController: InputEngineDelegate {
     /// 可打中文/空白/任意輸入法內容；Enter 送出 → engineDidRequestLLM。
     /// prefill 為 preset 樣板展開結果；{clip} 在這裡代換成剪貼簿全文。
     func engineDidOpenLLMPrompt(prefill: String) {
-        let filled = prefill.replacingOccurrences(of: "{clip}",
-                                                with: ClipboardProcessor.plainText() ?? "")
+        let clip = ClipboardProcessor.plainText() ?? ""
+        let hadPlaceholder = prefill.contains("{clip}")
+        let filled = prefill.replacingOccurrences(of: "{clip}", with: clip)
         LLMPromptPanel.shared.show(prefill: filled) { [weak self] prompt in
-            self?.engineDidRequestLLM(prompt)
+            self?.engineDidRequestLLM(prompt, clipInPrompt: hadPlaceholder)
         }
     }
 
@@ -1244,7 +1245,7 @@ extension YabomishInputController: InputEngineDelegate {
     func engineDidOpenPresetPicker(_ items: [(key: String, name: String, prompt: String)]) {
         guard !items.isEmpty else {
             DebugLog.log("engineDidOpenPresetPicker: empty")
-            engineDidShowToast("無 preset — 在 commands.json 加 type:preset")
+            engineDidShowToast("無 preset — AI 分頁（設定程式）新增 type:preset 條目")
             return
         }
         PresetPickerPanel.shared.show(items: items) { [weak self] prompt in
@@ -1256,34 +1257,40 @@ extension YabomishInputController: InputEngineDelegate {
     // MARK: - ,,AI prompt mode
 
     /// 產生中的 fm 工作代次：切 app / deactivate / 新 prompt 會讓舊結果作廢。
-    private static var _llmGenerationKey = 0
+    /// static 全 app 共享——per-instance 計數器各算各的，兩個 controller 互不作廢。
+    private static var _llmGeneration = 0
     private var llmGeneration: Int {
-        get { (objc_getAssociatedObject(self, &Self._llmGenerationKey) as? Int) ?? 0 }
-        set { objc_setAssociatedObject(self, &Self._llmGenerationKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+        get { Self._llmGeneration }
+        set { Self._llmGeneration = newValue }
     }
 
     /// `,,AI<prompt>`：非同步呼叫 `aiCommand` 樣板（預設 /usr/bin/fm respond）。
     /// 完成時若當初觸發的 client 仍有效且代次未過期 → commit 到游標；
     /// 否則寫入剪貼簿 + toast。逾時 30 秒由 Process timeout 控制。
-    func engineDidRequestLLM(_ prompt: String) {
+    /// clipInPrompt：true = preset 流程已在 engineDidOpenLLMPrompt 代換 {clip}
+    /// 進 prompt → clip 傳 ""，runFM 不再附加；false = 裸 ,,AI → clip 讀當前剪貼簿。
+    func engineDidRequestLLM(_ prompt: String, clipInPrompt: Bool = false) {
         llmGeneration += 1
         let gen = llmGeneration
         let client = engineClient   // weak 參考先取強引用快照
         DebugLog.log("engineDidRequestLLM: gen=\(gen) prompt=\(prompt.prefix(40))")
+        showModeToast(YabomishPrefs.aiMode == "http" ? "AI 生成中…" : "fm 生成中…")
 
-        let clip = ClipboardProcessor.plainText() ?? ""   // NSPasteboard 要在 main thread 讀
+        let clip = clipInPrompt ? "" : (ClipboardProcessor.plainText() ?? "")
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let result = Self.runFM(prompt: prompt, clip: clip)
             DispatchQueue.main.async {
-                guard let self = self, self.llmGeneration == gen else {
-                    DebugLog.log("engineDidRequestLLM: stale gen dropped")
-                    return
+                guard let self = self else { return }
+                let stale = self.llmGeneration != gen
+                if stale {
+                    DebugLog.log("engineDidRequestLLM: stale gen (app 已切換)")
                 }
                 switch result {
                 case .success(let text):
                     // 觸發時的 client 仍是當前 session 的 client 才直接送到游標；
-                    // 換欄位/換 app 後寫入舊 client 會插進錯的地方 → 改放剪貼簿。
-                    if let client, self.engineClient === client {
+                    // 換欄位/換 app（含 stale）後寫入舊 client 會插錯地方 → 改放剪貼簿。
+                    // 注意：stale 不是丟棄——結果是使用者要的，靜默吞掉最糟。
+                    if !stale, let client, self.engineClient === client {
                         let range = client.markedRange()
                         client.insertText(text, replacementRange: range)
                     } else {
@@ -1292,6 +1299,7 @@ extension YabomishInputController: InputEngineDelegate {
                         self.showModeToast("焦點已切換：LLM 結果已放入剪貼簿")
                     }
                 case .failure(let msg):
+                    // stale 時失敗訊息仍要給——使用者至少知道為什麼沒結果。
                     self.showModeToast("LLM 失敗：\(msg)")
                 }
             }
@@ -1311,6 +1319,11 @@ extension YabomishInputController: InputEngineDelegate {
     /// {clip} 預先拼進 prompt 尾段（置頂易把文章當指令）；api_key 有值才帶 Bearer。
     /// 目前只實作 chat_completions——codex_responses/anthropic_messages 第二期。
     private static func runAIHTTP(prompt: String, clip: String) -> FMResult {
+        // api_mode 目前只實作 chat_completions；其他 mode 寫死送錯 shape 會
+        // 靜默 4xx——先回「尚未支援」比 debug HTTP dump 友善。
+        guard YabomishPrefs.aiAPIMode == "chat_completions" else {
+            return .failure("api_mode=\(YabomishPrefs.aiAPIMode) 尚未支援——目前只有 chat_completions")
+        }
         guard let base = URL(string: YabomishPrefs.aiBaseURL
                                    .trimmingCharacters(in: .whitespaces)
                                    .trimmingCharacters(in: CharacterSet(charactersIn: "/"))),
@@ -1319,9 +1332,8 @@ extension YabomishInputController: InputEngineDelegate {
         comp.path = base.path + "/chat/completions"
         guard let url = comp.url else { return .failure("aiBaseURL 組合失敗") }
 
-        // {clip} 若已被 preset 樣板拼進 prompt（使用者看過、編輯過）就不要再附加——
-        // 否則同一篇文章會在 body 裡出現兩次。
-        let content = clip.isEmpty || prompt.contains(clip) ? prompt : "\(prompt)\n\n---\n\(clip)"
+        // clipInPrompt 的 preset 流程在上一層已把剪貼簿拼進 prompt → clip 傳空。
+        let content = clip.isEmpty ? prompt : "\(prompt)\n\n---\n\(clip)"
         var body: [String: Any] = [
             "messages": [["role": "user", "content": content]],
         ]

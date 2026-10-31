@@ -162,6 +162,12 @@ struct AITab: View {
                     Provider(id: k, name: v.name, api: v.api, doc: v.doc,
                              modelIDs: v.models?.keys.sorted() ?? [])
                 }.sorted { $0.name < $1.name }
+                // 進頁時 providerID 是 "custom"——若 aiBaseURL 命中 catalog 裡某家
+                // 就把 picker 回選到那家（使用者不用再手動挑）。
+                if providerID == "custom",
+                   let hit = catalog.first(where: { $0.api == store.aiBaseURL }) {
+                    providerID = hit.id
+                }
             }
         }.resume()
     }
