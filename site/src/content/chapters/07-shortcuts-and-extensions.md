@@ -123,14 +123,15 @@ xstr	⭐
 
 macOS、iOS 共用同一份檔案格式（檔案格式相同，可手動複製共用）。iOS 鍵盤只執行 `text` 型，其餘型別在 macOS 上生效。
 
-### 四種型別
+### 五種型別
 
 ```json
 {
   "auau": { "type": "text",  "text": "sudo apt update && sudo apt upgrade" },
   "ss":   { "type": "shell", "run": "screencapture -x ~/Desktop/shot-$(date +%s).png" },
   "saf":  { "type": "open",  "app": "Safari" },
-  "ask":  { "type": "hermes", "send": "幫我總結這篇", "url": "http://127.0.0.1:8765/ask" }
+  "ask":  { "type": "hermes", "send": "幫我總結這篇", "url": "http://127.0.0.1:8765/ask" },
+  "ig":   { "type": "preset", "name": "IG 貼文", "prompt": "把以下改寫成 IG 貼文：\n{clip}\n要求：{input}" }
 }
 ```
 
@@ -140,6 +141,7 @@ macOS、iOS 共用同一份檔案格式（檔案格式相同，可手動複製�
 | `shell` | 非同步執行 shell 指令（5 秒逾時） | 僅 macOS |
 | `open` | 開啟或切換到指定 app | 僅 macOS |
 | `hermes` | 把 `send` 字串 POST 到本機 agent，回覆插入游標處 | macOS（輸入法）／iOS（容器 App 內） |
+| `preset` | 預設 AI prompt——key 即指令（`,,IG`／`,,IG〈補打〉` 直接啟用）；`,,PR` 開浮動選單瀏覽 | 僅 macOS |
 
 輸入 `,,auau` 空白即觸發；`,,RL` 重載字表時會一併重載此檔。內建指令優先於自訂指令。
 
@@ -152,6 +154,21 @@ macOS、iOS 共用同一份檔案格式（檔案格式相同，可手動複製�
 - **僅允許本機位址**——`url` 只接受 `127.0.0.1`、`localhost`、`::1`，scheme 限 `http`。網域、區網 IP、HTTPS 一律拒絕，防止設定檔被竄改後外傳資料。
 - **只送出 `send` 字串本身**——不送鍵擊紀錄、不送輸入內容、無任何背景流量。
 - 回覆支援純文字或 `{"text"|"reply"|"response"|"content": "..."}` JSON 格式（60 秒逾時）。
+
+### `preset` 型別與 `,,AI`
+
+`preset` 是「一個碼綁一段 prompt 樣板」的 AI 快捷方式——key 本身就是指令：
+
+- `,,IG` 直接啟用該 preset；`,,IG〈補打〉` 把碼後殘餘字代入樣板的 `{input}`。
+- `,,PR` 開浮動選單瀏覽全部 preset（↑↓ 移動、1-9/0 直選、Enter 確認、Esc 取消）；`,,PR〈碼〉` 亦可前綴啟用，打不存在的碼會 toast 後自動開選單。
+- 樣板 `{clip}` = 送出當下的剪貼簿全文、`{input}` = 補打內容。選中後進 `,,AI` 浮動窗，可再編輯才送出。
+- 比對為**最長前綴**且**內建指令優先**：preset key 以 `ai`/`pr`/`p`/`v`/`c`/`to`/`zh`/`pys` 等內建碼開頭會被吃掉，命名請避開；key 建議全小寫（比對時輸入會轉小寫）。
+
+`,,AI` 本身也可單獨用：
+
+- `,,AI` 開浮動輸入窗（可打中文），Enter 送出、Esc 取消；`,,AI〈prompt〉` 略過視窗直送。
+- 後端在**設定 → AI** 分頁切換：CLI 指令樣板（預設 `fm`，30 秒逾時）或 HTTP Provider（60 秒逾時）。
+- 生成中按空白處理；完成時焦點仍在原位 → 送到游標，焦點已切換 → 放入剪貼簿並提示。
 
 ### 安全提醒
 

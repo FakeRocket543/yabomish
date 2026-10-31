@@ -306,13 +306,29 @@ Yabomish 的所有設定都集中在獨立的設定程式 **YabomishPrefs.app** 
 
 ---
 
-## 8.11 說明
+## 8.11 AI
+
+`,,AI` 與 preset（`,,IG`／`,,PR`）共用的後端設定，切換即時生效：
+
+| 設定 | 說明 |
+|------|------|
+| **模式** | `CLI 指令` / `HTTP Provider` 二擇一 |
+| **CLI 指令樣板**（`aiCommand`） | argv 以空白切：第一欄可執行檔、`{prompt}` 整欄替換、`{clip}` 代剪貼簿；沒寫 `{prompt}` 自動加在最後一欄。預設 `/usr/bin/fm respond {prompt}`（macOS 27+ Apple Intelligence，本機、免 key）；可換 ollama／llama.cpp／claude 等任何「接 prompt、吐 stdout」的 CLI |
+| **HTTP Provider** | OpenAI Chat Completions 相容端點。Provider 下拉從 models.dev catalog 帶 base URL＋模型清單（含 OpenAI/Anthropic/Google/OpenRouter/ollama-cloud 等），自訂端點直接填 base URL（如 `fm serve` → `http://127.0.0.1:11434/v1`）。`aiBaseURL`/`aiModel`/`aiAPIKey` 三欄，API key 存本機 plist、GUI 遮蔽顯示；逾時 60 秒 |
+| **Preset 編輯器** | commands.json `type:"preset"` 條目的 GUI：key=指令碼、name=顯示名、prompt 樣板（`{clip}`/`{input}` 佔位符）。儲存即時生效，不需 `,,RL` |
+
+用法詳見[第七章 7.4](/yabomish/chapters/07-shortcuts-and-extensions)。
+
+
+---
+
+## 8.12 說明
 
 頁內含「使用方法」入門指引與「快捷鍵速查」完整按鍵參考。
 
 ---
 
-## 8.12 關於
+## 8.13 關於
 
 此頁提供參考資訊，不涉及設定變更：頁首顯示版本與建置編號，下方為語料來源與授權的署名區塊——
 

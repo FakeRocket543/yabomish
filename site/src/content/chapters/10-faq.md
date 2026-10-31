@@ -87,7 +87,7 @@ order: 10
 
 ### Q：可以跨機同步嗎？
 
-可以，但屬進階用法：設定程式的「同步資料夾」UI 已移除，需以 `defaults write` 設定 `syncFolder` 偏好指向 iCloud Drive 路徑（詳見[第七章 7.3](/yabomish/chapters/07-shortcuts-and-extensions)）。同步範圍包含字頻學習資料和擴充表；一般單機使用不需要設定。
+可以：設定程式「關於」頁底部有**同步資料夾**選擇器，選 iCloud Drive 或 Dropbox 等共用路徑即可（也可 `defaults write` 設 `syncFolder`；詳見[第七章 7.3](/yabomish/chapters/07-shortcuts-and-extensions)）。同步範圍包含字頻學習資料和擴充表；一般單機使用不需要設定。
 
 ### Q：liu.cin 會上傳嗎？
 
