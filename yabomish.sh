@@ -230,7 +230,7 @@ install_im() {
 
     ok "輸入法已安裝"
     [ -f "$USER_DIR/liu.cin" ] || [ -f "$USER_DIR/liu.bin" ] && ok "字表就緒" || warn "尚未偵測到字表，首次切換時會引導匯入"
-    [ -d "$INSTALL_DIR/$IM_APP_NAME.app.prev" ] && ok "上一版已保留為 .prev（rollback 可還原）"
+    [ -d "$USER_DIR/$IM_APP_NAME.app.prev" ] && ok "上一版已保留為 .prev（rollback 可還原）"
 
     restart_im
 }
@@ -350,6 +350,8 @@ do_uninstall() {
     $SUDO rm -rf "$INSTALL_DIR/$IM_APP_NAME.app"
     $SUDO rm -rf "$INSTALL_DIR/$IM_APP_NAME.app.prev"
     $SUDO rm -rf "$INSTALL_DIR/$IM_APP_NAME.app.new"
+    # .prev/.rollback-tmp 是安裝備份（USER_DIR 內），非使用者資料——無論是否留資料都清掉
+    rm -rf "$USER_DIR/$IM_APP_NAME.app.prev" "$USER_DIR/$IM_APP_NAME.app.rollback-tmp"
     if [ "${YABOMISH_DEV:-0}" != "1" ]; then
         $SUDO rm -rf "$HOME/Library/Input Methods/$IM_APP_NAME.app"   # all_platforms.sh 裝在使用者層級的副本
         $SUDO rm -rf /Applications/YabomishPrefs.app

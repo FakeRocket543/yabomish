@@ -118,6 +118,7 @@ final class InputEngine {
     var isEnglishMode: Bool { sync { _isEnglishMode } }
     var isZhuyinMode: Bool { sync { _isZhuyinMode } }
     var isPinyinMode: Bool { sync { _isPinyinMode } }
+    var isSameSoundMode: Bool { sync { _isSameSoundMode } }
     var isInSpecialMode: Bool { sync { _isZhuyinMode || _isPinyinMode || _isSameSoundMode } }
     var inputMode: InputMode { sync { _inputMode } }
     var selKeys: [Character] { cinTable.selKeys }
