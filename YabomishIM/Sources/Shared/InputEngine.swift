@@ -577,7 +577,7 @@ final class InputEngine {
         let cmd = raw.lowercased()
         _isInCommaCommand = false; _commaCommandBuffer = ""
         _resetComposing()
-        // ,,PR → preset prompt 選擇器；,,PR<key><input> 直接解析 preset。
+        // ,,PR → prompt preset 選擇器；,,PR<key><input> 直接解析 preset。
         // 注意要先於 ,,AI 判斷（"pr…" 不含 "ai" 前綴，但順序可讀性為重），
         // 也先於 ,,P（cmd=="p" 是精確比對，不衝突）。
         if cmd.hasPrefix("pr") {
@@ -590,7 +590,9 @@ final class InputEngine {
                                                          with: hit.rest.trimmingCharacters(in: .whitespaces))
                 delegate?.engineDidOpenLLMPrompt(prefill: filled)
             } else {
+                // 未知碼 → 開選單當 fallback（比吐一行錯誤有用——清單本身就是答案）
                 delegate?.engineDidShowToast("無此 preset：\(sub)")
+                delegate?.engineDidOpenPresetPicker(CommaCommandRunner.presets)
             }
             return
         }
@@ -599,7 +601,8 @@ final class InputEngine {
         if cmd.hasPrefix("ai") {
             let inline = String(raw.dropFirst(2)).trimmingCharacters(in: .whitespaces)
             if !inline.isEmpty {
-                delegate?.engineDidShowToast("AI 生成中…")
+                // 生成中 toast 由 controller 端 showModeToast 發（mode-aware 文案），
+                // 這裡不重複——會兩連閃。
                 delegate?.engineDidRequestLLM(inline)
             } else {
                 delegate?.engineDidOpenLLMPrompt(prefill: "")
@@ -775,16 +778,6 @@ final class InputEngine {
             delegate?.engineDidOpenLLMPrompt(prefill: filled)
             return
         }
-        // text 型別：展開文字直接送出（三平台同步契約）
-        if let expanded = CommaCommandRunner.expandText(cmd) {
-            delegate?.engineDidCommit(expanded)
-            return
-        }
-        if CommaCommandRunner.tryExecute(cmd, toast: { [weak self] msg in
-            DispatchQueue.main.async { self?.delegate?.engineDidShowToast(msg) }
-        }, deliver: { [weak self] text in
-            DispatchQueue.main.async { self?.delegate?.engineDidPasteText(text) }
-        }) { return }
         // 指令存在但殘缺（open 無 app / shell 無 run / 未知型別）→ 報錯，
         // 不可落到 modeMap：名為 "t"/"s"/"sp"… 的殘缺指令會誤切模式。
         if CommaCommandRunner.commands[cmd] != nil {

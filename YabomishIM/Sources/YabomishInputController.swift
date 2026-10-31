@@ -1237,7 +1237,9 @@ extension YabomishInputController: InputEngineDelegate {
         let hadPlaceholder = prefill.contains("{clip}")
         let filled = prefill.replacingOccurrences(of: "{clip}", with: clip)
         LLMPromptPanel.shared.show(prefill: filled) { [weak self] prompt in
-            self?.engineDidRequestLLM(prompt, clipInPrompt: hadPlaceholder)
+            // 已代換 {clip} 的 prompt 把剪貼簿當「已嵌入」傳下去：
+            // runAIHTTP 不附加、runAICLI 的模板 {clip} 用同一份快照。
+            self?.requestLLM(prompt, embeddedClip: hadPlaceholder ? clip : nil)
         }
     }
 
@@ -1264,19 +1266,26 @@ extension YabomishInputController: InputEngineDelegate {
         set { Self._llmGeneration = newValue }
     }
 
-    /// `,,AI<prompt>`：非同步呼叫 `aiCommand` 樣板（預設 /usr/bin/fm respond）。
-    /// 完成時若當初觸發的 client 仍有效且代次未過期 → commit 到游標；
-    /// 否則寫入剪貼簿 + toast。逾時 30 秒由 Process timeout 控制。
-    /// clipInPrompt：true = preset 流程已在 engineDidOpenLLMPrompt 代換 {clip}
-    /// 進 prompt → clip 傳 ""，runFM 不再附加；false = 裸 ,,AI → clip 讀當前剪貼簿。
-    func engineDidRequestLLM(_ prompt: String, clipInPrompt: Bool = false) {
+    /// `,,AI<prompt>`（protocol 入口）：無樣板 → 剪貼簿只供 CLI 的 {clip} 佔位符。
+    func engineDidRequestLLM(_ prompt: String) {
+        requestLLM(prompt, embeddedClip: nil)
+    }
+
+    /// 非同步呼叫 aiCommand 或 HTTP provider。完成時若當初觸發的 client
+    /// 仍有效且代次未過期 → commit 到游標；否則寫入剪貼簿 + toast。
+    /// 逾時 CLI 30s / HTTP 60s。
+    /// embeddedClip：preset 流程已在 engineDidOpenLLMPrompt 把 {clip} 代換進
+    /// prompt —— 傳入那份快照，CLI 模板的 {clip} 續用同一份；nil = 裸 ,,AI。
+    /// ⚠️ HTTP 一律不自動附加剪貼簿——{clip} 佔位符是唯一的剪貼簿入口，
+    /// 避免裸 ,,AI 把剪貼簿全文送上第三方 API。
+    private func requestLLM(_ prompt: String, embeddedClip: String?) {
         llmGeneration += 1
         let gen = llmGeneration
         let client = engineClient   // weak 參考先取強引用快照
-        DebugLog.log("engineDidRequestLLM: gen=\(gen) prompt=\(prompt.prefix(40))")
+        DebugLog.log("requestLLM: gen=\(gen) prompt=\(prompt.prefix(40))")
         showModeToast(YabomishPrefs.aiMode == "http" ? "AI 生成中…" : "fm 生成中…")
 
-        let clip = clipInPrompt ? "" : (ClipboardProcessor.plainText() ?? "")
+        let clip = embeddedClip ?? (ClipboardProcessor.plainText() ?? "")
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let result = Self.runFM(prompt: prompt, clip: clip)
             DispatchQueue.main.async {
@@ -1308,17 +1317,20 @@ extension YabomishInputController: InputEngineDelegate {
 
     private enum FMResult { case success(String), failure(String) }
 
-    /// 依 aiMode 分流：cli = spawn aiCommand；http = POST aiBaseURL（OpenAI 相容）。
+    /// 依 aiMode 分流：cli = spawn aiCommand（可帶 {clip} 剪貼簿 argv）；
+    /// http = POST aiBaseURL（只送 prompt——剪貼簿經 {clip} 佔位符已內嵌）。
     private static func runFM(prompt: String, clip: String) -> FMResult {
-        if YabomishPrefs.aiMode == "http" { return runAIHTTP(prompt: prompt, clip: clip) }
+        if YabomishPrefs.aiMode == "http" { return runAIHTTP(prompt: prompt) }
         return runAICLI(prompt: prompt, clip: clip)
     }
 
     /// POST OpenAI Chat Completions：{base_url}/chat/completions，
     /// body {model, messages:[{role:user, content: prompt}]}，回 choices[0].message.content。
-    /// {clip} 預先拼進 prompt 尾段（置頂易把文章當指令）；api_key 有值才帶 Bearer。
-    /// 目前只實作 chat_completions——codex_responses/anthropic_messages 第二期。
-    private static func runAIHTTP(prompt: String, clip: String) -> FMResult {
+    /// api_key 有值才帶 Bearer。目前只實作 chat_completions——
+    /// codex_responses/anthropic_messages 第二期。
+    /// ⚠️ 剪貼簿絕不進 HTTP body：{clip} 只由 prompt 層的佔位符代換，
+    /// 使用者在浮動窗親眼看過才送。
+    private static func runAIHTTP(prompt: String) -> FMResult {
         // api_mode 目前只實作 chat_completions；其他 mode 寫死送錯 shape 會
         // 靜默 4xx——先回「尚未支援」比 debug HTTP dump 友善。
         guard YabomishPrefs.aiAPIMode == "chat_completions" else {
@@ -1332,8 +1344,7 @@ extension YabomishInputController: InputEngineDelegate {
         comp.path = base.path + "/chat/completions"
         guard let url = comp.url else { return .failure("aiBaseURL 組合失敗") }
 
-        // clipInPrompt 的 preset 流程在上一層已把剪貼簿拼進 prompt → clip 傳空。
-        let content = clip.isEmpty ? prompt : "\(prompt)\n\n---\n\(clip)"
+        let content = prompt
         var body: [String: Any] = [
             "messages": [["role": "user", "content": content]],
         ]

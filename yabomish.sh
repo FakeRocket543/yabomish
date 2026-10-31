@@ -200,9 +200,12 @@ install_im() {
 
     # 原子式換裝＋保留一版：先裝 .new、現版移到 .prev（rollback 用）、再換上 .new。
     # 中途失敗不會留下「沒有輸入法」的空窗；.prev 只留最近一版。
+    # ⚠️ .prev 放 USER_DIR（不在 Input Methods 內）——同 bundle ID 的兩個
+    # .app 放在掃描目錄下會被 TIS 當兩個輸入源，menubar 出現重複圖示。
+    mkdir -p "$USER_DIR"
     $SUDO cp -R "$IM_APP" "$INSTALL_DIR/$IM_APP_NAME.app.new"
-    $SUDO rm -rf "$INSTALL_DIR/$IM_APP_NAME.app.prev"
-    [ -d "$INSTALL_DIR/$IM_APP_NAME.app" ] && $SUDO mv "$INSTALL_DIR/$IM_APP_NAME.app" "$INSTALL_DIR/$IM_APP_NAME.app.prev"
+    $SUDO rm -rf "$USER_DIR/$IM_APP_NAME.app.prev" "$INSTALL_DIR/$IM_APP_NAME.app.prev"
+    [ -d "$INSTALL_DIR/$IM_APP_NAME.app" ] && $SUDO mv "$INSTALL_DIR/$IM_APP_NAME.app" "$USER_DIR/$IM_APP_NAME.app.prev"
     $SUDO mv "$INSTALL_DIR/$IM_APP_NAME.app.new" "$INSTALL_DIR/$IM_APP_NAME.app"
     $SUDO chmod -R a+rX "$INSTALL_DIR/$IM_APP_NAME.app"
     # macOS 27 要求簽章 Identifier 與 Info.plist Bundle ID 一致，否則 IMK 拒絕 XPC endpoint（issue #16）：
@@ -263,15 +266,18 @@ restart_im() {
 # 還原上一版：install 保留的 .prev 與現版互換（rollback 本身可逆）。
 do_rollback() {
     local CUR="$INSTALL_DIR/$IM_APP_NAME.app"
-    local PREV="$INSTALL_DIR/$IM_APP_NAME.app.prev"
+    local PREV="$USER_DIR/$IM_APP_NAME.app.prev"   # 新位置（TIS 掃描不到）
+    # 舊版腳本放在 Input Methods 內的殘留也接受（遷移期）
+    [ ! -d "$PREV" ] && PREV="$INSTALL_DIR/$IM_APP_NAME.app.prev"
     [ -d "$PREV" ] || err "沒有可還原的上一版（$PREV 不存在）"
     [ -n "$SUDO" ] && sudo -v
     printf "${C}> 還原上一版 $IM_APP_NAME...${N}\n"
     killall "$IM_APP_NAME" 2>/dev/null || true; sleep 1
-    [ -d "$CUR" ] && $SUDO mv "$CUR" "$INSTALL_DIR/$IM_APP_NAME.app.rollback-tmp"
+    mkdir -p "$USER_DIR"
+    [ -d "$CUR" ] && $SUDO mv "$CUR" "$USER_DIR/$IM_APP_NAME.app.rollback-tmp"
     $SUDO mv "$PREV" "$CUR"
-    [ -d "$INSTALL_DIR/$IM_APP_NAME.app.rollback-tmp" ] && \
-        $SUDO mv "$INSTALL_DIR/$IM_APP_NAME.app.rollback-tmp" "$PREV"
+    [ -d "$USER_DIR/$IM_APP_NAME.app.rollback-tmp" ] && \
+        mv "$USER_DIR/$IM_APP_NAME.app.rollback-tmp" "$USER_DIR/$IM_APP_NAME.app.prev"
     $SUDO chmod -R a+rX "$CUR"
     ok "已還原上一版（現版降為 .prev）"
     restart_im

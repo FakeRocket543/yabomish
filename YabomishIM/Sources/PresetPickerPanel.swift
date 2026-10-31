@@ -1,6 +1,6 @@
 import Cocoa
 
-/// ,,PR preset 選擇器——小而快的浮動清單，不搶 client 焦點。
+/// ,,PR prompt preset 選擇器——小而快的浮動清單，不搶 client 焦點。
 ///
 /// 鍵盤操作：↑↓ 移動、Enter 選取、數字鍵 1-9 直選、Esc 取消。
 /// 與 LLMPromptPanel 同樣是 .nonactivatingPanel + canBecomeKey：
@@ -117,9 +117,10 @@ final class PresetPickerPanel: NSPanel {
             selected = (selected + 1) % max(items.count, 1)
             rebuildRows()
         default:
+            // 數字鍵直選：1-9 → 第 1-9 列，0 → 第 10 列（常見慣例）。
             if let chars = event.characters, let digit = chars.first.flatMap({ Int(String($0)) }),
-               (1...9).contains(digit) {
-                pick(digit - 1)
+               (0...9).contains(digit) {
+                pick(digit == 0 ? 9 : digit - 1)
             }
         }
     }
