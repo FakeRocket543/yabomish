@@ -17,7 +17,7 @@
 
 | 檔案 | 修正 | 嚴重度 |
 |------|------|--------|
-| `InputEngine.swift` | 恢復 `isSameSoundMode` 唯讀 accessor——`90230bc` refactor 移除後測試 `main.swift:686` 編譯失敗 | P2 |
+| `InputEngine.swift` | 恢復 `isSameSoundMode` 唯讀 accessor——`504e3f5`（0.4.5，`isInSpecialMode` 擴 `_isLLMPromptMode` 時誤刪）移除後測試 `main.swift:686` 編譯失敗 | P2 |
 | `yabomish.sh:233` | `.prev` 保留提示查舊位置（`INSTALL_DIR`），永不顯示→改查 `USER_DIR` | P3 |
 | `yabomish.sh:353` | `do_uninstall` 不清 `USER_DIR` 內 `.prev`/`.rollback-tmp` 備份（不 wipe 資料也殘留）→ 無條件移除 | P2 |
 | `site/ch07` | 「四種型別」→五種（+`preset`），JSON 範例＋型別表＋`preset`／`,,AI` 專節 | docs |
@@ -27,7 +27,6 @@
 ## 自審結論（同類殘留掃描結果）
 
 已核對、無殘留：
-
 1. **Protocol 見證**——`engineDidRequestLLM(_:)` 簽名與 protocol 一致，engine `,,AI<prompt>` inline 分支（`InputEngine.swift:607`）走見證實作；其餘 delegate 方法無預設參數版。
 2. **`{clip}` 唯一入口**——`runAIHTTP` 不附加；`embeddedClip` 快照在 preset→`engineDidOpenLLMPrompt`→`requestLLM` 全鏈一致；CLI 模板 `{clip}` 與 prompt 內嵌共用同一快照。
 3. **`llmGeneration`**——static 全 app 共享，`requestLLM`/`deactivateServer` 皆 bump；stale→剪貼簿＋toast（非丟棄）；失敗訊息 stale 也送。

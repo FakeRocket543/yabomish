@@ -17,7 +17,7 @@
 - **送出時補「AI/fm 生成中…」toast**：與「下載聯想語料中…」同 0.6s 慣例
 - **`AITab` provider picker 回選**：依 `aiBaseURL` 自動選回對應 provider 選項
 - **`install` 的 `.prev` 提示永不顯示／uninstall 遺留備份**：安裝成功訊息仍檢查舊位置，改查 `USER_DIR`；uninstall 一併移除 `USER_DIR` 內 `.prev`/`.rollback-tmp`
-- **測試套件編譯失敗**：`isSameSoundMode` accessor 在 90230bc refactor 被移除但測試仍在用——恢復唯讀 accessor
+- **測試套件編譯失敗**：`isSameSoundMode` accessor 在 504e3f5（0.4.5）被移除但測試仍在用——恢復唯讀 accessor
 
 ## [0.4.10] — 2026-10-31
 
